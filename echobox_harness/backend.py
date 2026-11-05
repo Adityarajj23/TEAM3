@@ -503,3 +503,4 @@ _default_backend = EchoBoxBackend()
 
 def get_default_backend() -> EchoBoxBackend:
     return _default_backend
+

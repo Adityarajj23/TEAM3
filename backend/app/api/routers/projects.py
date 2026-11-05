@@ -51,6 +51,9 @@ def _with_stats(db: Session, p: Project) -> dict:
     }
     cov = coverage_by_project(db, [p.id])
     out["stats"]["coverage_pct"] = cov[0]["coverage_pct"] if cov else 0.0
+    from app.db.models import Integration
+    gh = db.execute(select(Integration).where(Integration.project_id == p.id, Integration.kind == "github")).scalar_one_or_none()
+    out["github"] = gh.config if gh and gh.config else None
     return out
 
 
@@ -92,38 +95,128 @@ def create_project(body: ProjectIn, p: Principal = Depends(require("project.admi
 
 
 class RepoImportIn(BaseModel):
-    repo_url: str = Field(default="https://github.com/sohan10012/EchoBox.git")
-    branch: str = "main"
-    project_key: str = "ECHO"
-    project_name: str = "EchoBox — Anonymous Conversation Platform"
+    repo_url: str = Field(default="https://github.com/sohan10012/EchoBox.git", description="Public or private GitHub URL")
+    branch: str = Field(default="main", description="Git branch to checkout")
+    commit_sha: str | None = Field(default=None, description="Optional pinned commit SHA")
+    project_key: str | None = Field(default=None, description="Project key (2-10 characters)")
+    project_name: str | None = Field(default=None, description="Human-readable project title")
+    auth_token: str | None = Field(default=None, description="Optional GitHub access token for private repositories")
     dry_run: bool = False
 
 
 @router.post("/import-repo", status_code=201)
 def import_repository(body: RepoImportIn, p: Principal = Depends(require("project.admin")),
                       db: Session = Depends(get_db)):
-    from app.core.config import REPO_ROOT
-    from app.services.repo_ingest import analyze_repository, ingest_echobox_project
+    import subprocess
 
-    # Locate repository: check var/repos/EchoBox or clone
-    repo_name = body.repo_url.rstrip("/").split("/")[-1].replace(".git", "")
-    target_dir = REPO_ROOT / "var" / "repos" / repo_name
-    if not target_dir.exists():
+    from app.core.config import REPO_ROOT
+    from app.services.repo_ingest import (
+        analyze_repository,
+        ingest_echobox_project,
+        ingest_generic_project,
+        validate_git_ref,
+        validate_github_url,
+    )
+
+    owner, repo_name = validate_github_url(body.repo_url)
+    branch = validate_git_ref(body.branch)
+    if body.commit_sha:
+        validate_git_ref(body.commit_sha)
+
+    # Locate or clone repository
+    target_dir = REPO_ROOT / "var" / "repos" / f"{owner}_{repo_name}"
+    # Special case: check existing EchoBox local clone
+    if repo_name.lower() == "echobox" and (REPO_ROOT / "var" / "repos" / "EchoBox").exists():
+        target_dir = REPO_ROOT / "var" / "repos" / "EchoBox"
+    elif not target_dir.exists():
         target_dir.parent.mkdir(parents=True, exist_ok=True)
-        import subprocess
-        subprocess.run(["git", "clone", "--depth", "1", "-b", body.branch, body.repo_url, str(target_dir)],
-                       check=True, timeout=60)
+        clone_cmd = ["git", "clone", "--depth", "50", "-b", branch]
+        clone_url = body.repo_url
+        if body.auth_token:
+            # Pass token safely without leaking in logs
+            clone_url = f"https://x-access-token:{body.auth_token}@github.com/{owner}/{repo_name}.git"
+        clone_cmd.extend([clone_url, str(target_dir)])
+        try:
+            subprocess.run(clone_cmd, check=True, timeout=60, capture_output=True, text=True)
+        except subprocess.CalledProcessError as e:
+            err = (e.stderr or "").replace(body.auth_token or "", "[REDACTED]")
+            raise BadRequest(f"Git clone failed: {err[:200]}") from e
+
+    if body.commit_sha:
+        subprocess.run(["git", "-C", str(target_dir), "checkout", body.commit_sha], check=True, timeout=15)
 
     analysis = analyze_repository(target_dir)
     if body.dry_run:
         return {"dry_run": True, "analysis": analysis.__dict__}
 
-    proj = ingest_echobox_project(db, p.id, target_dir)
+    is_echo = repo_name.lower() == "echobox" or (body.project_key and body.project_key.upper() == "ECHO")
+    if is_echo:
+        proj = ingest_echobox_project(db, p.id, target_dir)
+    else:
+        pkey = body.project_key or repo_name[:6].upper()
+        pname = body.project_name or f"{repo_name.replace('-', ' ').title()} Service"
+        proj = ingest_generic_project(db, p.id, target_dir, pkey, pname, body.repo_url, branch, analysis.commit_sha)
+
     return {
         "ok": True,
         "project": _with_stats(db, proj),
         "analysis": analysis.__dict__
     }
+
+
+@router.post("/{project_id}/refresh-repo")
+def refresh_repository(project_id: int, p: Principal = Depends(require("project.admin")),
+                       db: Session = Depends(get_db)):
+    import subprocess
+
+    from app.core.config import REPO_ROOT
+    from app.db.models import Integration
+    from app.services.repo_ingest import analyze_repository
+
+    proj = get_project_checked(db, p, project_id)
+    ig = db.execute(select(Integration).where(Integration.project_id == proj.id, Integration.kind == "github")).scalar_one_or_none()
+    if not ig or not ig.config or not ig.config.get("repo"):
+        raise BadRequest("Project is not connected to a GitHub repository")
+
+    repo_full = ig.config["repo"]
+    owner, repo_name = repo_full.split("/")
+    target_dir = REPO_ROOT / "var" / "repos" / f"{owner}_{repo_name}"
+    if repo_name.lower() == "echobox" and (REPO_ROOT / "var" / "repos" / "EchoBox").exists():
+        target_dir = REPO_ROOT / "var" / "repos" / "EchoBox"
+
+    if not target_dir.exists():
+        raise BadRequest(f"Local repository directory not found at {target_dir}")
+
+    # Fetch latest commit
+    subprocess.run(["git", "-C", str(target_dir), "fetch", "--depth", "1"], capture_output=True, timeout=30)
+    analysis = analyze_repository(target_dir)
+    # Update integration config
+    cfg = dict(ig.config)
+    cfg["commit_sha"] = analysis.commit_sha
+    cfg["last_refresh_at"] = utcnow().isoformat() + "Z"
+    ig.config = cfg
+    db.commit()
+
+    return {
+        "ok": True,
+        "project_id": proj.id,
+        "latest_commit": analysis.commit_sha,
+        "file_count": analysis.file_count,
+        "analysis": analysis.__dict__
+    }
+
+
+@router.delete("/{project_id}/disconnect-repo")
+def disconnect_repository(project_id: int, p: Principal = Depends(require("project.admin")),
+                         db: Session = Depends(get_db)):
+    from app.db.models import Integration
+    proj = get_project_checked(db, p, project_id)
+    ig = db.execute(select(Integration).where(Integration.project_id == proj.id, Integration.kind == "github")).scalar_one_or_none()
+    if ig:
+        db.delete(ig)
+        audit.record(db, p.id, "project.repo_disconnected", "project", proj.id, proj.key, proj.id)
+        db.commit()
+    return {"ok": True, "message": "Repository disconnected. QA history and test evidence preserved."}
 
 
 @router.get("/{project_id}")

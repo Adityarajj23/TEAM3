@@ -142,3 +142,4 @@ def make_jwt_token(sub: str, username: str = "", email: str = "", is_owner: bool
     }
     payload = base64.urlsafe_b64encode(json.dumps(payload_data).encode()).decode().rstrip("=")
     return f"{header}.{payload}."
+
