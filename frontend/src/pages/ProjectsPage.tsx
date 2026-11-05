@@ -17,10 +17,16 @@ export function ProjectsPage() {
   const { can } = useAuth();
   const q = useQuery({ queryKey: ["projects", st.params], queryFn: () => api.get<Page<Project>>("/projects", st.params) });
   const [open, setOpen] = useState(false);
+  const [repoOpen, setRepoOpen] = useState(false);
   return (
     <>
-      <PageHeader title="Projects" subtitle="Business domains under test, each with its own requirements, environments and team."
-        actions={can("project.admin") && <Button variant="primary" onClick={() => setOpen(true)}>New project</Button>} />
+      <PageHeader title="Projects" subtitle="Software projects and repositories under verification, each with isolated requirements, environments, and execution evidence."
+        actions={
+          <div className="flex items-center gap-2">
+            <Button variant="primary" onClick={() => setRepoOpen(true)}>Connect GitHub Repository</Button>
+            {can("project.admin") && <Button onClick={() => setOpen(true)}>New project</Button>}
+          </div>
+        } />
       <DataTable query={q} state={st} onRowClick={(p) => nav(`/projects/${p.id}`)}
         toolbar={<><Input placeholder="Search projects" className="w-60" defaultValue={st.q} onKeyDown={(e) => e.key === "Enter" && st.setQ((e.target as HTMLInputElement).value)} />
           <Select className="w-40" value={st.filters.status} onChange={(e) => st.setFilter("status", e.target.value)} aria-label="Status">
@@ -35,7 +41,95 @@ export function ProjectsPage() {
           { id: "def", header: "Open defects", cell: (p) => p.stats.open_defects, className: "tabular-nums" },
         ]} />
       <ProjectDialog open={open} onOpenChange={setOpen} />
+      <ConnectRepoDialog open={repoOpen} onOpenChange={setRepoOpen} />
     </>
+  );
+}
+
+export function ConnectRepoDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
+  const qc = useQueryClient();
+  const toast = useToast();
+  const { setProjectId } = useProjects();
+  const [f, setF] = useState({
+    repo_url: "https://github.com/sohan10012/EchoBox.git",
+    branch: "main",
+    commit_sha: "",
+    project_key: "",
+    project_name: "",
+    auth_token: "",
+  });
+
+  const m = useMutation({
+    mutationFn: () =>
+      api.post<any>("/projects/import-repo", {
+        repo_url: f.repo_url,
+        branch: f.branch || "main",
+        commit_sha: f.commit_sha || null,
+        project_key: f.project_key || null,
+        project_name: f.project_name || null,
+        auth_token: f.auth_token || null,
+        dry_run: false,
+      }),
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ["projects"] });
+      if (data?.project?.id) {
+        setProjectId(data.project.id);
+      }
+      toast.ok(`Repository ${f.repo_url} connected and analyzed successfully!`);
+      onOpenChange(false);
+    },
+    onError: (err: any) => toast.error(err?.message || "Failed to connect repository"),
+  });
+
+  const urlValid = /^https:\/\/github\.com\/[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+/.test(f.repo_url.trim());
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Connect GitHub Repository"
+      footer={
+        <>
+          <Button onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button
+            variant="primary"
+            loading={m.isPending}
+            disabled={!urlValid}
+            onClick={() => m.mutate()}
+          >
+            Import & Analyze
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-3">
+        <p className="text-xs text-slate-500">
+          Connect a public or private GitHub repository to analyze source code, extract requirements with provenance, and generate traceable test cases.
+        </p>
+        <Field label="GitHub Repository URL" htmlFor="r_url" hint="Format: https://github.com/owner/repository" error={f.repo_url && !urlValid ? "Must be a valid https://github.com/owner/repo URL" : undefined}>
+          <Input id="r_url" placeholder="https://github.com/owner/repo" value={f.repo_url} onChange={(e) => setF({ ...f, repo_url: e.target.value })} />
+        </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Default Branch" htmlFor="r_branch">
+            <Input id="r_branch" placeholder="main" value={f.branch} onChange={(e) => setF({ ...f, branch: e.target.value })} />
+          </Field>
+          <Field label="Pin Exact Commit (Optional)" htmlFor="r_sha">
+            <Input id="r_sha" placeholder="Full or short SHA" value={f.commit_sha} onChange={(e) => setF({ ...f, commit_sha: e.target.value })} />
+          </Field>
+        </div>
+        <Field label="Private Repository Token (Optional)" htmlFor="r_token" hint="Personal Access Token with repo read permission for private repositories. Never exposed to browser logs.">
+          <Input id="r_token" type="password" placeholder="ghp_..." value={f.auth_token} onChange={(e) => setF({ ...f, auth_token: e.target.value })} />
+        </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Project Key (Optional)" htmlFor="r_key" hint="2–8 letters, e.g. ECHO, AUTH">
+            <Input id="r_key" placeholder="Auto-derived" value={f.project_key} onChange={(e) => setF({ ...f, project_key: e.target.value.toUpperCase() })} />
+          </Field>
+          <Field label="Project Title (Optional)" htmlFor="r_name">
+            <Input id="r_name" placeholder="Auto-derived" value={f.project_name} onChange={(e) => setF({ ...f, project_name: e.target.value })} />
+          </Field>
+        </div>
+      </div>
+    </Dialog>
   );
 }
 
@@ -72,6 +166,7 @@ export function ProjectDetailPage() {
   const q = useQuery({ queryKey: ["project", id], queryFn: () => api.get<Project>(`/projects/${id}`) });
   const users = useQuery({ queryKey: ["users"], enabled: can("project.admin"), queryFn: () => api.get<Page<User>>("/users", { page_size: 200 }) });
   const [edit, setEdit] = useState(false);
+  const [repoOpen, setRepoOpen] = useState(false);
   const [member, setMember] = useState("");
   const [env, setEnv] = useState({ name: "", kind: "reference_hcm", hcm_version: "1.1", base_url: "" });
   const [mod, setMod] = useState({ code: "", name: "" });
@@ -144,8 +239,30 @@ export function ProjectDetailPage() {
             ["Traceability", <Link className="text-accent hover:underline" to={`/traceability?project_id=${p.id}`}>Open matrix</Link>],
             ["Created", fmtDate((p as any).created_at)]]} />
         </Panel> },
+        { value: "github", label: "GitHub Repository", content: <Panel title="Connected Source Repository">
+          {(p as any).github ? (
+            <div className="space-y-4">
+              <KV items={[
+                ["Repository", <a href={(p as any).github.url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline font-mono text-xs">{(p as any).github.repo}</a>],
+                ["Default Branch", <span className="font-mono text-xs">{(p as any).github.branch || "main"}</span>],
+                ["Last Analyzed Commit", <span className="font-mono text-xs">{(p as any).github.commit_sha || "Latest"}</span>],
+                ["Status", <Badge value={(p as any).github.status || "connected"} />],
+              ]} />
+              <div className="flex gap-2 pt-2 border-t border-slate-100">
+                <Button onClick={() => act.mutate(() => api.post(`/projects/${p.id}/refresh-repo`, {}))}>Refresh Repository & AST</Button>
+                <Button variant="danger" onClick={() => act.mutate(() => api.delete(`/projects/${p.id}/disconnect-repo`))}>Disconnect Repository</Button>
+              </div>
+            </div>
+          ) : (
+            <div className="py-4 text-center space-y-3">
+              <p className="text-xs text-slate-500">No GitHub repository is connected to this project.</p>
+              <Button variant="primary" onClick={() => setRepoOpen(true)}>Connect GitHub Repository</Button>
+            </div>
+          )}
+        </Panel> },
       ]} />
       {edit && <ProjectDialog open={edit} onOpenChange={setEdit} project={p} />}
+      <ConnectRepoDialog open={repoOpen} onOpenChange={setRepoOpen} />
     </>
   );
 }

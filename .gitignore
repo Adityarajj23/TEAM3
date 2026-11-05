@@ -17,6 +17,8 @@ __pycache__/
 .coverage
 htmlcov/
 node_modules/
+.vite/
+frontend/.vite/
 frontend/dist/
 artifacts/*
 !artifacts/.gitkeep

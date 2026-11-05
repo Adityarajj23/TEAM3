@@ -16,6 +16,13 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   const projects = useMemo(() => q.data?.items ?? [], [q.data]);
   useEffect(() => {
     if (projectId && projects.length && !projects.some((p) => p.id === projectId)) setPid(null);
+    if (!projectId && projects.length) {
+      const echo = projects.find((p) => p.key === "ECHO");
+      if (echo) {
+        setPid(echo.id);
+        try { localStorage.setItem(KEY, String(echo.id)); } catch { /* ignore */ }
+      }
+    }
   }, [projects, projectId]);
   const setProjectId = (id: number | null) => {
     setPid(id);

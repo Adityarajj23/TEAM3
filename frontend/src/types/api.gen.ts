@@ -724,6 +724,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/import-repo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Import Repository */
+        post: operations["import_repository_api_v1_projects_import_repo_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{project_id}": {
         parameters: {
             query?: never;
@@ -740,6 +757,23 @@ export interface paths {
         head?: never;
         /** Update Project */
         patch: operations["update_project_api_v1_projects__project_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/disconnect-repo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Disconnect Repository */
+        delete: operations["disconnect_repository_api_v1_projects__project_id__disconnect_repo_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/projects/{project_id}/environments": {
@@ -804,6 +838,23 @@ export interface paths {
         put?: never;
         /** Add Module */
         post: operations["add_module_api_v1_projects__project_id__modules_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/refresh-repo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Refresh Repository */
+        post: operations["refresh_repository_api_v1_projects__project_id__refresh_repo_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1546,6 +1597,46 @@ export interface components {
             name?: string | null;
             /** Status */
             status?: string | null;
+        };
+        /** RepoImportIn */
+        RepoImportIn: {
+            /**
+             * Auth Token
+             * @description Optional GitHub access token for private repositories
+             */
+            auth_token?: string | null;
+            /**
+             * Branch
+             * @description Git branch to checkout
+             * @default main
+             */
+            branch: string;
+            /**
+             * Commit Sha
+             * @description Optional pinned commit SHA
+             */
+            commit_sha?: string | null;
+            /**
+             * Dry Run
+             * @default false
+             */
+            dry_run: boolean;
+            /**
+             * Project Key
+             * @description Project key (2-10 characters)
+             */
+            project_key?: string | null;
+            /**
+             * Project Name
+             * @description Human-readable project title
+             */
+            project_name?: string | null;
+            /**
+             * Repo Url
+             * @description Public or private GitHub URL
+             * @default https://github.com/sohan10012/EchoBox.git
+             */
+            repo_url: string;
         };
         /** RequirementIn */
         RequirementIn: {
@@ -3213,6 +3304,39 @@ export interface operations {
             };
         };
     };
+    import_repository_api_v1_projects_import_repo_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RepoImportIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_project_api_v1_projects__project_id__get: {
         parameters: {
             query?: never;
@@ -3258,6 +3382,37 @@ export interface operations {
                 "application/json": components["schemas"]["ProjectPatch"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    disconnect_repository_api_v1_projects__project_id__disconnect_repo_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -3398,6 +3553,37 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    refresh_repository_api_v1_projects__project_id__refresh_repo_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
