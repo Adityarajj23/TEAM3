@@ -32,20 +32,49 @@ class Settings(BaseSettings):
     # LLM providers
     llm_mode: str = Field("live", alias="TRACETEST_LLM_MODE")  # live | mock
     groq_api_key: str | None = Field(None, alias="GROQ_API_KEY")
+    groq_api_key2: str | None = Field(None, alias="GROQ_API_KEY2")
+    groq_api_key3: str | None = Field(None, alias="GROQ_API_KEY3")
+    groq_key: str | None = Field(None, alias="GROQ_KEY")
+    groq_key2: str | None = Field(None, alias="GROQ_KEY2")
+    groq_key3: str | None = Field(None, alias="GROQ_KEY3")
     groq_model: str = Field("openai/gpt-oss-120b", alias="GROQ_MODEL")
     groq_base_url: str = Field("https://api.groq.com/openai/v1", alias="GROQ_BASE_URL")
+
     gemini_api_key: str | None = Field(None, alias="GEMINI_API_KEY")
-    gemini_model: str = Field("gemini-2.0-flash", alias="GEMINI_MODEL")
+    gemini_api_key2: str | None = Field(None, alias="GEMINI_API_KEY2")
+    gemini_api_key3: str | None = Field(None, alias="GEMINI_API_KEY3")
+    gemini_key: str | None = Field(None, alias="GEMINI_KEY")
+    gemini_key2: str | None = Field(None, alias="GEMINI_KEY2")
+    gemini_key3: str | None = Field(None, alias="GEMINI_KEY3")
+    gemini_model: str = Field("gemini-2.5-flash", alias="GEMINI_MODEL")
+
     ollama_base_url: str | None = Field(None, alias="OLLAMA_BASE_URL")
     ollama_model: str = Field("llama3.1", alias="OLLAMA_MODEL")
     llm_timeout_seconds: float = Field(60, alias="TRACETEST_LLM_TIMEOUT")
     llm_max_retries: int = Field(2, alias="TRACETEST_LLM_MAX_RETRIES")
+
+    @property
+    def groq_keys(self) -> list[str]:
+        res: list[str] = []
+        for val in (self.groq_api_key, self.groq_key, self.groq_api_key2, self.groq_key2, self.groq_api_key3, self.groq_key3):
+            if val and val.strip() and val.strip() not in res:
+                res.append(val.strip())
+        return res
+
+    @property
+    def gemini_keys(self) -> list[str]:
+        res: list[str] = []
+        for val in (self.gemini_api_key, self.gemini_key, self.gemini_api_key2, self.gemini_key2, self.gemini_api_key3, self.gemini_key3):
+            if val and val.strip() and val.strip() not in res:
+                res.append(val.strip())
+        return res
 
     # Execution sandbox
     exec_timeout_seconds: int = Field(60, alias="TRACETEST_EXEC_TIMEOUT")
     exec_max_output_bytes: int = Field(256_000, alias="TRACETEST_EXEC_MAX_OUTPUT")
     exec_memory_mb: int = Field(512, alias="TRACETEST_EXEC_MEMORY_MB")
     playwright_target_url: str | None = Field(None, alias="TRACETEST_PLAYWRIGHT_TARGET_URL")
+    chromium_executable: str | None = Field("/usr/bin/chromium", alias="TRACETEST_CHROMIUM_EXECUTABLE")
 
     # GitHub
     github_token: str | None = Field(None, alias="GITHUB_TOKEN")

@@ -2,7 +2,12 @@ var/
 *.db
 *.db-wal
 *.db-shm
+*.sqlite
+*.sqlite3
 .env
+.env.*
+!.env.example
+*.log
 __pycache__/
 *.pyc
 .venv/
@@ -15,3 +20,5 @@ node_modules/
 frontend/dist/
 artifacts/*
 !artifacts/.gitkeep
+test-results/
+playwright-report/
