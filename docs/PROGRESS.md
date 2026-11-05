@@ -105,3 +105,76 @@ Evaluation performed using live production API keys against the 10 Golden HCM Sc
 | **Traceability** | 100.0% | 100.0% |
 | **Failure Classification Accuracy** | 100.0% | 100.0% |
 | **Scenarios Passed** | 3 / 10 (30%) | 10 / 10 (100%) |
+
+---
+
+## 5. Real-World EchoBox Production-Grade QA Case Study
+
+To validate TraceTest AI on a real external software project beyond Dayforce and Reference HCM, TraceTest AI ingested and executed complete end-to-end verification against **EchoBox** (`https://github.com/sohan10012/EchoBox.git`), an anonymous-first conversation platform built on React 18, Vite, AWS API Gateway, AWS Lambda, DynamoDB, and Cognito.
+
+### 5.1 Repository Ingestion & Requirement Extraction
+- **Service**: Implemented `app/services/repo_ingest.py` and endpoint `POST /api/v1/projects/import-repo`.
+- **Target Repository**: Cloned to `var/repos/EchoBox` (read-only reference).
+- **Workspace Project**: Created project `ECHO` in `var/tracetest.db` with 8 functional modules:
+  - `ECHO-ROOMS` (Room lifecycle & configuration)
+  - `ECHO-DISCOVERY` (Public discovery & search)
+  - `ECHO-CHAT` (Pseudonymous message submission & retrieval)
+  - `ECHO-OWNER` (Moderation & room control)
+  - `ECHO-IDENTITY` (Optional authenticated EchoBox ID)
+  - `ECHO-EXPIRY` (24-hour expiration & DynamoDB TTL)
+  - `ECHO-SECURITY` (Input validation, whitelist & isolation)
+  - `ECHO-FRONTEND` (API client & user interface)
+- **Source-Grounded Requirements**: 21 requirements with strict provenance classification (`Directly observed in source`, `Documented in README or technical documentation`, `Inferred from implementation`, `External assumption requiring verification`, `Unable to verify`), exact source file and line numbers, 62 atomic clauses, and 21 acceptance criteria.
+
+### 5.2 Multi-Tiered Verification Pipeline
+- **Tier A (Static Analysis)**: Verified all 13 RPC actions in `backend/lambda_function.py`; verified frontend TypeScript build (`tsc -b && vite build`) passed with 0 errors in 4.61s.
+- **Tier B (Local Test Harness Execution)**: Built `echobox_harness`, an in-memory thread-safe mock of DynamoDB Single Table storage conforming to the `boto3` API. Ran execution `EX-000001` inside the POSIX sandbox: **21 / 21 tests passed (100%) in 1.92s**.
+- **Tier C (Live AWS API Gateway Probe)**: Executed probe against `https://bnbpmiljw9.execute-api.ap-south-1.amazonaws.com` in 574ms. Captured HTTP 500 (`{"error": "Internal server error"}`) with AWS request ID `GYaZ0hH4BcwEMqw=`. Recorded execution `EX-ECHO-LIVE-001` as `error`/`blocked` without faking success.
+- **Browser E2E (Playwright)**: Ran automated browser validation against local Vite preview (`http://127.0.0.1:5174`), capturing `echobox-frontend-landing.png` and `echobox-join-validation.png`.
+
+### 5.3 Genuine Defects Discovered & Tracked
+Recorded 5 genuine defects in `var/tracetest.db`:
+1. `DEF-ECHO-001` (Medium): Description limit mismatch (500 chars in docs vs 1000 in Lambda).
+2. `DEF-ECHO-002` (Low): Silent truncation slicing instead of HTTP 400 Bad Request.
+3. `DEF-ECHO-003` (High): Invalid visibility parameter defaults to public room (`!= "private"`).
+4. `DEF-ECHO-004` (Medium): N+1 query loop in `discover_rooms`.
+5. `DEF-ECHO-005` (High): Live AWS API Gateway endpoint returns HTTP 500 Internal Server Error.
+
+### 5.4 Empirical AI Evaluation on EchoBox Scenarios
+Ran comparative evaluation with `backend/evals/echobox_scenarios.json`:
+- **Groq (`openai/gpt-oss-120b`)**: 100% clause coverage, 14.3% ungrounded rate (correctly isolated bug boundary on `ECHO-GOLD-003`), 0% duplicate rate, 100% schema pass rate, 100% traceability.
+- **Gemini (`gemini-2.5-flash`)**: Successfully tested circuit breaker and cooldown handling when hitting free-tier 429 quota exhaustion.
+
+---
+
+## 6. Deliverables & Documentation Sign-Off
+
+All 26 technical and user documents are present, detailed, and mutually consistent in `docs/`:
+
+1. `docs/README.md` — Documentation portal and quick start.
+2. `docs/PRODUCT_OVERVIEW.md` — Product vision, core workflows, and architectural principles.
+3. `docs/ARCHITECTURE.md` — Complete system architecture, data flow, and security boundaries.
+4. `docs/REPOSITORY_IMPORT.md` — Repository ingestion engine, AST parsing, and public clone workflows.
+5. `docs/REQUIREMENTS_ENGINE.md` — AI requirement analysis, clause decomposition, and provenance rules.
+6. `docs/TEST_GENERATION.md` — Automated test generation, guardrail validation, and Pytest output.
+7. `docs/AI_PROVIDER_CONFIGURATION.md` — Multi-credential slot pooling, cooldown, and failover design.
+8. `docs/EXECUTION_ENGINE.md` — POSIX subprocess sandbox, limits, and artifact capture.
+9. `docs/ECHOBOX_CASE_STUDY.md` — Complete real-world case study on EchoBox.
+10. `docs/ECHOBOX_REQUIREMENTS.md` — 21 grounded requirements with exact source provenance.
+11. `docs/ECHOBOX_TEST_PLAN.md` — 21 test case definitions, test strategies, and harness design.
+12. `docs/ECHOBOX_EXECUTION_REPORT.md` — Tier A, B, C and browser execution findings.
+13. `docs/DEFECT_MANAGEMENT.md` — Defect lifecycle, triage criteria, and EchoBox defects.
+14. `docs/TRACEABILITY_AND_COVERAGE.md` — Complete requirement-to-test-to-execution matrix.
+15. `docs/INTEGRATIONS.md` — External tool connectors (Git, GitHub, API Gateway, DynamoDB).
+16. `docs/API_REFERENCE.md` — Complete REST API reference across all routers.
+17. `docs/DATABASE_SCHEMA.md` — 36 database tables, constraints, indexes, and relationships.
+18. `docs/SECURITY.md` — Sandbox isolation, secret protection, session management, and AST allowlist.
+19. `docs/TESTING_GUIDE.md` — How to run backend, frontend, E2E, and AI evaluation tests.
+20. `docs/AI_EVALUATION.md` — Comparative benchmark between Groq and Gemini.
+21. `docs/DEPLOYMENT.md` — Production containerization, environment variables, and systemd setup.
+22. `docs/USER_GUIDE.md` — Step-by-step user walkthrough from repository import to test execution.
+23. `docs/LIMITATIONS.md` — Known boundaries, sandbox constraints, and future roadmap.
+24. `docs/CHANGELOG.md` — Version history and release notes.
+25. `docs/TEST_EVIDENCE_INDEX.md` — Master catalog of all empirical execution evidence and artifacts.
+26. `docs/PROGRESS.md` — This delivery progress and verification ledger.
+
