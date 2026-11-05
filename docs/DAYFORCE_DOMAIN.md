@@ -99,3 +99,4 @@ flowchart LR
 4. **Boundary & Negative Testing**: Mandatory generation of edge-case tests (e.g., exactly 40.0 hours, 40.1 hours, 39.9 hours, 17:00 cutoff boundary).
 5. **Executable Test Cases**: Synthesizing deterministic Python test cases that interact with SUT interfaces or API endpoints.
 6. **Retest Gate**: Defects can only transition to `Verified` when a genuine passing retest is executed against the corrected target environment.
+

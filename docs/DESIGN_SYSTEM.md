@@ -171,3 +171,4 @@ Following `emil-design-eng` motion vocabulary:
 - **Secondary Button**: `bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-medium px-3.5 py-1.5 rounded text-sm shadow-xs transition-colors`.
 - **Ghost Button**: `hover:bg-slate-100 text-slate-600 hover:text-slate-900 font-medium px-2.5 py-1.5 rounded text-sm transition-colors`.
 - **Destructive Button**: `bg-rose-600 hover:bg-rose-700 text-white font-medium px-3.5 py-1.5 rounded text-sm shadow-xs transition-colors`.
+

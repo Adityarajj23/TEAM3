@@ -88,7 +88,7 @@ def me(request: Request, response: Response, db: Session = Depends(get_db)):
         s = get_settings()
         host = request.client.host if request.client else "127.0.0.1"
         is_local = host in ("127.0.0.1", "::1", "localhost", "testclient")
-        if is_local and s.app_env == "development":
+        if is_local and s.app_env == "development" and not request.headers.get("x-no-auto-login") and not request.query_params.get("no_auto"):
             dev_user = db.execute(select(User).where(User.email == s.dev_email.lower())).scalar_one_or_none()
             if not dev_user:
                 dev_user = db.execute(select(User)).scalars().first()

@@ -25,8 +25,8 @@ SCREENS = [
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--base", default="http://127.0.0.1:5173")
-    ap.add_argument("--email", required=True)
-    ap.add_argument("--password", required=True)
+    ap.add_argument("--email", default="admin@northwind-hcm.example")
+    ap.add_argument("--password", default="NorthwindAdmin2026!Secure")
     ap.add_argument("--out", default=str(Path(__file__).resolve().parents[1] / "docs" / "screenshots"))
     ap.add_argument("--chrome", default=None, help="Path to a Chrome/Chromium executable")
     a = ap.parse_args()
@@ -41,14 +41,19 @@ def main() -> None:
             errors: list[str] = []
             page.on("console", lambda m, e=errors: e.append(m.text) if m.type == "error" else None)
             for name, path, action in SCREENS:
-                if name == "02-dashboard" and "login" in page.url:
-                    pass
-                if name != "01-login" and ("/login" in page.url or page.url == "about:blank"):
+                if name == "01-login":
+                    # Capture pristine login view without local auto-redirect
+                    page.route("**/api/v1/auth/me", lambda r: r.fulfill(status=401, json={"error": "unauthenticated"}))
                     page.goto(a.base + "/login")
-                    page.fill("#email", a.email)
-                    page.fill("#password", a.password)
-                    page.click("button[type=submit]")
-                    page.wait_for_url(re.compile(r".*/$"))
+                    page.wait_for_load_state("networkidle")
+                    page.wait_for_timeout(500)
+                    overflow = page.evaluate("document.documentElement.scrollWidth > document.documentElement.clientWidth")
+                    if overflow:
+                        problems.append(f"{name}@{width}: horizontal page overflow")
+                    page.screenshot(path=str(out / f"{name}-{width}.png"))
+                    page.unroute("**/api/v1/auth/me")
+                    continue
+
                 page.goto(a.base + path)
                 page.wait_for_load_state("networkidle")
                 page.wait_for_timeout(600)

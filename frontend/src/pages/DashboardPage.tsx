@@ -468,20 +468,18 @@ export default function DashboardPage() {
                       <thead className="border-b border-slate-200 bg-slate-50 font-semibold text-slate-700">
                         <tr>
                           <th className="px-4 py-2.5">Project</th>
-                          <th className="px-4 py-2.5">Requirements</th>
                           <th className="px-4 py-2.5">Coverage</th>
-                          <th className="px-4 py-2.5">Tests</th>
+                          <th className="px-4 py-2.5">Executions</th>
                           <th className="px-4 py-2.5">Pass rate</th>
                           <th className="px-4 py-2.5">Open defects</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
                         {d.projects.map((p: any) => (
-                          <tr key={p.id} className="hover:bg-slate-50 cursor-pointer" onClick={() => nav(`/projects/${p.id}`)}>
+                          <tr key={p.project_id ?? p.key} className="hover:bg-slate-50 cursor-pointer" onClick={() => nav(`/projects/${p.project_id}`)}>
                             <td className="px-4 py-2.5 font-medium text-slate-900">{p.key} — {p.name}</td>
-                            <td className="px-4 py-2.5 text-slate-600">{p.total_requirements}</td>
-                            <td className="px-4 py-2.5 text-slate-600">{pct(p.requirement_coverage)}</td>
-                            <td className="px-4 py-2.5 text-slate-600">{p.total_tests}</td>
+                            <td className="px-4 py-2.5 text-slate-600">{pct(p.coverage_pct)}</td>
+                            <td className="px-4 py-2.5 text-slate-600">{p.executions}</td>
                             <td className="px-4 py-2.5 text-slate-600">{pct(p.pass_rate)}</td>
                             <td className="px-4 py-2.5 text-slate-600">{p.open_defects}</td>
                           </tr>
