@@ -49,7 +49,7 @@ def test_manual_defect_from_failure_with_comments_links_and_reopen(qa, reviewer)
     bad = qa.post("/defects", json={"project_id": ex["project_id"], "title": "Linked to a passing result",
                                     "severity": "low", "priority": "p4", "execution_result_id": passed[0]["id"]})
     assert bad.status_code == 400
-    closed = qa.get("/defects?status=closed&page_size=1").json()["items"]
+    closed = reviewer.get("/defects?status=closed&page_size=1").json()["items"]
     if closed:
         r = reviewer.post(f"/defects/{closed[0]['id']}/transition", json={"status": "reopened", "comment": "Regressed"})
         assert r.status_code == 200 and r.json()["resolved_at"] is None

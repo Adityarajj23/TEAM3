@@ -189,8 +189,7 @@ def _build(db, rng: random.Random, now: datetime, day0: datetime) -> dict:
     tests_by_project: dict[str, list[TestCase]] = defaultdict(list)
     seed_tests: dict[str, object] = {}
     req_rows: dict[str, Requirement] = {}
-    broken = {("PAY", "retail associates: fractional overtime reported to two decimals"),
-              ("LVE", "part-time employees: excess balance forfeited")}
+    broken: set[tuple[str, str]] = set()
     for idx, sr in enumerate(catalog):
         proj = projects[sr.project]
         created = _at(day0, idx * 0.7, rng)

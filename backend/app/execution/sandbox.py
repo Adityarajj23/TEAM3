@@ -215,6 +215,8 @@ def run_pytest(specs: list[ScriptSpec], hcm_version: str | None, runner: str = "
         if runner == "playwright":
             env["TRACETEST_TARGET_URL"] = target_url or ""
             env["TRACETEST_ARTIFACT_DIR"] = str(art)
+            if settings.chromium_executable:
+                env["TRACETEST_CHROMIUM_EXECUTABLE"] = str(settings.chromium_executable)
             for k in ("TRACETEST_CHROMIUM_EXECUTABLE", "PLAYWRIGHT_BROWSERS_PATH"):
                 if os.environ.get(k):
                     env[k] = os.environ[k]
