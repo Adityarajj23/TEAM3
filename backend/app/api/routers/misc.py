@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 
 from fastapi import APIRouter, Depends, Header
 from fastapi.responses import Response
@@ -317,6 +318,8 @@ def ingest_ci(body: CIResultIn, authorization: str = Header(""), db: Session = D
         raise NotFound("Project")
     env = db.execute(select(Environment).where(Environment.project_id == proj.id,
                                                Environment.hcm_version == body.environment)).scalars().first()
+    if env is None:
+        raise NotFound("Environment")
     tests = {("test_" + t.key.replace("-", "_").lower() + ".py"): t for t in
              db.execute(select(TestCase).where(TestCase.project_id == proj.id)).scalars()}
     outcomes = _parse_junit(body.junit_xml, {f: t.key for f, t in tests.items()})
@@ -417,7 +420,7 @@ def test_connection(body: TestConnectionIn, p: Principal = Depends(current_princ
             "error": None,
         }
 
-    provider_obj = None
+    provider_obj: Any = None
     if body.provider == "groq":
         from app.llm.providers import GroqProvider
         provider_obj = GroqProvider(s)

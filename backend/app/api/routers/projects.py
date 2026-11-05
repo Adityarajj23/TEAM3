@@ -91,6 +91,41 @@ def create_project(body: ProjectIn, p: Principal = Depends(require("project.admi
     return _with_stats(db, proj)
 
 
+class RepoImportIn(BaseModel):
+    repo_url: str = Field(default="https://github.com/sohan10012/EchoBox.git")
+    branch: str = "main"
+    project_key: str = "ECHO"
+    project_name: str = "EchoBox — Anonymous Conversation Platform"
+    dry_run: bool = False
+
+
+@router.post("/import-repo", status_code=201)
+def import_repository(body: RepoImportIn, p: Principal = Depends(require("project.admin")),
+                      db: Session = Depends(get_db)):
+    from app.core.config import REPO_ROOT
+    from app.services.repo_ingest import analyze_repository, ingest_echobox_project
+
+    # Locate repository: check var/repos/EchoBox or clone
+    repo_name = body.repo_url.rstrip("/").split("/")[-1].replace(".git", "")
+    target_dir = REPO_ROOT / "var" / "repos" / repo_name
+    if not target_dir.exists():
+        target_dir.parent.mkdir(parents=True, exist_ok=True)
+        import subprocess
+        subprocess.run(["git", "clone", "--depth", "1", "-b", body.branch, body.repo_url, str(target_dir)],
+                       check=True, timeout=60)
+
+    analysis = analyze_repository(target_dir)
+    if body.dry_run:
+        return {"dry_run": True, "analysis": analysis.__dict__}
+
+    proj = ingest_echobox_project(db, p.id, target_dir)
+    return {
+        "ok": True,
+        "project": _with_stats(db, proj),
+        "analysis": analysis.__dict__
+    }
+
+
 @router.get("/{project_id}")
 def get_project(project_id: int, p: Principal = Depends(current_principal), db: Session = Depends(get_db)):
     proj = get_project_checked(db, p, project_id)

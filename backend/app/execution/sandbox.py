@@ -188,8 +188,12 @@ def run_pytest(specs: list[ScriptSpec], hcm_version: str | None, runner: str = "
     work = Path(tempfile.mkdtemp(prefix="tt-sandbox-"))
     try:
         if runner == "pytest":
-            shutil.copytree(REPO_ROOT / "reference_hcm", work / "reference_hcm",
-                            ignore=shutil.ignore_patterns("__pycache__"))
+            if (REPO_ROOT / "reference_hcm").exists():
+                shutil.copytree(REPO_ROOT / "reference_hcm", work / "reference_hcm",
+                                ignore=shutil.ignore_patterns("__pycache__"))
+            if (REPO_ROOT / "echobox_harness").exists():
+                shutil.copytree(REPO_ROOT / "echobox_harness", work / "echobox_harness",
+                                ignore=shutil.ignore_patterns("__pycache__"))
             (work / "conftest.py").write_text(GUARD_CONFTEST)
         else:
             (work / "conftest.py").write_text(PLAYWRIGHT_CONFTEST)

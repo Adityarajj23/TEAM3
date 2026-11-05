@@ -55,8 +55,12 @@ def create_execution(db: Session, project: Project, env: Environment, tests: lis
                        {"skipped": [is_executable(t)[1] for t in tests][:50]})
     runners = {t.automation for t in runnable}
     if env.kind == "web":
-        runnable = [t for t in runnable if t.automation == "playwright"]
-        runner = "playwright"
+        if any(t.automation == "playwright" for t in runnable):
+            runnable = [t for t in runnable if t.automation == "playwright"]
+            runner = "playwright"
+        else:
+            runnable = [t for t in runnable if t.automation == "pytest"]
+            runner = "pytest"
     else:
         runnable = [t for t in runnable if t.automation == "pytest"]
         runner = "pytest"
