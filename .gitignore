@@ -1,0 +1,17 @@
+var/
+*.db
+*.db-wal
+*.db-shm
+.env
+__pycache__/
+*.pyc
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+node_modules/
+frontend/dist/
+artifacts/*
+!artifacts/.gitkeep

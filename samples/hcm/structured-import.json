@@ -1,0 +1,9 @@
+{
+  "project_id": 1,
+  "items": [
+    {"title": "Night premium for weekend shifts", "priority": "high", "category": "functional",
+     "description": "Night shift hours worked on a Saturday or Sunday must earn a differential of 15 percent of the base rate. The weekend night differential must replace, not add to, the standard night differential."},
+    {"title": "Payslip correction window", "priority": "medium", "category": "compliance",
+     "description": "Payroll corrections must be issued within 5 working days of an error being reported. Corrections must reference the original payslip."}
+  ]
+}
