@@ -49,7 +49,7 @@ function ProjectDialog({ open, onOpenChange, project }: { open: boolean; onOpenC
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["projects"] }); toast.ok(project ? "Project updated" : "Project created"); onOpenChange(false); },
     onError: toast.error,
   });
-  const keyOk = /^[A-Za-z]{2,6}$/.test(f.key);
+  const keyOk = /^[A-Za-z0-9_-]{2,10}$/.test(f.key);
   return (
     <Dialog open={open} onOpenChange={onOpenChange} title={project ? "Edit project" : "New project"}
       footer={<><Button onClick={() => onOpenChange(false)}>Cancel</Button>

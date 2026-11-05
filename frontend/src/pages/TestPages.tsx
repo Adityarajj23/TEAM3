@@ -71,6 +71,7 @@ export function TestsPage() {
       <TestTabsNav />
       <div className="mb-2"><FilterChips state={st} /></div>
       <DataTable query={q} state={st} columns={testColumns} onRowClick={(t) => nav(`/tests/${t.id}`)} toolbar={<Filters st={st} />}
+        empty={<EmptyState title="No Dayforce test cases generated yet" body="Generate tests from requirement analysis or author a manual test case linked to requirement clauses." action={can("test.write") ? <Button variant="primary" onClick={() => setCreate(true)}>New manual test</Button> : undefined} />}
         selectable={can("suite.write")} bulkActions={(ids, clear) => <AddToSuite ids={ids} onDone={clear} />} />
       {create && <CreateTestDialog onClose={() => setCreate(false)} />}
     </>
@@ -270,6 +271,7 @@ export function SuitesPage() {
         actions={can("suite.write") && <Button variant="primary" onClick={() => setOpen(true)}>New suite</Button>} />
       <TestTabsNav />
       <DataTable query={q} state={st} onRowClick={(s) => nav(`/suites/${s.id}`)}
+        empty={<EmptyState title="No Dayforce test suites configured" body="Create a test suite to group approved tests by Dayforce module (Payroll, WFM, Leave, Benefits) and execute them against target environments." action={can("suite.write") ? <Button variant="primary" onClick={() => setOpen(true)}>New suite</Button> : undefined} />}
         toolbar={<Input placeholder="Search suites" className="w-60" defaultValue={st.q} aria-label="Search suites" onKeyDown={(e) => e.key === "Enter" && st.setQ((e.target as HTMLInputElement).value)} />}
         columns={[
           { id: "key", header: "ID", sortKey: "key", cell: (s) => <Key>{s.key}</Key> },

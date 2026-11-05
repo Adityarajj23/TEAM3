@@ -48,11 +48,17 @@ export default function LoginPage() {
       <div className="flex flex-1 items-center justify-center p-6">
         <form onSubmit={submit} className="w-full max-w-sm space-y-4" noValidate>
           <div className="lg:hidden"><Wordmark /></div>
-          <div><h1 className="text-xl font-semibold text-ink">Sign in</h1>
-            <p className="text-sm text-slate-600">Northwind Workforce Solutions workspace</p></div>
+          <div>
+            <h1 className="text-xl font-semibold text-ink">Sign in</h1>
+            <p className="text-sm text-slate-600">Dayforce Quality Engineering Workspace</p>
+          </div>
+          <div className="rounded-md border border-accent/20 bg-accent-soft p-3 text-xs text-accent">
+            <span className="font-semibold">Local Development:</span> When accessing on localhost, you are automatically signed in as Dayforce QA Engineer. If you are redirected here or need to switch roles, use your provisioned credentials.
+          </div>
           {failure && <Notice tone="danger">{failure}</Notice>}
           <Field label="Work email" htmlFor="email" error={errors.email}>
             <Input id="email" type="email" autoComplete="username" value={form.email}
+              placeholder="e.g. qa.engineer@dayforce-qa.local"
               onChange={(e) => setForm({ ...form, email: e.target.value })} aria-invalid={!!errors.email} />
           </Field>
           <Field label="Password" htmlFor="password" error={errors.password}>
@@ -60,6 +66,9 @@ export default function LoginPage() {
               onChange={(e) => setForm({ ...form, password: e.target.value })} aria-invalid={!!errors.password} />
           </Field>
           <Button type="submit" variant="primary" className="w-full" loading={busy}>Sign in</Button>
+          <p className="text-center text-2xs text-slate-400">
+            Independent Quality Engineering Prototype &bull; Not officially affiliated with Dayforce Inc.
+          </p>
         </form>
       </div>
     </div>

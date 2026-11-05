@@ -34,12 +34,13 @@ export function RequirementsPage() {
   const [mode, setMode] = useState<"create" | "upload" | null>(null);
   return (
     <>
-      <PageHeader title="Requirements" subtitle="Versioned business requirements, split into clauses that tests and acceptance criteria cite."
+      <PageHeader title="Requirements" subtitle="Dayforce HCM business requirements, decomposed into atomic clauses that tests and acceptance criteria cite."
         actions={can("requirement.write") && <>
           <Button onClick={() => setMode("upload")}><Upload className="h-4 w-4" />Upload document</Button>
           <Button variant="primary" onClick={() => setMode("create")}>New requirement</Button></>} />
       <div className="mb-2"><FilterChips state={st} /></div>
       <DataTable query={q} state={st} onRowClick={(r) => nav(`/requirements/${r.id}`)}
+        empty={<EmptyState title="No Dayforce requirements ingested yet" body="Upload a business requirement specification (.pdf, .txt, .md) or author a requirement to extract atomic clauses, detect ambiguities, and generate tests." action={can("requirement.write") ? <Button variant="primary" onClick={() => setMode("upload")}><Upload className="h-4 w-4" />Upload requirement document</Button> : undefined} />}
         toolbar={<>
           <Input placeholder="Search key or title" className="w-60" defaultValue={st.q} aria-label="Search requirements"
             onKeyDown={(e) => e.key === "Enter" && st.setQ((e.target as HTMLInputElement).value)} />

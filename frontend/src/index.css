@@ -3,18 +3,34 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --df-primary: #3067DB;
+    --df-primary-hover: #2554B8;
+    --df-primary-light: #EFF6FF;
+    --df-secondary: #0F172A;
+    --df-accent: #0891B2;
+    --df-accent-light: #ECFEFF;
+    --df-light: #F8FAFC;
+    --df-surface: #FFFFFF;
+    --df-border: #E2E8F0;
+    --df-text-primary: #0F172A;
+    --df-text-secondary: #475569;
+    --df-text-muted: #64748B;
+  }
+
   html, body {
     overflow-x: clip;
     min-height: 100dvh;
-    font-family: "IBM Plex Sans", system-ui, sans-serif;
+    font-family: "Google Sans", Tahoma, Arial, system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
   body {
     @apply bg-slate-50 text-ink;
-    font-feature-settings: "tnum" 0;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
   :focus-visible {
-    outline: 2px solid #1f4fbf;
+    outline: 2px solid #3067DB;
     outline-offset: 2px;
     transition: none !important;
   }
@@ -23,6 +39,7 @@
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
     }
   }
 }

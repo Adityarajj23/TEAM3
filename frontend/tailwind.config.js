@@ -4,14 +4,31 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['"IBM Plex Sans"', "system-ui", "sans-serif"],
-        mono: ['"IBM Plex Mono"', "ui-monospace", "monospace"],
+        sans: ['"Google Sans"', "Tahoma", "Arial", "system-ui", "sans-serif"],
+        mono: ['"JetBrains Mono"', '"Fira Code"', "ui-monospace", "monospace"],
       },
       colors: {
-        accent: { DEFAULT: "#1f4fbf", hover: "#183f9a", soft: "#e8eefb", ring: "#7c9be0" },
-        ink: "#16202e",
+        accent: { DEFAULT: "#3067DB", hover: "#2554B8", soft: "#EFF6FF", ring: "#93C5FD" },
+        dayforce: {
+          primary: "#3067DB",
+          "primary-hover": "#2554B8",
+          "primary-light": "#EFF6FF",
+          secondary: "#0F172A",
+          accent: "#0891B2",
+          "accent-light": "#ECFEFF",
+          light: "#F8FAFC",
+          surface: "#FFFFFF",
+          border: "#E2E8F0",
+        },
+        ink: "#0F172A",
       },
       fontSize: { "2xs": ["0.6875rem", "1rem"] },
+      boxShadow: {
+        xs: "0 1px 2px rgba(0, 0, 0, 0.04)",
+        card: "0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03)",
+        popover: "0 4px 12px rgba(0, 0, 0, 0.08)",
+        modal: "0 12px 32px rgba(0, 0, 0, 0.12)",
+      },
     },
   },
   plugins: [],

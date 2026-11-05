@@ -1,7 +1,28 @@
 import * as Dropdown from "@radix-ui/react-dropdown-menu";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Activity, BarChart3, Bell, Bug, ClipboardCheck, FileText, FlaskConical, FolderKanban, GitBranch, Grid3x3,
-  LayoutDashboard, LogOut, PanelLeftClose, PanelLeftOpen, PlayCircle, ScrollText, Search, Settings } from "lucide-react";
+import {
+  Activity,
+  BarChart3,
+  Bell,
+  Bug,
+  ClipboardCheck,
+  FileDiff,
+  FileText,
+  FlaskConical,
+  FolderKanban,
+  GitBranch,
+  Grid3x3,
+  Layers,
+  LayoutDashboard,
+  LogOut,
+  PanelLeftClose,
+  PanelLeftOpen,
+  PlayCircle,
+  ScrollText,
+  Search,
+  Settings,
+  ShieldCheck,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -9,41 +30,89 @@ import { useProjects } from "@/hooks/useProjects";
 import { api } from "@/services/api";
 import { cn, fmtDate } from "@/utils/format";
 
-const NAV = [
-  { to: "/", label: "Overview", icon: LayoutDashboard, end: true },
-  { to: "/projects", label: "Projects", icon: FolderKanban },
-  { to: "/requirements", label: "Requirements", icon: FileText },
-  { to: "/tests", label: "Test Management", icon: ClipboardCheck },
-  { to: "/executions", label: "Test Executions", icon: PlayCircle },
-  { to: "/defects", label: "Defects", icon: Bug },
-  { to: "/traceability", label: "Traceability", icon: Grid3x3 },
-  { to: "/analytics", label: "Quality Analytics", icon: BarChart3 },
-  { to: "/evaluations", label: "AI Evaluations", icon: FlaskConical },
-  { to: "/audit", label: "Audit Logs", icon: ScrollText },
-  { to: "/integrations", label: "Integrations", icon: GitBranch },
-  { to: "/settings", label: "Settings", icon: Settings },
+interface NavSection {
+  title: string;
+  items: { to: string; label: string; icon: any; end?: boolean }[];
+}
+
+const NAV_SECTIONS: NavSection[] = [
+  {
+    title: "WORKSPACE",
+    items: [
+      { to: "/", label: "Overview", icon: LayoutDashboard, end: true },
+      { to: "/projects", label: "Projects", icon: FolderKanban },
+    ],
+  },
+  {
+    title: "REQUIREMENTS",
+    items: [
+      { to: "/requirements", label: "Requirements", icon: FileText },
+      { to: "/requirements?tab=impact", label: "Change Impact", icon: FileDiff },
+    ],
+  },
+  {
+    title: "QUALITY ENGINEERING",
+    items: [
+      { to: "/tests", label: "Test Management", icon: ClipboardCheck },
+      { to: "/tests/review", label: "Approval Queue", icon: ShieldCheck },
+      { to: "/suites", label: "Test Suites", icon: Layers },
+      { to: "/executions", label: "Test Executions", icon: PlayCircle },
+      { to: "/defects", label: "Defects", icon: Bug },
+    ],
+  },
+  {
+    title: "INSIGHTS",
+    items: [
+      { to: "/traceability", label: "Traceability", icon: Grid3x3 },
+      { to: "/analytics", label: "Quality Analytics", icon: BarChart3 },
+      { to: "/evaluations", label: "AI Evaluations", icon: FlaskConical },
+    ],
+  },
+  {
+    title: "ADMINISTRATION",
+    items: [
+      { to: "/audit", label: "Audit Logs", icon: ScrollText },
+      { to: "/integrations", label: "Integrations", icon: GitBranch },
+      { to: "/settings", label: "Settings", icon: Settings },
+    ],
+  },
 ];
 
 export function Wordmark({ compact }: { compact?: boolean }) {
   return (
-    <span className="flex items-center gap-2">
-      <img src="/favicon.svg" alt="" className="h-6 w-6" />
-      {!compact && <span className="text-[15px] font-semibold tracking-tight text-ink">TraceTest<span className="font-normal text-slate-500"> AI</span></span>}
-    </span>
+    <div className="flex items-center gap-2.5">
+      <div className="flex h-7 w-7 items-center justify-center rounded bg-[#3067DB] text-white shadow-xs">
+        <span className="font-mono text-xs font-bold tracking-tight">DF</span>
+      </div>
+      {!compact && (
+        <div className="flex flex-col leading-none">
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm font-semibold tracking-tight text-slate-900">TraceTest<span className="font-normal text-slate-500"> AI</span></span>
+            <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-[#3067DB] border border-blue-100">Dayforce</span>
+          </div>
+          <span className="text-[10px] text-slate-400 font-medium">QA Engineering</span>
+        </div>
+      )}
+    </div>
   );
 }
 
 function Breadcrumbs() {
   const { pathname } = useLocation();
   const parts = pathname.split("/").filter(Boolean);
-  const nav = NAV.find((n) => n.to !== "/" && pathname.startsWith(n.to));
-  if (!parts.length) return <span className="text-sm text-slate-600">Overview</span>;
+  const allItems = NAV_SECTIONS.flatMap((s) => s.items);
+  const nav = allItems.find((n) => n.to !== "/" && pathname.startsWith(n.to.split("?")[0]));
+  if (!parts.length) return <span className="text-xs font-medium text-slate-600">Dayforce Quality Command Center</span>;
   return (
-    <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1.5 text-sm">
-      <Link to={nav?.to ?? "/"} className="text-slate-600 hover:text-ink">{nav?.label ?? parts[0]}</Link>
+    <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1.5 text-xs">
+      <Link to={nav?.to ?? "/"} className="font-medium text-slate-600 hover:text-slate-900">{nav?.label ?? parts[0]}</Link>
       {parts.slice(1).map((p, i) => (
-        <span key={i} className="flex min-w-0 items-center gap-1.5 text-slate-400">/<span className="truncate text-ink">
-          {/^\d+$/.test(p) ? `#${p}` : p.replace(/-/g, " ")}</span></span>
+        <span key={i} className="flex min-w-0 items-center gap-1.5 text-slate-400">
+          /
+          <span className="truncate text-slate-900 font-medium">
+            {/^\d+$/.test(p) ? `#${p}` : p.replace(/-/g, " ")}
+          </span>
+        </span>
       ))}
     </nav>
   );
@@ -69,19 +138,19 @@ function GlobalSearch() {
     <div ref={box} className="relative w-full max-w-sm">
       <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" aria-hidden />
       <input value={q} onChange={(e) => { setQ(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)}
-        placeholder="Search requirements, tests, defects" aria-label="Global search"
-        className="h-9 w-full rounded-md border border-slate-300 bg-slate-50 pl-8 pr-2 text-sm focus:border-accent focus:bg-white focus:outline-none focus:ring-2 focus:ring-accent-soft" />
+        placeholder="Search Dayforce requirements, tests, defects..." aria-label="Global search"
+        className="h-9 w-full rounded border border-slate-200 bg-slate-50 pl-8 pr-2 text-xs text-slate-900 placeholder:text-slate-400 focus:border-[#3067DB] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#3067DB]" />
       {open && debounced.length >= 2 && (
-        <div className="absolute z-30 mt-1 w-full overflow-hidden rounded-md border border-slate-200 bg-white shadow-lg" role="listbox">
-          {res.isLoading ? <p className="px-3 py-2 text-sm text-slate-500">Searching…</p> :
-            !res.data?.results.length ? <p className="px-3 py-2 text-sm text-slate-500">No matches for “{debounced}”</p> :
+        <div className="absolute z-30 mt-1 w-full overflow-hidden rounded border border-slate-200 bg-white shadow-popover" role="listbox">
+          {res.isLoading ? <p className="px-3 py-2 text-xs text-slate-500">Searching...</p> :
+            !res.data?.results.length ? <p className="px-3 py-2 text-xs text-slate-500">No matches for “{debounced}”</p> :
               res.data.results.map((r) => (
                 <button key={r.type + r.id} role="option" aria-selected={false}
                   onClick={() => { setOpen(false); setQ(""); nav(path(r.type, r.id)); }}
-                  className="flex w-full items-baseline gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50 focus:bg-accent-soft focus:outline-none">
-                  <span className="w-20 shrink-0 text-2xs text-slate-500">{r.type}</span>
-                  <span className="font-mono text-xs text-slate-600">{r.key}</span>
-                  <span className="truncate text-ink">{r.title}</span>
+                  className="flex w-full items-baseline gap-2 px-3 py-2 text-left text-xs hover:bg-slate-50 focus:bg-blue-50 focus:outline-none">
+                  <span className="w-20 shrink-0 text-2xs uppercase tracking-wider text-slate-500 font-medium">{r.type}</span>
+                  <span className="font-mono text-xs text-[#3067DB]">{r.key}</span>
+                  <span className="truncate text-slate-900">{r.title}</span>
                 </button>
               ))}
         </div>
@@ -99,21 +168,27 @@ function Notifications() {
   const nav = useNavigate();
   return (
     <Dropdown.Root>
-      <Dropdown.Trigger className="relative rounded-md p-2 text-slate-600 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ring"
+      <Dropdown.Trigger className="relative rounded p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3067DB]"
         aria-label={`Notifications${unread ? `, ${unread} unread` : ""}`}>
         <Bell className="h-4 w-4" />
-        {unread > 0 && <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-accent" />}
+        {unread > 0 && <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-[#3067DB]" />}
       </Dropdown.Trigger>
       <Dropdown.Portal>
-        <Dropdown.Content align="end" sideOffset={6} className="z-40 w-80 rounded-md border border-slate-200 bg-white p-1 shadow-lg">
-          {!q.data?.length ? <p className="px-3 py-3 text-sm text-slate-500">No notifications</p> : q.data.map((n) => (
+        <Dropdown.Content align="end" sideOffset={6} className="z-40 w-80 rounded border border-slate-200 bg-white p-1 shadow-popover">
+          {!q.data?.length ? (
+            <div className="px-4 py-4 text-center">
+              <Bell className="mx-auto h-5 w-5 text-slate-300 mb-1" />
+              <p className="text-xs font-medium text-slate-600">No notifications</p>
+              <p className="text-[11px] text-slate-400">Real system alerts will appear here</p>
+            </div>
+          ) : q.data.map((n) => (
             <Dropdown.Item key={n.id} onSelect={async () => {
               await api.post(`/notifications/${n.id}/read`); qc.invalidateQueries({ queryKey: ["notifications"] });
               if (n.link) nav(n.link);
-            }} className="cursor-pointer rounded px-3 py-2 text-sm outline-none data-[highlighted]:bg-slate-50">
-              <p className={cn("text-ink", !n.read && "font-medium")}>{n.title}</p>
-              <p className="text-xs text-slate-600">{n.body}</p>
-              <p className="mt-0.5 text-2xs text-slate-400">{fmtDate(n.at)}</p>
+            }} className="cursor-pointer rounded px-3 py-2 text-xs outline-none data-[highlighted]:bg-slate-50">
+              <p className={cn("text-slate-900", !n.read && "font-semibold")}>{n.title}</p>
+              <p className="text-slate-600 mt-0.5">{n.body}</p>
+              <p className="mt-1 text-2xs text-slate-400">{fmtDate(n.at)}</p>
             </Dropdown.Item>
           ))}
         </Dropdown.Content>
@@ -131,63 +206,109 @@ export function AppShell() {
   const llmReady = cfg.data?.llm?.any_configured;
 
   return (
-    <div className="flex h-[100dvh] min-h-[100dvh] bg-slate-50 text-ink">
-      <aside className={cn("flex shrink-0 flex-col border-r border-slate-200 bg-white transition-[width]",
-        collapsed ? "w-14" : "w-56")} aria-label="Primary">
-        <div className="flex h-14 items-center justify-between border-b border-slate-200 px-3">
+    <div className="flex h-[100dvh] min-h-[100dvh] bg-slate-50 text-slate-900">
+      <aside className={cn("flex shrink-0 flex-col border-r border-slate-200 bg-white transition-[width] duration-200",
+        collapsed ? "w-14" : "w-60")} aria-label="Primary">
+        <div className="flex h-14 items-center justify-between border-b border-slate-200 px-3.5">
           <Link to="/" aria-label="TraceTest AI overview"><Wordmark compact={collapsed} /></Link>
         </div>
-        <nav className="flex-1 overflow-y-auto py-2">
-          {NAV.map((n) => (
-            <NavLink key={n.to} to={n.to} end={n.end} title={collapsed ? n.label : undefined}
-              className={({ isActive }) => cn("mx-2 my-0.5 flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ring",
-                isActive ? "bg-accent-soft font-medium text-accent" : "text-slate-700 hover:bg-slate-100")}>
-              <n.icon className="h-4 w-4 shrink-0" aria-hidden />{!collapsed && <span className="truncate">{n.label}</span>}
-            </NavLink>
+        <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-4">
+          {NAV_SECTIONS.map((section) => (
+            <div key={section.title}>
+              {!collapsed && (
+                <div className="px-2.5 pb-1 text-[10px] font-semibold tracking-wider text-slate-400">
+                  {section.title}
+                </div>
+              )}
+              <div className="space-y-0.5">
+                {section.items.map((n) => (
+                  <NavLink key={n.to} to={n.to} end={n.end} title={collapsed ? n.label : undefined}
+                    className={({ isActive }) => cn(
+                      "flex items-center gap-2.5 rounded px-2.5 py-1.5 text-xs font-medium transition-colors",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3067DB]",
+                      isActive ? "bg-blue-50 text-[#3067DB]" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                    )}>
+                    <n.icon className={cn("h-4 w-4 shrink-0", "text-slate-500")} aria-hidden />
+                    {!collapsed && <span className="truncate">{n.label}</span>}
+                  </NavLink>
+                ))}
+              </div>
+            </div>
           ))}
         </nav>
+
+        {/* Prototype Disclaimer Banner */}
+        {!collapsed && (
+          <div className="mx-2 mb-2 p-2 bg-slate-50 rounded border border-slate-200 text-[10px] text-slate-500 leading-tight">
+            <span className="font-semibold text-slate-700 block">Dayforce QE Prototype</span>
+            Independent verification system. Not officially affiliated with Dayforce Inc.
+          </div>
+        )}
+
         <button onClick={() => setCollapsed(!collapsed)} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          className="flex items-center gap-2 border-t border-slate-200 px-4 py-2.5 text-xs text-slate-500 hover:bg-slate-50">
-          {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <><PanelLeftClose className="h-4 w-4" />Collapse</>}
+          className="flex items-center gap-2 border-t border-slate-200 px-3.5 py-2.5 text-xs text-slate-500 hover:bg-slate-50 hover:text-slate-900">
+          {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <><PanelLeftClose className="h-4 w-4" /><span className="text-xs">Collapse</span></>}
         </button>
       </aside>
+
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-4">
-          <select aria-label="Project" value={projectId ?? ""} onChange={(e) => setProjectId(e.target.value ? Number(e.target.value) : null)}
-            className="h-9 max-w-[14rem] rounded-md border border-slate-300 bg-white px-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent-soft">
-            <option value="">All projects</option>
-            {projects.map((p) => <option key={p.id} value={p.id}>{p.key} — {p.name}</option>)}
-          </select>
+        <header className="flex h-14 shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-5">
+          <div className="flex items-center gap-2">
+            <select aria-label="Dayforce Project Workspace" value={projectId ?? ""} onChange={(e) => setProjectId(e.target.value ? Number(e.target.value) : null)}
+              className="h-9 max-w-[16rem] rounded border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-800 focus:border-[#3067DB] focus:outline-none focus:ring-1 focus:ring-[#3067DB]">
+              <option value="">All Dayforce Workspaces</option>
+              {projects.map((p) => <option key={p.id} value={p.id}>{p.key} — {p.name}</option>)}
+            </select>
+          </div>
+
           <GlobalSearch />
-          <div className="ml-auto flex items-center gap-2">
-            <span className="hidden items-center gap-1.5 rounded border border-slate-200 px-2 py-1 text-2xs text-slate-600 xl:inline-flex"
-              title={llmReady ? "An AI provider is configured" : "No AI provider configured"}>
-              <Activity className={cn("h-3 w-3", llmReady ? "text-emerald-600" : "text-amber-600")} aria-hidden />
-              {cfg.data?.environment ?? "…"},{" "}
-              {llmReady ? `AI ${cfg.data?.llm?.mode === "mock" ? "fixture mode" : "ready"}` : "AI not configured"}
+
+          <div className="ml-auto flex items-center gap-3">
+            <span className="hidden items-center gap-1.5 rounded border border-slate-200 bg-slate-50 px-2 py-1 text-2xs text-slate-600 xl:inline-flex"
+              title={llmReady ? "AI Provider Active" : "No Provider Configured"}>
+              <Activity className={cn("h-3 w-3", llmReady ? "text-emerald-600" : "text-amber-500")} aria-hidden />
+              <span>{llmReady ? `AI ${cfg.data?.llm?.mode === "mock" ? "fixture" : "ready"}` : "AI not configured"}</span>
             </span>
+
             <Notifications />
+
             <Dropdown.Root>
-              <Dropdown.Trigger className="flex items-center gap-2 rounded-md px-2 py-1 text-left hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ring">
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-200 text-xs font-medium text-slate-700" aria-hidden>
-                  {me?.user.full_name.split(" ").map((s) => s[0]).join("").slice(0, 2)}</span>
-                <span className="hidden whitespace-nowrap text-sm leading-tight lg:block">{me?.user.full_name}
-                  <span className="block text-2xs text-slate-500">{me?.roles.map((r) => r.replace("_", " ")).join(", ")}</span></span>
+              <Dropdown.Trigger className="flex items-center gap-2 rounded px-2 py-1 text-left hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3067DB]">
+                <span className="flex h-7 w-7 items-center justify-center rounded bg-[#3067DB] text-xs font-medium text-white shadow-xs" aria-hidden>
+                  {me?.user.full_name ? me.user.full_name.split(" ").map((s) => s[0]).join("").slice(0, 2) : "DF"}
+                </span>
+                <span className="hidden whitespace-nowrap text-xs leading-tight lg:block">
+                  <span className="font-semibold text-slate-800 block">{me?.user.full_name ?? "Dayforce QA Engineer"}</span>
+                  <span className="text-[11px] text-slate-400">{me?.user.title ?? "Quality Lead"}</span>
+                </span>
               </Dropdown.Trigger>
               <Dropdown.Portal>
-                <Dropdown.Content align="end" sideOffset={6} className="z-40 w-52 rounded-md border border-slate-200 bg-white p-1 shadow-lg">
-                  <Dropdown.Item onSelect={() => nav("/settings")} className="cursor-pointer rounded px-3 py-2 text-sm outline-none data-[highlighted]:bg-slate-50">Settings</Dropdown.Item>
+                <Dropdown.Content align="end" sideOffset={6} className="z-40 w-56 rounded border border-slate-200 bg-white p-1 shadow-popover">
+                  <div className="px-3 py-2 border-b border-slate-100">
+                    <p className="text-xs font-semibold text-slate-900">{me?.user.full_name}</p>
+                    <p className="text-2xs text-slate-500 truncate">{me?.user.email}</p>
+                    <p className="text-2xs font-medium text-[#3067DB] mt-0.5">Dayforce Quality Engineering</p>
+                  </div>
+                  <Dropdown.Item onSelect={() => nav("/settings")} className="cursor-pointer rounded px-3 py-2 text-xs outline-none data-[highlighted]:bg-slate-50">
+                    Platform Settings
+                  </Dropdown.Item>
                   <Dropdown.Item onSelect={async () => { await signOut(); nav("/login"); }}
-                    className="flex cursor-pointer items-center gap-2 rounded px-3 py-2 text-sm outline-none data-[highlighted]:bg-slate-50">
-                    <LogOut className="h-3.5 w-3.5" />Sign out</Dropdown.Item>
+                    className="flex cursor-pointer items-center gap-2 rounded px-3 py-2 text-xs text-rose-600 outline-none data-[highlighted]:bg-rose-50">
+                    <LogOut className="h-3.5 w-3.5" />Sign out
+                  </Dropdown.Item>
                 </Dropdown.Content>
               </Dropdown.Portal>
             </Dropdown.Root>
           </div>
         </header>
-        <div className="flex h-10 shrink-0 items-center border-b border-slate-200 bg-white/60 px-5"><Breadcrumbs /></div>
-        <main className="min-w-0 flex-1 overflow-y-auto px-5 py-5" id="main"><Outlet /></main>
+
+        <div className="flex h-9 shrink-0 items-center border-b border-slate-200 bg-slate-50/80 px-5">
+          <Breadcrumbs />
+        </div>
+
+        <main className="min-w-0 flex-1 overflow-y-auto px-6 py-6" id="main">
+          <Outlet />
+        </main>
       </div>
     </div>
   );

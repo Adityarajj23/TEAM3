@@ -59,7 +59,7 @@ export function TraceabilityPage() {
           <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-sm border border-dashed border-red-400" aria-hidden />Not covered</span>
           <label className="ml-auto flex items-center gap-1.5"><input type="checkbox" checked={onlyGaps} onChange={(e) => setOnlyGaps(e.target.checked)} />Show untested clauses only</label>
         </div>
-        {!rows.length ? <Panel><EmptyState title={onlyGaps ? "Every clause is covered" : "No clauses in scope"} /></Panel> :
+        {!rows.length ? <Panel><EmptyState title={onlyGaps ? "Every clause is covered" : "No clauses in this workspace"} body={onlyGaps ? "All requirement clauses are mapped to approved test cases." : "Upload or create Dayforce requirements to extract clauses and view bidirectional traceability."} /></Panel> :
           <div className="overflow-auto rounded-lg border border-slate-200 bg-white" style={{ maxHeight: "calc(100dvh - 22rem)" }}>
             <table className="border-separate border-spacing-0 text-xs" aria-label="Traceability matrix">
               <thead className="sticky top-0 z-20 bg-white">
@@ -210,6 +210,7 @@ export function AuditPage() {
       <div className="mb-2"><FilterChips state={st} /></div>
       <div className="grid gap-4 xl:grid-cols-3">
         <div className="min-w-0 xl:col-span-2"><DataTable query={q} state={st} onRowClick={setOpen}
+          empty={<EmptyState title="No audit entries recorded" body="State-changing operations across Dayforce requirements, test generation, reviews, executions, and defects are immutably logged here." />}
           toolbar={<>
             <Input placeholder="Search action or record" className="w-60" defaultValue={st.q} aria-label="Search audit" onKeyDown={(e) => e.key === "Enter" && st.setQ((e.target as HTMLInputElement).value)} />
             <Select className="w-44" value={st.filters.entity_type} onChange={(e) => st.setFilter("entity_type", e.target.value)} aria-label="Record type">

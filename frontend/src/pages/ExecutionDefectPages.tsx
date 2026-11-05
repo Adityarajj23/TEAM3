@@ -27,6 +27,7 @@ export function ExecutionsPage() {
         actions={<a className="text-sm text-accent hover:underline" href={downloadUrl("/exports/executions.csv", { project_id: pid })}>Export CSV</a>} />
       <div className="mb-2"><FilterChips state={st} /></div>
       <DataTable query={q} state={st} onRowClick={(e) => nav(`/executions/${e.id}`)}
+        empty={<EmptyState title="No executions recorded yet" body="Execute an approved Dayforce test suite against a configured environment to inspect sandboxed execution results, logs, and failure diagnostics." />}
         toolbar={<>
           <Input placeholder="Execution ID" className="w-40" defaultValue={st.q} aria-label="Search executions" onKeyDown={(e) => e.key === "Enter" && st.setQ((e.target as HTMLInputElement).value)} />
           <Select className="w-36" value={st.filters.status} onChange={(e) => st.setFilter("status", e.target.value)} aria-label="Status">
@@ -180,6 +181,7 @@ export function DefectsPage() {
         <button className="font-medium underline" onClick={() => st.setFilter("approval_status", "recommended")}>Review recommendations</button></Notice></div>}
       <div className="mb-2"><FilterChips state={st} /></div>
       <DataTable query={q} state={st} onRowClick={(d) => nav(`/defects/${d.id}`)}
+        empty={<EmptyState title="No defects logged or recommended" body="Defects surfaced during sandboxed test execution or logged manually will appear here for triage and fix verification." action={can("defect.write") ? <Button variant="primary" onClick={() => setCreate(true)}>Log defect</Button> : undefined} />}
         toolbar={<>
           <Input placeholder="Search defects" className="w-52" defaultValue={st.q} aria-label="Search defects" onKeyDown={(e) => e.key === "Enter" && st.setQ((e.target as HTMLInputElement).value)} />
           <Select className="w-40" value={st.filters.status} onChange={(e) => st.setFilter("status", e.target.value)} aria-label="Status">
