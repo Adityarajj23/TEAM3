@@ -1,4 +1,4 @@
-"""Deterministic, idempotent initialisation of the fictional Northwind Workforce Solutions workspace.
+"""Deterministic, idempotent initialisation of the Dayforce Quality Engineering workspace.
 
 Every historical execution result comes from genuinely running the approved pytest scripts against the
 Reference HCM Engine (once per engine version — the engine is deterministic, so each historical
@@ -53,7 +53,19 @@ from app.services.tests import create_test, review_test
 
 log = logging.getLogger("tracetest.seed")
 SEED = 20261105
-ORG = "Northwind Workforce Solutions"
+ORG = "Dayforce Quality Engineering"
+ORG_SLUG = "dayforce-qe"
+
+DAYFORCE_PROJECTS = [
+    ("DF-PAY", "Dayforce Payroll Verification", "Verification of Dayforce Gross-to-Net, FLSA overtime thresholds, statutory rounding, and shift differential matrices.",
+     [("OVT", "Overtime & Differentials"), ("ADJ", "Adjustments & Cut-off"), ("CMP", "Statutory Compliance")]),
+    ("DF-WFM", "Dayforce Workforce Management", "Verification of Dayforce punch pairing, timesheet intervals, and meal break compliance rules.",
+     [("PCH", "Punches & Timesheets"), ("BRK", "Breaks & Rest Compliance")]),
+    ("DF-LVE", "Dayforce Absence & Leave", "Verification of Dayforce leave accrual policies, annual carryover caps, and termination payouts.",
+     [("ACR", "Accrual & Requests"), ("CFW", "Carry-forward & Payout")]),
+    ("DF-BEN", "Dayforce Benefits & Eligibility", "Verification of Dayforce full-time employee benefit eligibility, waiting periods, and enrollment windows.",
+     [("ELG", "Eligibility Rules"), ("ENR", "Enrollment")]),
+]
 
 PROJECTS = [
     ("PAY", "Payroll Management", "Gross-to-net payroll rules, overtime, differentials, adjustments and cut-off.",
@@ -68,31 +80,78 @@ PROJECTS = [
      [("ELG", "Eligibility Rules"), ("ENR", "Enrolment")]),
 ]
 
-PEOPLE = [  # fictional colleagues without sign-in access
-    ("sam.okafor@northwind-hcm.example", "Sam Okafor", "Business Analyst", "qa_engineer"),
-    ("taylor.nguyen@northwind-hcm.example", "Taylor Nguyen", "Payroll Engineer", "qa_engineer"),
-    ("casey.ramirez@northwind-hcm.example", "Casey Ramirez", "Time & Attendance Engineer", "qa_engineer"),
-    ("alex.kowalski@northwind-hcm.example", "Alex Kowalski", "QA Engineer", "qa_engineer"),
-    ("jamie.fischer@northwind-hcm.example", "Jamie Fischer", "Engineering Manager", "reviewer"),
-    ("drew.haddad@northwind-hcm.example", "Drew Haddad", "Benefits Engineer", "qa_engineer"),
-    ("kai.mensah@northwind-hcm.example", "Kai Mensah", "Workforce Platform Engineer", "qa_engineer"),
-    ("robin.sato@northwind-hcm.example", "Robin Sato", "QA Engineer", "qa_engineer"),
+PEOPLE = [  # colleagues without sign-in access
+    ("sam.okafor@dayforce-qa.local", "Sam Okafor", "Dayforce Business Analyst", "qa_engineer"),
+    ("taylor.nguyen@dayforce-qa.local", "Taylor Nguyen", "Dayforce Payroll Specialist", "qa_engineer"),
+    ("casey.ramirez@dayforce-qa.local", "Casey Ramirez", "Dayforce WFM Engineer", "qa_engineer"),
+    ("alex.kowalski@dayforce-qa.local", "Alex Kowalski", "Dayforce QA Engineer", "qa_engineer"),
+    ("jamie.fischer@dayforce-qa.local", "Jamie Fischer", "Dayforce Quality Lead", "reviewer"),
+    ("drew.haddad@dayforce-qa.local", "Drew Haddad", "Dayforce Benefits Consultant", "qa_engineer"),
+    ("kai.mensah@dayforce-qa.local", "Kai Mensah", "Dayforce Platform Engineer", "qa_engineer"),
+    ("robin.sato@dayforce-qa.local", "Robin Sato", "Dayforce Automation Specialist", "qa_engineer"),
 ]
 OWNERS = {"PAY": "taylor.nguyen", "TNA": "casey.ramirez", "LVE": "alex.kowalski", "WFS": "kai.mensah",
           "BEN": "drew.haddad"}
 _FN = re.compile(r"(?:payroll|attendance|leave|eligibility|approvals)\.(\w+)\(")
 
 
+def _ensure_dayforce_projects(db, org: Organisation, owner: User) -> None:
+    now = utcnow()
+    existing_keys = set(db.execute(select(Project.key)).scalars())
+    for key, name, desc, mods in DAYFORCE_PROJECTS:
+        if key not in existing_keys:
+            p = Project(key=key, name=name, description=desc, organisation_id=org.id, owner_id=owner.id,
+                        created_at=now, updated_at=now)
+            db.add(p)
+            db.flush()
+            for code, mname in mods:
+                m = Module(project_id=p.id, code=code, name=mname, description=f"{mname} rules for {name}.")
+                db.add(m)
+            e10 = Environment(project_id=p.id, name="QA — Reference HCM Harness 1.0", kind="reference_hcm", hcm_version="1.0",
+                              is_default=True, created_at=now)
+            e11 = Environment(project_id=p.id, name="Candidate — Reference HCM Harness 1.1", kind="reference_hcm",
+                              hcm_version="1.1", created_at=now)
+            db.add_all([e10, e11])
+            db.flush()
+            for u in db.execute(select(User)).scalars():
+                if not db.execute(select(ProjectMember).where(ProjectMember.project_id == p.id, ProjectMember.user_id == u.id)).scalar_one_or_none():
+                    db.add(ProjectMember(project_id=p.id, user_id=u.id, project_role="owner" if u.id == owner.id else "member"))
+            db.add(Integration(project_id=p.id, kind="github", config={}, status="not_configured"))
+    db.flush()
+
+
 def ensure_identity() -> None:
-    """Roles and the three local development accounts (passwords only from environment variables)."""
+    """Roles, organisation, local development actor, and Dayforce clean workspace."""
     s = get_settings()
     with session_scope() as db:
         for name, desc in ROLES.items():
             if not db.execute(select(Role).where(Role.name == name)).scalar_one_or_none():
                 db.add(Role(name=name, description=desc))
         db.flush()
-        if not db.execute(select(Organisation)).scalars().first():
-            db.add(Organisation(name=ORG, slug="northwind"))
+
+        org = db.execute(select(Organisation)).scalars().first()
+        if not org:
+            org = Organisation(name=ORG, slug=ORG_SLUG)
+            db.add(org)
+            db.flush()
+        elif org.name == "Northwind Workforce Solutions":
+            org.name = ORG
+            org.slug = ORG_SLUG
+
+        # Ensure local development actor exists
+        dev_email = s.dev_email.lower()
+        dev_user = db.execute(select(User).where(User.email == dev_email)).scalar_one_or_none()
+        if dev_user is None:
+            dev_user = User(email=dev_email, full_name="Dayforce QA Engineer (Local Dev)", title="Quality Engineering Lead")
+            db.add(dev_user)
+            db.flush()
+            for rname in ("admin", "qa_engineer", "reviewer"):
+                rid = db.execute(select(Role.id).where(Role.name == rname)).scalar_one_or_none()
+                if rid:
+                    db.add(UserRole(user_id=dev_user.id, role_id=rid))
+        dev_user.is_active = True
+        dev_user.can_login = True
+
         accounts = [(s.admin_email, "Morgan Ellis", "Platform Administrator", "admin", s.admin_password),
                     (s.qa_email, "Jordan Patel", "Senior QA Engineer", "qa_engineer", s.qa_password),
                     (s.reviewer_email, "Riley Chen", "QA Lead", "reviewer", s.reviewer_password)]
@@ -107,9 +166,10 @@ def ensure_identity() -> None:
                 if not verify_password(pwd, u.password_hash):
                     u.password_hash = hash_password(pwd)
                 u.can_login = True
-            else:
+            elif u.password_hash is None:
                 u.can_login = False
-                log.warning("No password configured for %s (set it in .env); sign-in disabled", email)
+
+        _ensure_dayforce_projects(db, org, dev_user)
 
 
 def _seeded(db) -> bool:
@@ -126,7 +186,7 @@ def seed_dataset() -> dict:
     day0 = (now - timedelta(days=150)).replace(hour=9, minute=0, second=0)
     with session_scope() as db:
         summary = _build(db, rng, now, day0)
-        audit.record(db, None, "seed.completed", "system", None, "northwind", None,
+        audit.record(db, None, "seed.completed", "system", None, "dayforce-qe", None,
                      {**summary, "seed": SEED, "seconds": round(time.monotonic() - t0, 1)}, source="seed_import")
     summary["seconds"] = round(time.monotonic() - t0, 1)
     log.info("Seed completed: %s", summary)

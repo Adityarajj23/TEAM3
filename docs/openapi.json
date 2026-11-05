@@ -661,7 +661,7 @@
       "type": "string"
      },
      "key": {
-      "maxLength": 6,
+      "maxLength": 10,
       "minLength": 2,
       "title": "Key",
       "type": "string"

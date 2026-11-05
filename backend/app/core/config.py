@@ -19,15 +19,16 @@ class Settings(BaseSettings):
     session_hours: int = Field(12, alias="TRACETEST_SESSION_HOURS")
     cookie_secure: bool = Field(False, alias="TRACETEST_COOKIE_SECURE")
     cors_origins: str = Field("http://localhost:5173", alias="TRACETEST_CORS_ORIGINS")
-    seed_on_startup: bool = Field(True, alias="TRACETEST_SEED_ON_STARTUP")
+    seed_on_startup: bool = Field(False, alias="TRACETEST_SEED_ON_STARTUP")
     rate_limit_per_minute: int = Field(600, alias="TRACETEST_RATE_LIMIT_PER_MINUTE")
 
-    admin_email: str = Field("admin@northwind-hcm.example", alias="TRACETEST_ADMIN_EMAIL")
+    admin_email: str = Field("admin@dayforce-qa.local", alias="TRACETEST_ADMIN_EMAIL")
     admin_password: str | None = Field(None, alias="TRACETEST_ADMIN_PASSWORD")
-    qa_email: str = Field("qa.engineer@northwind-hcm.example", alias="TRACETEST_QA_EMAIL")
+    qa_email: str = Field("qa.engineer@dayforce-qa.local", alias="TRACETEST_QA_EMAIL")
     qa_password: str | None = Field(None, alias="TRACETEST_QA_PASSWORD")
-    reviewer_email: str = Field("reviewer@northwind-hcm.example", alias="TRACETEST_REVIEWER_EMAIL")
+    reviewer_email: str = Field("reviewer@dayforce-qa.local", alias="TRACETEST_REVIEWER_EMAIL")
     reviewer_password: str | None = Field(None, alias="TRACETEST_REVIEWER_PASSWORD")
+    dev_email: str = Field("dev@dayforce-qa.local", alias="TRACETEST_DEV_EMAIL")
 
     # LLM providers
     llm_mode: str = Field("live", alias="TRACETEST_LLM_MODE")  # live | mock

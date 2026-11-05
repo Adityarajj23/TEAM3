@@ -7,6 +7,10 @@ import tempfile
 _DATA = tempfile.mkdtemp(prefix="tracetest-test-")
 os.environ.update({
     "TRACETEST_ENV": "test", "TRACETEST_DATA_DIR": _DATA, "TRACETEST_LLM_MODE": "mock",
+    "TRACETEST_SEED_ON_STARTUP": "true",
+    "TRACETEST_ADMIN_EMAIL": "admin@northwind-hcm.example",
+    "TRACETEST_QA_EMAIL": "qa.engineer@northwind-hcm.example",
+    "TRACETEST_REVIEWER_EMAIL": "reviewer@northwind-hcm.example",
     "TRACETEST_ADMIN_PASSWORD": "test-admin-password-1", "TRACETEST_QA_PASSWORD": "test-qa-password-12",
     "TRACETEST_REVIEWER_PASSWORD": "test-reviewer-password", "TRACETEST_RATE_LIMIT_PER_MINUTE": "100000",
     "TRACETEST_SECRET_KEY": "test-secret", "GROQ_API_KEY": "", "GROQ_API_KEY2": "", "GROQ_API_KEY3": "",

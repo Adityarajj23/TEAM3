@@ -67,7 +67,7 @@ def list_projects(pp: PageParams = Depends(page_params), status: str | None = No
 
 
 class ProjectIn(BaseModel):
-    key: str = Field(min_length=2, max_length=6)
+    key: str = Field(min_length=2, max_length=10)
     name: str = Field(min_length=3, max_length=200)
     description: str = ""
 
@@ -75,8 +75,8 @@ class ProjectIn(BaseModel):
 @router.post("", status_code=201)
 def create_project(body: ProjectIn, p: Principal = Depends(require("project.admin")), db: Session = Depends(get_db)):
     key = body.key.upper()
-    if not re.fullmatch(r"[A-Z]{2,6}", key):
-        raise BadRequest("Project key must be 2-6 letters")
+    if not re.fullmatch(r"[A-Z0-9_-]{2,10}", key):
+        raise BadRequest("Project key must be 2-10 letters/numbers/hyphens")
     if db.execute(select(Project).where(Project.key == key)).scalar_one_or_none():
         raise Conflict("Project key already in use")
     org = db.execute(select(Organisation)).scalars().first()
