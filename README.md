@@ -18,8 +18,18 @@ Unlike mock dashboards populated with synthetic placeholder data, the default us
 
 ---
 
-### Local Development Seamless Entry
-For local development on localhost, the platform automatically authenticates as `Dayforce QA Engineer (Local Dev)` (`dev@dayforce-qa.local`), bypassing login screens while issuing real cryptographic session and CSRF tokens. Non-local and production environments enforce strict Argon2id session authentication, CSRF validation, and Role-Based Access Control (Admin, QA Engineer, Reviewer).
+### Single-Operator Direct Workspace Entry
+TraceTest AI operates as a focused single-operator engineering platform. The application opens directly into the Dayforce Quality Engineering workspace with full administrative, QA authoring, and review capabilities without requiring a login screen, credentials prompt, or user switching.
+
+---
+
+### Streamlined Enterprise Navigation
+The navigation shell is built strictly around the central QA verification workflow with a minimal 3-section structure:
+- **Workspace**: Overview (`/`) and Requirements (`/requirements`)
+- **Testing**: Test Cases (`/tests`), Test Runs (`/executions`), and Defects (`/defects`)
+- **Configuration**: Settings (`/settings`)
+
+Approval queues, test suites, and change impact analysis are integrated contextually within their respective modules, eliminating redundant dashboard clutter.
 
 ---
 
@@ -175,9 +185,9 @@ Backend Pytest Suite:     56 passed in 15.06s (85% statement coverage)
 Backend Code Standards:   Ruff clean (0 errors), Mypy clean
 Frontend Type Checking:   tsc -b --noEmit clean (0 errors across 152 source files)
 Frontend Linter:          ESLint clean (0 errors, 0 warnings)
-Frontend Vitest Suite:    10 passed in 2.20s
-Frontend Production Build:Vite build succeeded in 2.82s
-Playwright Visual Audit:  50 screenshots captured across 25 routes, 0 layout overflows
+Frontend Vitest Suite:    9 passed in 1.64s
+Frontend Production Build:Vite build succeeded in 2.68s
+Playwright Visual Audit:  60 responsive screenshots captured across 6 viewports (1440px to 360px), 0 layout overflows
 Live AI Golden Benchmark: Gemini 2.5 Flash: 10/10 passed (100% clause coverage, 0.0% ungrounded)
                           Groq GPT-OSS-120B: 3/10 passed (100% clause coverage, 12.5% ungrounded)
 ====================================================================================
@@ -188,8 +198,6 @@ Live AI Golden Benchmark: Gemini 2.5 Flash: 10/10 passed (100% clause coverage, 
 ## Security & Credential Hygiene
 
 - **Secret Protection**: All API credentials (`GROQ_*`, `GEMINI_*`, `TRACETEST_SECRET_KEY`) reside exclusively in local gitignored `.env` files.
-- **Sanitized Telemetry**: The API status endpoints `/api/config` and `/api/health` expose slot availability counts without logging, printing, or returning raw keys or key substrings.
-- **Session Security**: 256-bit entropy random tokens stored as HMAC-SHA256 digests in SQLite; `HttpOnly`, `SameSite=Lax`, and configurable `Secure` cookies.
-- **CSRF Defense**: Double-submit constant-time CSRF token verification required on all non-GET requests.
-- **Login Throttling**: Account lockout (HTTP 429) enforced after 5 failed login attempts in 15 minutes.
+- **Sanitized Telemetry**: The API status endpoints `/api/v1/config` and `/api/v1/health` expose slot availability counts without logging, printing, or returning raw keys or key substrings.
+- **Connection Probes**: Live connection verification via `POST /api/v1/llm/test-connection` verifies provider connectivity and latency without secret leakage.
 - **Subprocess Isolation**: Untrusted test execution runs in clean workspaces under AST allowlists, POSIX limits, and Linux network namespaces.

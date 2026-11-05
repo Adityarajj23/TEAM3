@@ -5,7 +5,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ---
 
-## [1.1.0] - 2026-11-05
+## [1.2.0] - 2026-11-06
+
+### Added & Simplified - Streamlined Enterprise Single-Operator Release
+- **Authentication & Login Removal**:
+  - Completely removed login and account experience (`LoginPage.tsx`, `/login` route, password inputs, and account switching).
+  - Configured single-operator workspace mode: application opens directly into the Dayforce Quality Engineering platform.
+  - Removed artificial `(Local Dev)` identity tag; full administrative, authoring, and review access granted to workspace operator.
+- **3-Group Streamlined Enterprise Navigation**:
+  - Restructured sidebar into 3 focused groups:
+    - **WORKSPACE**: Overview (`/`), Requirements (`/requirements`)
+    - **TESTING**: Test Cases (`/tests`), Test Runs (`/executions`), Defects (`/defects`)
+    - **CONFIGURATION**: Settings (`/settings`)
+  - Merged approval workspace and test suites directly into `/tests` and `/executions` sub-views.
+  - Cleaned header: Dayforce project selector, global search, real-time AI status badge, and quick settings link (removed user avatar dropdown).
+- **Live AI Connection Probes (`POST /api/v1/llm/test-connection`)**:
+  - Added dedicated health check probe endpoint verifying live inference, latency (ms), and slot availability for Groq and Gemini.
+  - Interactive "Test Probe" button on the Settings page providing instant visual latency and connection status.
+  - Visual credential slot pool table with masked secrets, health status, total requests, and error counts.
+- **Clean Database & Zero Fake Data Guarantee**:
+  - Re-initialized default workspace database with 0 fake requirements, 0 fake test cases, 0 fake executions, and 0 fake defects.
+  - Available clean Dayforce projects: `DF-PAY`, `DF-WFM`, `DF-LVE`, and `DF-BEN`.
+- **Responsive Multi-Viewport Verification**:
+  - Captured 60 clean full-page screenshots across 6 viewports: `1440px`, `1280px`, `1024px`, `768px`, `390px`, and `360px`.
+  - Zero layout overflow (`scrollWidth <= clientWidth`) and zero console errors verified across all screen dimensions.
 
 ### Added - Dayforce Quality Engineering Edition
 - **Dayforce Product Identity & Domain Architecture**:
