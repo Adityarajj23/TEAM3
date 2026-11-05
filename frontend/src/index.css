@@ -3,8 +3,26 @@
 @tailwind utilities;
 
 @layer base {
-  html { font-family: "IBM Plex Sans", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
-  body { @apply bg-slate-50 text-ink; font-feature-settings: "tnum" 0; }
-  :focus-visible { outline-color: #7c9be0; }
-  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+  html, body {
+    overflow-x: clip;
+    min-height: 100dvh;
+    font-family: "IBM Plex Sans", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    @apply bg-slate-50 text-ink;
+    font-feature-settings: "tnum" 0;
+  }
+  :focus-visible {
+    outline: 2px solid #1f4fbf;
+    outline-offset: 2px;
+    transition: none !important;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
 }

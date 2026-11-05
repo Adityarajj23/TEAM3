@@ -34,7 +34,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
+    <div className="flex min-h-[100dvh] bg-slate-50">
       <div className="hidden w-[44%] flex-col justify-between border-r border-slate-200 bg-white p-10 lg:flex">
         <Wordmark />
         <div className="max-w-md">

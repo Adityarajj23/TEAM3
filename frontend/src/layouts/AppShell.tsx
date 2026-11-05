@@ -131,7 +131,7 @@ export function AppShell() {
   const llmReady = cfg.data?.llm?.any_configured;
 
   return (
-    <div className="flex h-screen bg-slate-50 text-ink">
+    <div className="flex h-[100dvh] min-h-[100dvh] bg-slate-50 text-ink">
       <aside className={cn("flex shrink-0 flex-col border-r border-slate-200 bg-white transition-[width]",
         collapsed ? "w-14" : "w-56")} aria-label="Primary">
         <div className="flex h-14 items-center justify-between border-b border-slate-200 px-3">

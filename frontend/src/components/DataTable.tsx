@@ -46,7 +46,7 @@ export function DataTable<T extends { id: number }>({ query, columns, state, onR
       {query.error ? <div className="p-3"><ErrorState error={query.error} onRetry={query.refetch} /></div> :
         query.isLoading ? <div className="p-3"><LoadingBlock rows={8} /></div> :
           total === 0 ? (empty ?? <EmptyState title="No records match these filters" body="Clear a filter or broaden the search." />) : (
-            <div className="max-h-[calc(100vh-17rem)] overflow-auto">
+            <div className="max-h-[calc(100dvh-17rem)] overflow-auto">
               <table className="w-full border-collapse text-sm">
                 <thead className="sticky top-0 z-10 bg-slate-50">
                   {table.getHeaderGroups().map((hg) => (
