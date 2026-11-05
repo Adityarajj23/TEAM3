@@ -99,8 +99,11 @@ def provider_status() -> dict:
     s = get_settings()
     out: dict[str, Any] = {"mode": s.llm_mode, "providers": []}
     for p in (GroqProvider(s), GeminiProvider(s), OllamaProvider(s)):
-        out["providers"].append({"name": p.name, "model": p.model, "configured": p.configured(),
-                                 "circuit": BREAKER.state(p.name)})
+        p_info: dict[str, Any] = {"name": p.name, "model": p.model, "configured": p.configured(),
+                                  "circuit": BREAKER.state(p.name)}
+        if hasattr(p, "slot_status"):
+            p_info["slots"] = p.slot_status()
+        out["providers"].append(p_info)
     out["any_configured"] = s.llm_mode == "mock" or any(p["configured"] for p in out["providers"])
     return out
 

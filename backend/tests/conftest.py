@@ -9,7 +9,11 @@ os.environ.update({
     "TRACETEST_ENV": "test", "TRACETEST_DATA_DIR": _DATA, "TRACETEST_LLM_MODE": "mock",
     "TRACETEST_ADMIN_PASSWORD": "test-admin-password-1", "TRACETEST_QA_PASSWORD": "test-qa-password-12",
     "TRACETEST_REVIEWER_PASSWORD": "test-reviewer-password", "TRACETEST_RATE_LIMIT_PER_MINUTE": "100000",
-    "TRACETEST_SECRET_KEY": "test-secret", "GROQ_API_KEY": "", "GEMINI_API_KEY": "", "GITHUB_TOKEN": "",
+    "TRACETEST_SECRET_KEY": "test-secret", "GROQ_API_KEY": "", "GROQ_API_KEY2": "", "GROQ_API_KEY3": "",
+    "GROQ_KEY": "", "GROQ_KEY2": "", "GROQ_KEY3": "",
+    "GEMINI_API_KEY": "", "GEMINI_API_KEY2": "", "GEMINI_API_KEY3": "",
+    "GEMINI_KEY": "", "GEMINI_KEY2": "", "GEMINI_KEY3": "",
+    "GITHUB_TOKEN": "",
 })
 
 import pytest  # noqa: E402

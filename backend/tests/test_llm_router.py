@@ -90,3 +90,33 @@ def test_no_silent_mock_in_live_mode(monkeypatch):
     st = router.provider_status()
     assert st["any_configured"] is False and all(not p["configured"] for p in st["providers"])
     assert "key" not in json.dumps(st).lower().replace("any_configured", "")
+
+
+def test_slot_pool_rotation_and_auth_invalidation():
+    from app.llm.providers import SlotPool
+
+    pool = SlotPool(["secret-alpha-123456", "secret-beta-789012"], "groq")
+    assert pool.configured()
+    candidates = pool.get_candidate_slots()
+    assert len(candidates) == 2
+
+    # Key 1 fails with 401 Unauthorized -> marked invalid
+    pool.record_failure(candidates[0], is_auth=True)
+    assert candidates[0].state == "invalid"
+
+    # Only Key 2 remains available
+    remaining = pool.get_candidate_slots()
+    assert len(remaining) == 1
+    assert remaining[0].slot_id == 2
+
+    # Key 2 fails with 429 Rate Limit -> marked rate_limited
+    pool.record_failure(remaining[0], is_rate_limit=True, retry_after=100.0)
+    assert remaining[0].state == "rate_limited"
+
+    # No candidate slots available during cooldown
+    assert len(pool.get_candidate_slots()) == 0
+
+    st = pool.status()
+    assert len(st) == 2
+    assert "key" not in json.dumps(st).lower()
+
