@@ -2,30 +2,19 @@ import * as Dropdown from "@radix-ui/react-dropdown-menu";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Activity,
-  BarChart3,
   Bell,
   Bug,
   ClipboardCheck,
-  FileDiff,
   FileText,
-  FlaskConical,
-  FolderKanban,
-  GitBranch,
-  Grid3x3,
-  Layers,
   LayoutDashboard,
-  LogOut,
   PanelLeftClose,
   PanelLeftOpen,
   PlayCircle,
-  ScrollText,
   Search,
   Settings,
-  ShieldCheck,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
 import { useProjects } from "@/hooks/useProjects";
 import { api } from "@/services/api";
 import { cn, fmtDate } from "@/utils/format";
@@ -40,39 +29,20 @@ const NAV_SECTIONS: NavSection[] = [
     title: "WORKSPACE",
     items: [
       { to: "/", label: "Overview", icon: LayoutDashboard, end: true },
-      { to: "/projects", label: "Projects", icon: FolderKanban },
-    ],
-  },
-  {
-    title: "REQUIREMENTS",
-    items: [
       { to: "/requirements", label: "Requirements", icon: FileText },
-      { to: "/requirements?tab=impact", label: "Change Impact", icon: FileDiff },
     ],
   },
   {
-    title: "QUALITY ENGINEERING",
+    title: "TESTING",
     items: [
-      { to: "/tests", label: "Test Management", icon: ClipboardCheck },
-      { to: "/tests/review", label: "Approval Queue", icon: ShieldCheck },
-      { to: "/suites", label: "Test Suites", icon: Layers },
-      { to: "/executions", label: "Test Executions", icon: PlayCircle },
+      { to: "/tests", label: "Test Cases", icon: ClipboardCheck },
+      { to: "/executions", label: "Test Runs", icon: PlayCircle },
       { to: "/defects", label: "Defects", icon: Bug },
     ],
   },
   {
-    title: "INSIGHTS",
+    title: "CONFIGURATION",
     items: [
-      { to: "/traceability", label: "Traceability", icon: Grid3x3 },
-      { to: "/analytics", label: "Quality Analytics", icon: BarChart3 },
-      { to: "/evaluations", label: "AI Evaluations", icon: FlaskConical },
-    ],
-  },
-  {
-    title: "ADMINISTRATION",
-    items: [
-      { to: "/audit", label: "Audit Logs", icon: ScrollText },
-      { to: "/integrations", label: "Integrations", icon: GitBranch },
       { to: "/settings", label: "Settings", icon: Settings },
     ],
   },
@@ -198,10 +168,8 @@ function Notifications() {
 }
 
 export function AppShell() {
-  const { me, signOut } = useAuth();
   const { projects, projectId, setProjectId } = useProjects();
   const [collapsed, setCollapsed] = useState(false);
-  const nav = useNavigate();
   const cfg = useQuery({ queryKey: ["config"], queryFn: () => api.get<any>("/config"), staleTime: 60_000 });
   const llmReady = cfg.data?.llm?.any_configured;
 
@@ -263,42 +231,26 @@ export function AppShell() {
 
           <GlobalSearch />
 
-          <div className="ml-auto flex items-center gap-3">
-            <span className="hidden items-center gap-1.5 rounded border border-slate-200 bg-slate-50 px-2 py-1 text-2xs text-slate-600 xl:inline-flex"
-              title={llmReady ? "AI Provider Active" : "No Provider Configured"}>
+          <div className="ml-auto flex items-center gap-2.5">
+            <Link
+              to="/settings"
+              className="hidden items-center gap-1.5 rounded border border-slate-200 bg-slate-50 px-2.5 py-1 text-2xs text-slate-700 hover:border-slate-300 hover:bg-slate-100 transition-colors xl:inline-flex"
+              title={llmReady ? "AI Provider Active — Click to manage in Settings" : "No Provider Configured — Click to configure"}
+            >
               <Activity className={cn("h-3 w-3", llmReady ? "text-emerald-600" : "text-amber-500")} aria-hidden />
-              <span>{llmReady ? `AI ${cfg.data?.llm?.mode === "mock" ? "fixture" : "ready"}` : "AI not configured"}</span>
-            </span>
+              <span className="font-medium">{llmReady ? `AI ${cfg.data?.llm?.mode === "mock" ? "fixture" : "ready"}` : "AI not configured"}</span>
+            </Link>
 
             <Notifications />
 
-            <Dropdown.Root>
-              <Dropdown.Trigger className="flex items-center gap-2 rounded px-2 py-1 text-left hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3067DB]">
-                <span className="flex h-7 w-7 items-center justify-center rounded bg-[#3067DB] text-xs font-medium text-white shadow-xs" aria-hidden>
-                  {me?.user.full_name ? me.user.full_name.split(" ").map((s) => s[0]).join("").slice(0, 2) : "DF"}
-                </span>
-                <span className="hidden whitespace-nowrap text-xs leading-tight lg:block">
-                  <span className="font-semibold text-slate-800 block">{me?.user.full_name ?? "Dayforce QA Engineer"}</span>
-                  <span className="text-[11px] text-slate-400">{me?.user.title ?? "Quality Lead"}</span>
-                </span>
-              </Dropdown.Trigger>
-              <Dropdown.Portal>
-                <Dropdown.Content align="end" sideOffset={6} className="z-40 w-56 rounded border border-slate-200 bg-white p-1 shadow-popover">
-                  <div className="px-3 py-2 border-b border-slate-100">
-                    <p className="text-xs font-semibold text-slate-900">{me?.user.full_name}</p>
-                    <p className="text-2xs text-slate-500 truncate">{me?.user.email}</p>
-                    <p className="text-2xs font-medium text-[#3067DB] mt-0.5">Dayforce Quality Engineering</p>
-                  </div>
-                  <Dropdown.Item onSelect={() => nav("/settings")} className="cursor-pointer rounded px-3 py-2 text-xs outline-none data-[highlighted]:bg-slate-50">
-                    Platform Settings
-                  </Dropdown.Item>
-                  <Dropdown.Item onSelect={async () => { await signOut(); nav("/login"); }}
-                    className="flex cursor-pointer items-center gap-2 rounded px-3 py-2 text-xs text-rose-600 outline-none data-[highlighted]:bg-rose-50">
-                    <LogOut className="h-3.5 w-3.5" />Sign out
-                  </Dropdown.Item>
-                </Dropdown.Content>
-              </Dropdown.Portal>
-            </Dropdown.Root>
+            <Link
+              to="/settings"
+              className="rounded p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3067DB]"
+              aria-label="Platform Settings"
+              title="Platform Settings"
+            >
+              <Settings className="h-4 w-4" />
+            </Link>
           </div>
         </header>
 

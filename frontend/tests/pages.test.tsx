@@ -4,7 +4,6 @@ import { Route, Routes } from "react-router-dom";
 import { AppShell } from "@/layouts/AppShell";
 import DashboardPage from "@/pages/DashboardPage";
 import { TraceabilityPage } from "@/pages/InsightPages";
-import LoginPage from "@/pages/LoginPage";
 import { TestDetailPage } from "@/pages/TestPages";
 import { ME, mockFetch, page, renderApp } from "./helpers";
 
@@ -16,22 +15,12 @@ beforeAll(() => {
 const PROJECTS = page([{ id: 1, key: "PAY", name: "Payroll Management", description: "", status: "active",
   stats: { requirements: 1, tests: 1, suites: 1, open_defects: 0, members: 1, coverage_pct: 50 } }]);
 
-test("login validates input before calling the API", async () => {
-  const calls = mockFetch([[/auth\/me/, { error: { code: "unauthenticated", message: "Sign in required" } }, 401]]);
-  renderApp(<LoginPage />, { withProjects: false });
-  await userEvent.click(await screen.findByRole("button", { name: "Sign in" }));
-  expect(screen.getByText("Enter a valid email address")).toBeInTheDocument();
-  expect(screen.getByText("Enter your password")).toBeInTheDocument();
-  expect(calls.some((c) => c.url.includes("/auth/login"))).toBe(false);
-});
-
-test("login surfaces API errors", async () => {
-  mockFetch([[/auth\/me/, {}, 401], [/auth\/login/, { error: { code: "invalid_credentials", message: "Invalid email or password" } }, 401]]);
-  renderApp(<LoginPage />, { withProjects: false });
-  await userEvent.type(await screen.findByLabelText("Work email"), "a@b.example");
-  await userEvent.type(screen.getByLabelText("Password"), "nope");
-  await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
-  expect(await screen.findByText("Invalid email or password")).toBeInTheDocument();
+test("application boots directly into workspace without requiring login", async () => {
+  mockFetch([[/auth\/me/, ME], [/projects/, PROJECTS], [/analytics\/dashboard/, { kpis: { total_projects: 1, active_projects: 1, total_requirements: 0, analysed_requirements: 0, total_test_cases: 0, approved_test_cases: 0, pending_reviews: 0, total_executions: 0, pass_rate: 0, failed_executions: 0, open_defects: 0, critical_defects: 0, requirement_coverage: 0 }, charts: { execution_trend: [], result_distribution: [], coverage_by_project: [], defect_severity: [], defect_resolution: [], test_status: [] }, recent_changes: [], recent_executions: [], projects: [] }]]);
+  renderApp(<Routes><Route element={<AppShell />}><Route index element={<DashboardPage />} /></Route></Routes>);
+  expect(await screen.findByText(/Dayforce Quality Engineering Workspace/)).toBeInTheDocument();
+  expect(screen.queryByLabelText("Work email")).not.toBeInTheDocument();
+  expect(screen.queryByLabelText("Password")).not.toBeInTheDocument();
 });
 
 test("dashboard renders KPIs from the analytics API, not constants", async () => {
@@ -92,8 +81,7 @@ test("navigation shell exposes every product area", async () => {
   mockFetch([[/auth\/me/, ME], [/projects/, PROJECTS], [/config/, { environment: "test", llm: { any_configured: false, providers: [] } }], [/notifications/, []]]);
   renderApp(<Routes><Route element={<AppShell />}><Route index element={<p>home</p>} /></Route></Routes>);
   const nav = await screen.findByRole("complementary", { name: "Primary" });
-  for (const l of ["Overview", "Projects", "Requirements", "Test Management", "Test Executions", "Defects", "Traceability",
-    "Quality Analytics", "AI Evaluations", "Audit Logs", "Integrations", "Settings"]) {
+  for (const l of ["Overview", "Requirements", "Test Cases", "Test Runs", "Defects", "Settings"]) {
     expect(within(nav).getByRole("link", { name: l })).toBeInTheDocument();
   }
   expect(await screen.findByText(/AI not configured/)).toBeInTheDocument();
