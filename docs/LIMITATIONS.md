@@ -43,3 +43,4 @@ In accordance with enterprise transparency and rigorous verification standards, 
 
 - **SQLite WAL Concurrency**: SQLite supports virtually unlimited concurrent readers and single-writer concurrency with immediate consistency.
 - **Recommended Data Scale**: Optimal for workspaces up to 500,000 test cases, 50,000 executions, and 20GB database size. For planetary-scale distributed deployments exceeding 10M executions, migration to PostgreSQL can be configured via SQLAlchemy connection strings.
+

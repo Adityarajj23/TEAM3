@@ -75,3 +75,4 @@ To benchmark Groq (`openai/gpt-oss-120b`) and Gemini (`gemini-2.5-flash`) on Ech
 PYTHONPATH=backend .venv/bin/python backend/app/services/run_ai_eval.py
 ```
 Outputs clause coverage, ungrounded rate, schema pass rate, and slot latency metrics to `eval_runs` and `eval_results` tables.
+

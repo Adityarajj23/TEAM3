@@ -73,3 +73,4 @@ curl -X POST http://localhost:8000/api/v1/projects/5/executions \
 ```
 
 The endpoint returns an execution key (e.g. `EX-000002`). Pipelines can poll `GET /api/v1/executions/EX-000002` until `status` resolves to `passed` or `failed`.
+

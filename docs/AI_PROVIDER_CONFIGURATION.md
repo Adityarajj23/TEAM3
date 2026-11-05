@@ -76,3 +76,4 @@ Diagnostics can be queried at runtime:
 curl -s http://localhost:8000/api/v1/settings/llm/status
 ```
 Returns slot health, circuit breaker state (`closed` / `open`), and configured models.
+

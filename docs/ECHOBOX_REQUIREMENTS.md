@@ -191,3 +191,4 @@ This document catalogs the 21 source-grounded requirements extracted from [sohan
 - **Clauses**:
   - `ECHO-REQ-021.C1`: `claim_legacy_room` shall verify caller authentication.
   - `ECHO-REQ-021.C2`: Successfully claimed rooms shall update the owner index.
+

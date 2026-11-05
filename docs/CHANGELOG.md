@@ -65,3 +65,4 @@ All notable changes to the TraceTest AI platform are documented in this file.
 - Deterministic clause segmentation and quote verification.
 - Defense-in-depth POSIX execution sandbox.
 - Bidirectional traceability matrix and mathematical coverage calculation.
+

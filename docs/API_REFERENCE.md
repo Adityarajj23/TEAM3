@@ -8,6 +8,12 @@ TraceTest AI exposes a fully typed REST API conforming to OpenAPI 3.1.0 specific
 
 ## 2. Core API Endpoints
 
+### 2.0 Authentication & Session
+- `POST /api/v1/auth/login`: Authenticate operator and establish session cookie.
+- `GET /api/v1/auth/me`: Retrieve current principal identity, roles, and project permissions.
+- `POST /api/v1/auth/logout`: Revoke active session.
+- `GET /api/v1/auth/csrf`: Retrieve CSRF protection token.
+
 ### 2.1 Projects
 - `GET /api/v1/projects`: List accessible projects with calculated coverage and defect statistics.
 - `POST /api/v1/projects`: Create a new project workspace.
@@ -72,3 +78,4 @@ All errors return consistent JSON payloads:
 - `410 Gone`: Ephemeral resource has reached its expiration ceiling.
 - `413 Payload Too Large`: Request body exceeds 64KB limit.
 - `500 Internal Server Error`: Unhandled server exception.
+

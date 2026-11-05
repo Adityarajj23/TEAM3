@@ -81,3 +81,4 @@ Every valid test case enters the Approval Workspace in `pending_review` status:
   - `Reject`: Test transitions to `rejected` with mandatory reason note.
   - `Request Changes`: Marks test for revision.
   - `Edit Script`: Allows QA engineer to adjust test data, assertions, or steps while retaining version history in `TestCaseVersion`.
+

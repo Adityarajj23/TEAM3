@@ -61,3 +61,4 @@ TraceTest AI is designed around a focused single-operator engineering experience
 - **Typography & Layout**: Disciplined enterprise aesthetic with Google Sans / Tahoma fallbacks, 4px/8px spacing tokens, and neutral surfaces with subtle blue chromatic accents.
 - **Responsive Stability**: Resilient across six standardized breakpoints (1440px desktop, 1280px standard, 1024px tablet landscape, 768px tablet portrait, 390px mobile, 360px compact) using `min-h-[100dvh]` and `overflow-x: clip`.
 - **Zero Hallucinated Metrics**: Every KPI, coverage percentage, and test result is calculated from verified database state.
+

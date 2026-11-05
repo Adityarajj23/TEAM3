@@ -139,3 +139,4 @@ elif action == "claim_legacy_room": ...
   }
 }
 ```
+

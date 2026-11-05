@@ -92,3 +92,4 @@ The frontend renders this matrix at `/traceability`, providing:
 - Real-time clause coverage filtering.
 - Visual status indicators for unexecuted, passing, failing, or defect-linked clauses.
 - One-click navigation to inspect underlying test scripts and execution logs.
+

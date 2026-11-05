@@ -103,7 +103,7 @@ Every record in this index corresponds to verified on-disk artifacts and databas
 - **Screenshots Preserved**:
 
 #### Screenshot 1: EchoBox Landing & Room Joining Interface
-- **Path**: [`docs/screenshots/echobox/echobox-frontend-landing.png`](file:///home/Sohan/PROJECTS/tracetest-ai/docs/screenshots/echobox/echobox-frontend-landing.png)
+- **Path**: [`docs/screenshots/echobox/echobox-frontend-landing.png`](screenshots/echobox/echobox-frontend-landing.png)
 - **Size**: 193 KB
 - **Verification Criteria**:
   - Clean rendering of the EchoBox hero section, room joining form, and features list.
@@ -111,7 +111,7 @@ Every record in this index corresponds to verified on-disk artifacts and databas
   - Active input field for 6-character room codes.
 
 #### Screenshot 2: EchoBox Join Validation Error State
-- **Path**: [`docs/screenshots/echobox/echobox-join-validation.png`](file:///home/Sohan/PROJECTS/tracetest-ai/docs/screenshots/echobox/echobox-join-validation.png)
+- **Path**: [`docs/screenshots/echobox/echobox-join-validation.png`](screenshots/echobox/echobox-join-validation.png)
 - **Size**: 205 KB
 - **Verification Criteria**:
   - Submitting invalid room code formats triggers immediate client-side validation.
@@ -209,3 +209,4 @@ dist/assets/index-Bq5m99Zk.js   894.21 kB │ gzip: 261.32 kB
 ### 5.4 Backend Code Quality & Typing
 - **Ruff**: `All checks passed!` (0 lint errors across 32 source files).
 - **Mypy**: `Success: no issues found in 3 source files` (`app.services.repo_ingest`, `app.services.echobox_runner`, `app.services.run_ai_eval`).
+

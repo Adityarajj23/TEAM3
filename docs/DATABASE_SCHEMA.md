@@ -90,6 +90,18 @@ erDiagram
 ### 3.8 `defects`
 - `defects`: Discrepancy tracking ledger (`key`, `project_id`, `title`, `severity`, `priority`, `status`, `approval_status`, `requirement_id`, `test_case_id`, `execution_id`, `execution_result_id`, `expected_result`, `actual_result`, `reproduction_steps`, `error_log`, `ai_analysis`).
 
+### 3.9 `test_suites`
+- `test_suites`: Logical groupings of test cases for batch execution (`project_id`, `name`, `description`, `created_by`, `created_at`).
+
+### 3.10 `execution_logs`
+- `execution_logs`: High-resolution execution log capture, stdout/stderr streams, and raw subprocess output per execution.
+
+### 3.11 `integrations`
+- `integrations`: Connected repository and third-party services (`project_id`, `kind`, `status`, `config` containing `repo`, `url`, `branch`, `commit_sha`, `last_import_at`).
+
+### 3.12 `audit_logs`
+- `audit_logs`: Immutable append-only audit trail logging every administrative or domain mutation (`actor_id`, `action`, `entity_type`, `entity_id`, `project_id`, `trace_id`, `payload`, `created_at`).
+
 ---
 
 ## 4. SQLite Pragmas & Concurrency Tuning
@@ -102,3 +114,4 @@ PRAGMA synchronous = NORMAL;
 PRAGMA busy_timeout = 10000;
 ```
 Ensures zero lock contention during concurrent test executions and audit logging.
+

@@ -133,12 +133,13 @@ To validate TraceTest AI on a real external software project beyond Dayforce and
 - **Browser E2E (Playwright)**: Ran automated browser validation against local Vite preview (`http://127.0.0.1:5174`), capturing `echobox-frontend-landing.png` and `echobox-join-validation.png`.
 
 ### 5.3 Genuine Defects Discovered & Tracked
-Recorded 5 genuine defects in `var/tracetest.db`:
+Recorded 6 genuine defects in `var/tracetest.db`:
 1. `DEF-ECHO-001` (Medium): Description limit mismatch (500 chars in docs vs 1000 in Lambda).
 2. `DEF-ECHO-002` (Low): Silent truncation slicing instead of HTTP 400 Bad Request.
 3. `DEF-ECHO-003` (High): Invalid visibility parameter defaults to public room (`!= "private"`).
 4. `DEF-ECHO-004` (Medium): N+1 query loop in `discover_rooms`.
 5. `DEF-ECHO-005` (High): Live AWS API Gateway endpoint returns HTTP 500 Internal Server Error.
+6. `DEF-ECHO-006` (Critical): Missing cryptographic JWT signature verification in ID token fallback path (`lambda_function.py:120-146`). Verified with automated security test suite `test_echobox_jwt_security.py` (10/10 passed).
 
 ### 5.4 Empirical AI Evaluation on EchoBox Scenarios
 Ran comparative evaluation with `backend/evals/echobox_scenarios.json`:

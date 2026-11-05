@@ -1,203 +1,221 @@
-# TraceTest AI — Dayforce Quality Engineering Platform
+# TraceTest AI — Enterprise AI Quality Engineering Platform
 
-TraceTest AI is an enterprise-grade AI Quality Engineering and Requirement Verification Platform specifically calibrated for **Dayforce HCM ecosystems**. It turns complex business requirements into atomic numbered clauses, grounded acceptance criteria, and executable Python test cases; validates every generated item deterministically; routes scripts through dual-control human review; executes approved tests in a secure Linux sandbox; analyzes failures with AI root-cause diagnostics; manages defects through fix verification and retesting; and enforces full auditability and bidirectional traceability across the entire HCM software lifecycle.
-
-### Dayforce Workspace Identity & Taxonomy
-The workspace opens with dedicated Dayforce Quality Engineering projects covering key HCM domains:
-- **DF-PAY**: Dayforce Payroll Verification (Gross-to-Net, FLSA overtime, shift differentials, statutory rounding)
-- **DF-WFM**: Dayforce Workforce Management (Punch pairing, meal break compliance, timesheet interval validation)
-- **DF-LVE**: Dayforce Absence & Leave (Accrual rules, annual carry-forward caps, termination payout calculations)
-- **DF-BEN**: Dayforce Benefits & Eligibility (Full-time employee eligibility, waiting periods, open enrollment)
-
-> **Independent Prototype Notice:** TraceTest AI is an independent enterprise quality engineering system and is **not officially affiliated with, endorsed by, certified by, or integrated into Dayforce Inc. production environments**. It does not access proprietary Dayforce production systems or invent official APIs.
+> **Multi-Repository GitHub QA Verification Platform with Real-World Case Studies & Dayforce HCM Verification**  
+> *Deterministic AI Requirements Analysis • AST Codebase Grounding • Sandboxed Test Execution • Zero Synthetic Metrics*
 
 ---
 
-### Zero Fake Data Guarantee
-Unlike mock dashboards populated with synthetic placeholder data, the default user workspace contains **zero fake requirements, zero fake tests, zero fake executions, and zero fake defects**. The Dayforce project workspaces (`DF-PAY`, `DF-WFM`, `DF-LVE`, `DF-BEN`) provide clean, pre-configured module taxonomies and target environments ready for real user ingestion, analysis, and execution. Test fixtures are strictly quarantined to automated test harnesses.
+## 1. Executive Summary
+
+**TraceTest AI** is an enterprise-grade AI software quality engineering and requirement verification platform. Designed for mission-critical software systems—spanning enterprise Human Capital Management (Dayforce HCM) and modern cloud-native serverless architectures (EchoBox)—TraceTest AI eliminates the disconnect between unstructured business requirements, code implementations, automated test suites, and defect remediation.
+
+Unlike prototype dashboards that rely on mock assertions, simulated successes, or synthetic data, TraceTest AI operates as an **evidence-based verification harness**:
+- **Ingests Real GitHub Repositories**: Dynamically clones and parses codebases (e.g. `https://github.com/sohan10012/EchoBox.git`), extracting modules, API endpoints, actions, and architectural dependencies directly from code AST.
+- **Decomposes Requirements Deterministically**: Segments specifications into atomic, numbered clauses and extracts grounded acceptance criteria with verbatim source quotes.
+- **Synthesizes & Validates Executable Tests**: Generates Python `pytest` and Playwright scripts validated against strict pre-execution AST allowlists.
+- **Enforces Four-Eyes Principle Governance**: Authors are blocked from approving their own tests; dual-control review records immutable decisions and script hashes.
+- **Executes Across Multi-Tier Environments**: Runs tests inside POSIX resource-restricted subprocess sandboxes, in-memory contract test harnesses, or against live endpoints.
+- **Captures Empirical Proof**: Logs JUnit XML, stdout/stderr streams, failure tracebacks, screenshots, and HTTP status codes.
+- **Maintains Zero-Hallucination Integrity**: Failed cloud endpoints (e.g. AWS HTTP 500) are recorded honestly as blocked defects rather than faked as successes.
 
 ---
 
-### Single-Operator Direct Workspace Entry
-TraceTest AI operates as a focused single-operator engineering platform. The application opens directly into the Dayforce Quality Engineering workspace with full administrative, QA authoring, and review capabilities without requiring a login screen, credentials prompt, or user switching.
+## 2. Key Technical Documentation
 
----
-
-### Streamlined Enterprise Navigation
-The navigation shell is built strictly around the central QA verification workflow with a minimal 3-section structure:
-- **Workspace**: Overview (`/`) and Requirements (`/requirements`)
-- **Testing**: Test Cases (`/tests`), Test Runs (`/executions`), and Defects (`/defects`)
-- **Configuration**: Settings (`/settings`)
-
-Approval queues, test suites, and change impact analysis are integrated contextually within their respective modules, eliminating redundant dashboard clutter.
-
----
-
-## Documentation Quick Links
-
-| Document | Topic & Scope |
+| Document | Description |
 |---|---|
-| [docs/DAYFORCE_DOMAIN.md](docs/DAYFORCE_DOMAIN.md) | Dayforce HCM domain specification: Payroll, WFM, Leave, and Benefits rules |
-| [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md) | Dayforce enterprise visual design system: tokens, typography, and components |
-| [docs/DESIGN_TOOLKIT_AUDIT.md](docs/DESIGN_TOOLKIT_AUDIT.md) | Audit of 14 Antigravity design skills, REA, Hopper, and MCP toolkit |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | C4-style architectural specifications, data flows, and subsystem components |
-| [docs/DECISIONS.md](docs/DECISIONS.md) | Architecture Decision Records (ADRs 001 through 010) |
-| [docs/API.md](docs/API.md) | Comprehensive REST API endpoint reference and authentication contracts |
-| [docs/DATABASE.md](docs/DATABASE.md) | SQLite 3 WAL schema across 36 tables, Alembic migrations, and seed catalog |
-| [docs/SECURITY.md](docs/SECURITY.md) | Enterprise security posture, Argon2id, CSRF, RBAC, project isolation, and sandbox limits |
-| [docs/AI_PIPELINE.md](docs/AI_PIPELINE.md) | LangGraph state graphs, checkpointing, multi-key pooling, and deterministic guardrails |
-| [docs/EXECUTION_ENGINE.md](docs/EXECUTION_ENGINE.md) | Sandboxed test execution, AST allowlists, POSIX rlimits, and Linux network namespaces |
-| [docs/REFERENCE_HCM.md](docs/REFERENCE_HCM.md) | Reference HCM dual-build engine (v1.0 deliberate faults vs v1.1 fixes and engine limits) |
-| [docs/TESTING.md](docs/TESTING.md) | Automated testing guide: 56 backend tests, 10 frontend tests, and Playwright visual audits |
-| [docs/AI_EVALUATION.md](docs/AI_EVALUATION.md) | 10-scenario golden benchmark harness and live empirical Groq vs Gemini results |
-| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Production installation guide, systemd units, NGINX TLS reverse proxy, and backups |
-| [docs/USER_GUIDE.md](docs/USER_GUIDE.md) | Step-by-step operator walkthrough for authors, leads, reviewers, and auditors |
-| [docs/PROGRESS.md](docs/PROGRESS.md) | Delivery milestone audit and verification ledger |
-| [CHANGELOG.md](CHANGELOG.md) | Release notes for v1.0.0 release |
+| **[CLAUDE_ENGINEERING_HANDOFF.md](CLAUDE_ENGINEERING_HANDOFF.md)** | **Master Technical Handoff**: Complete architecture, directory tree, REST API reference, 36 DB tables ERD, core algorithms, security model, and P0–P3 backlog. |
+| **[docs/PRODUCTION_READINESS_AUDIT.md](docs/PRODUCTION_READINESS_AUDIT.md)** | Critical independent audit of repository state, verified implementations, and security remediation. |
+| **[docs/ECHOBOX_CASE_STUDY.md](docs/ECHOBOX_CASE_STUDY.md)** | Complete case study on EchoBox (`b3740a62ad414a141e82146adafb47c4850fd782`): architecture, requirements, tests, defects, and evidence. |
+| **[docs/TEST_EVIDENCE_INDEX.md](docs/TEST_EVIDENCE_INDEX.md)** | Master index of empirical test runs (`EX-000001`, `EX-ECHO-LIVE-001`), AI benchmarks, and screenshots. |
+| **[docs/API_REFERENCE.md](docs/API_REFERENCE.md)** | REST API endpoint documentation covering all 77 OpenAPI paths. |
+| **[docs/DATABASE_SCHEMA.md](docs/DATABASE_SCHEMA.md)** | SQLite 3 WAL schema across 36 entities with foreign keys and tuning pragmas. |
+| **[docs/TESTING_GUIDE.md](docs/TESTING_GUIDE.md)** | Automated testing guide for backend pytest (76 tests) and frontend Vitest (9 tests). |
 
 ---
 
-## End-to-End Workflow
+## 3. Workspaces & Case Studies
 
+### A. EchoBox Real-World QA Case Study (Default Workspace)
+- **Repository**: `https://github.com/sohan10012/EchoBox.git`
+- **Revision Ingested**: `b3740a62ad414a141e82146adafb47c4850fd782` on branch `main`.
+- **Architecture**: React 18, Vite, AWS HTTP API Gateway, Python AWS Lambda, single-table DynamoDB, dual Cognito pools.
+- **QA Inventory**: 21 Requirements (`ECHO-REQ-001` to `021`), 62 numbered clauses, 21 Acceptance Criteria, 21 automated pytest scripts.
+- **Empirical Execution Results**:
+  1. **In-Memory POSIX Sandbox (`EX-000001`)**: **21 / 21 Passed (100%)** in 1.92s under `echobox_harness`.
+  2. **Live Remote AWS Probe (`EX-ECHO-LIVE-001`)**: **Blocked (HTTP 500)** in 574ms (`GYaZ0hH4BcwEMqw=`). Documented under `DEF-ECHO-005`.
+  3. **Browser E2E Automation (`EX-E2E-BROWSER-001`)**: Playwright Chromium test verified landing page and client-side room ID validation error states.
+- **Discovered & Verified Defects**:
+  - `DEF-ECHO-001`: Room description limit mismatch (Doc: 500 chars vs Code: 1000 chars).
+  - `DEF-ECHO-002`: Silent truncation on `room_name` / `room_desc` rather than HTTP 400 Bad Request.
+  - `DEF-ECHO-003`: Invalid visibility parameter silently defaults to public.
+  - `DEF-ECHO-004`: Discovery N+1 query amplification loop in `discover_rooms`.
+  - `DEF-ECHO-005`: Live remote AWS API Gateway returns HTTP 500 Internal Server Error.
+  - `DEF-ECHO-006` *(Critical Security)*: Missing cryptographic JWT signature verification in ID token fallback path (`lambda_function.py:120-146`).
+
+### B. Dayforce Quality Engineering Workspace
+Specialized for HCM, Payroll, Workforce Management, Time & Attendance, and Benefits compliance:
+- **`DF-PAY`**: Dayforce Payroll Verification (FLSA overtime, gross-to-net calculations, shift differentials, statutory rounding).
+- **`DF-WFM`**: Dayforce Workforce Management (Punch pairing, meal break compliance, timesheet interval validation).
+- **`DF-LVE`**: Dayforce Absence & Leave (Accrual rules, annual carry-forward caps, termination payout calculations).
+- **`DF-BEN`**: Dayforce Benefits & Eligibility (Full-time employee eligibility, waiting periods, open enrollment).
+- **Golden Reference System**: Reference HCM 1.0 (baseline with faults) vs Reference HCM 1.1 (candidate fix).
+
+---
+
+## 4. System Architecture & Workflows
+
+### End-to-End Verification Flow
 ```mermaid
 flowchart LR
-  R[Requirement<br/>versioned] --> C[Clauses<br/>stable IDs]
-  C --> A[AI analysis<br/>ambiguity, gaps, conflicts]
-  A --> AC[Acceptance criteria<br/>quote-verified]
-  AC --> T[Test generation<br/>pytest / playwright]
-  T --> V[Deterministic validation<br/>grounding, AST, duplicates]
-  V --> H{Human review<br/>Four-Eyes Principle}
-  H -->|Approved| S[Test Suite]
-  S --> X[Sandboxed execution<br/>Reference HCM 1.0 / 1.1]
-  X --> F[Failure analysis<br/>facts vs hypotheses]
-  F --> D{Defect approval}
-  D --> L[Defect lifecycle]
-  L --> RT[Retest on fix build] --> Q[Traceability & compliance reports]
+    A[Connect GitHub Repo / Document] --> B[AST & Text Analysis]
+    B --> C[Versioned Requirements]
+    C --> D[Clause Decomposition]
+    D --> E[Acceptance Criteria]
+    E --> F[Test Generation]
+    F --> G[Deterministic AST Validation]
+    G --> H[Dual-Control Human Review]
+    H --> I[Sandboxed Subprocess Execution]
+    I --> J{Execution Result}
+    J -->|Pass| K[Coverage Matrix Updated]
+    J -->|Fail| L[AI Failure Triage & Defect]
+    L --> M[Candidate Fix Retesting]
+    M --> K
 ```
 
-A user can trace any requirement from raw text to parsed clauses, derived criteria, executable test cases, execution runs (verified by cryptographic SHA-256 script hashes), automated defect generation, and the exact passing retest that verified the defect fix.
-
----
-
-## Core Enterprise Features
-
-| Domain | Implemented & Verified Capabilities |
-|---|---|
-| **Executive Dashboard** | Real-time KPIs, six analytics charts, and project quality tables computed from SQLite; dynamic date filters; every metric links to underlying records. |
-| **Project Multi-Tenancy** | Organizations, projects, modules, environments, and RBAC memberships. Strict query-level project isolation returning 404 for inaccessible resources. |
-| **Requirements Management** | Document upload (PDF, TXT, Markdown), structured JSON import, category tagging; immutable versioning with clause-level diffs and automatic change-impact flagging. |
-| **Requirement Intelligence** | LangGraph workflow: text sanitization → clause extraction → ambiguity detection (lexicon + LLM) → acceptance criteria synthesis → test case generation → deterministic validation. |
-| **Deterministic Guardrails** | Pydantic JSON schemas, clause grounding scores, quote verification, duplicate detection, coverage gap checks, prompt injection marker screening, low-confidence review gates, and two-stage repair loops. |
-| **Dual-Control Governance** | Mandatory Four-Eyes Principle: authors are strictly blocked from approving their own tests. Review queue triage, feedback comments, and immutable script SHA-256 fingerprinting. |
-| **Sandboxed Execution** | Approved and hash-verified tests only. Pre-execution AST allowlist inspection (blocks `os`, `sys`, `subprocess`, `socket`, `eval`, dunder traversal), isolated tempdir, stripped environment variables, POSIX resource rlimits (memory, CPU, file size), Linux network namespace (`unshare -rn`), wall-clock timeouts, and SHA-256 artifact capture. |
-| **Playwright Web Automation** | End-to-end browser execution against web targets with automatic screenshot and console log capture per test. |
-| **AI Failure Analysis** | LangGraph failure triage: stack trace analysis → failure classification (`application_defect`, `test_defect`, `environment_failure`) → root-cause diffs → defect recommendations. |
-| **Defect Lifecycle** | Full state machine (`Open → Triaged → Assigned → In Progress → Fixed → Ready for Retest → Verified → Closed`). Verification strictly requires a genuine passing retest run. |
-| **Multi-Provider AI Pool** | High-availability pooling supporting 3 Groq credentials (`GROQ_API_KEY*`) and 3 Gemini credentials (`GEMINI_API_KEY*`). Round-robin rotation, 60-second rate-limit cooldown on HTTP 429, permanent invalidation on 401/403, and circuit breaker failover. |
-| **End-to-End Traceability** | Dynamic matrix mapping Requirements → Clauses → Acceptance Criteria → Test Cases → Executions → Defects. Exportable as CSV, JSON, Markdown, and PDF. |
-| **Compliance & Audit Logging** | Append-only audit trail logging every mutation with actor, timestamp, project, action, and distributed request trace ID (`X-Trace-Id`). |
-
----
-
-## System Architecture
-
+### Multi-Environment Execution Ledger
 ```mermaid
-flowchart TB
-  subgraph Browser [Browser Frontend]
-    UI[React 18 + TypeScript SPA<br/>Vite, Tailwind, TanStack Query, Radix]
-  end
-  subgraph API [FastAPI Service Layer]
-    MW[Trace IDs, rate limiting, security headers] --> AUTH[Session Cookie + CSRF + RBAC + Project Scoping]
-    AUTH --> R[REST API Routers]
-    R --> SVC[Services: Requirements, Tests, Executions, Defects, Analytics]
-    SVC --> G[LangGraph Workflows]
-    G --> LLM[Provider Router<br/>Groq Pool → Gemini Pool → Local Ollama → Circuit Breaker]
-    SVC --> SB[Execution Sandbox]
-    BG[In-Process Worker Pool + Run Records] --> G
-  end
-  SB --> HCM[(Reference HCM 1.0 / 1.1 Engines)]
-  SVC --> DB[(SQLite tracetest.db<br/>WAL Mode, FKs, Alembic)]
-  G --> CK[(SQLite workflow_checkpoints.db)]
-  SVC --> FS[[Captured Artifacts, Uploads, Backups]]
-  UI -- Session Cookie, X-CSRF-Token, SSE Events --> MW
+flowchart TD
+    RunRequest[Execution Dispatch] --> EnvSelect{Target Environment}
+    
+    EnvSelect -->|In-Memory Harness| HarnessRun[Local In-Memory DynamoDB Mock]
+    HarnessRun --> Subproc[POSIX Subprocess Sandbox]
+    Subproc --> ASTCheck{AST Allowlist Check}
+    ASTCheck -->|Allowed| ExecPass[Run pytest: CPU 30s, Mem 512MB]
+    ASTCheck -->|Violated| ExecBlock[Reject: Security Exception]
+    
+    EnvSelect -->|Remote Cloud API| ProbeRun[Live HTTP Request to API Gateway]
+    ProbeRun --> CloudResp{HTTP Status}
+    CloudResp -->|200 OK| CloudPass[Record Live Pass]
+    CloudResp -->|500 / 4xx| CloudErr[Capture Headers & Body: Record Blocked Evidence]
+    
+    EnvSelect -->|Browser E2E| PlaywrightRun[Headless Chromium Runner]
+    PlaywrightRun --> PWCapture[DOM Assertions + High-Res PNG Screenshots]
+    
+    ExecPass --> ResultLedger[Execution Result Ledger in SQLite]
+    ExecBlock --> ResultLedger
+    CloudPass --> ResultLedger
+    CloudErr --> ResultLedger
+    PWCapture --> ResultLedger
 ```
 
 ---
 
-## Technology Stack
+## 5. Technology Stack & Exact Versions
 
-- **Backend**: Python 3.11+, FastAPI 0.115, Pydantic 2.10, SQLAlchemy 2.0, Alembic 1.14, SQLite 3 (WAL mode), LangGraph 0.2 (`langgraph-checkpoint-sqlite`), httpx, google-genai, argon2-cffi, pypdf, ReportLab, Playwright, pytest.
-- **Frontend**: React 18, TypeScript 5.7, Vite 6, Tailwind CSS 3, Radix UI primitives, TanStack Query 5, TanStack Table 8, React Router 6, Recharts, Lucide Icons, Zod, Vitest, React Testing Library.
-- **Code Standards**: Ruff, mypy, ESLint, openapi-typescript, GitHub Actions.
+- **Backend**: Python `3.11.16`, FastAPI `0.115.6`, Pydantic `2.10.4`, SQLAlchemy `2.0.36`, SQLite 3 (WAL mode), LangGraph `0.2.60`, Groq SDK `0.15.0`, Google GenAI SDK `0.1.1`, Argon2-cffi, Playwright, pytest `8.3.4`.
+- **Frontend**: React `18.3.1`, TypeScript `5.6.3`, Vite `6.0.6`, Tailwind CSS `3.4.17`, Radix UI primitives, TanStack Query `5.62.11`, React Router `7.1.1`, Recharts `2.15.0`, Lucide Icons `0.469.0`, Vitest `3.0.2`.
+- **Standards & Tooling**: Ruff `0.8.4` (clean, 0 errors), mypy `1.14.0`, openapi-typescript `7.4.4`.
 
 ---
 
-## Quickstart & Local Setup
+## 6. Quickstart & Local Setup
 
 ### Prerequisites
 - Python 3.11+
 - Node.js 20+
 - SQLite 3.38+
+- Git
 
-### 1. Environment Setup
+### 1. Clone & Set Up Local Environment
 ```bash
-# Clone and enter repository
-git clone https://github.com/sohan10012/TEAM3.git
-cd TEAM3
+git clone https://github.com/sohan10012/TEAM3.git tracetest-ai
+cd tracetest-ai
 
-# Configure local environment
+# Configure environment variables
 cp .env.example .env
-# Edit .env with your credentials and secure passwords
 ```
 
 ### 2. Backend Initialization
 ```bash
-python3.11 -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
-pip install -r backend/requirements-dev.txt
+pip install -r backend/requirements.txt
 
-# Run database migrations and seed reference data
-cd backend
-alembic upgrade head
-python -m app.seed.seed
+# Run migrations and seed baseline data
+make db-upgrade
+make seed
 
-# Start backend server
-uvicorn app.main:app --port 8000 --reload
+# Start FastAPI server
+PYTHONPATH=backend uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 ### 3. Frontend Initialization
 ```bash
 cd frontend
-npm ci
+npm install
+npm run build
 npm run dev
-# Access UI at http://localhost:5173
+# Access the web UI at http://localhost:5173
 ```
 
 ---
 
-## Verification & Test Results
-
-The platform has been empirically verified across all verification tiers:
+## 7. Verification & Automated Test Suites
 
 ```
 ================================ Verification Matrix ================================
-Backend Pytest Suite:     56 passed in 15.06s (85% statement coverage)
-Backend Code Standards:   Ruff clean (0 errors), Mypy clean
-Frontend Type Checking:   tsc -b --noEmit clean (0 errors across 152 source files)
-Frontend Linter:          ESLint clean (0 errors, 0 warnings)
-Frontend Vitest Suite:    9 passed in 1.64s
-Frontend Production Build:Vite build succeeded in 2.68s
-Playwright Visual Audit:  60 responsive screenshots captured across 6 viewports (1440px to 360px), 0 layout overflows
-Live AI Golden Benchmark: Gemini 2.5 Flash: 10/10 passed (100% clause coverage, 0.0% ungrounded)
-                          Groq GPT-OSS-120B: 3/10 passed (100% clause coverage, 12.5% ungrounded)
+Backend Pytest Suite:     76 passed in 11.67s (100% pass rate)
+  - Auth & Permissions:   8/8 passed
+  - API Contracts:        10/10 passed (OpenAPI 77 paths match)
+  - Data Integrity:       9/9 passed
+  - E2E Workflow:         4/4 passed
+  - EchoBox Contract:     5/5 passed (Harness contract fidelity)
+  - EchoBox JWT Security: 10/10 passed (DEF-ECHO-006 cryptographic verification)
+  - Guardrails & AST:     8/8 passed
+  - LLM Router & Pool:    8/8 passed (Multi-key rotation and cooldowns)
+  - Multi-Project:        5/5 passed (URL validation, ref security, isolation)
+  - Reviews & Defects:    5/5 passed
+  - Subprocess Sandbox:   4/4 passed (POSIX rlimits and namespace isolation)
+
+Frontend Vitest Suite:    9 passed in 1.62s (100% pass rate)
+  - Navigation shell:     Passed (exposes Overview, Requirements, Tests, Runs, Defects, Settings)
+  - Single-Operator Auth: Passed (direct workspace boot without login prompt)
+  - Dashboard API KPIs:   Passed (data-driven KPIs from /analytics/dashboard)
+  - Traceability Matrix:  Passed (renders clauses, coverage gaps, and cells)
+  - Dual-Control Review:  Passed (blocks invalid AST tests, records decisions)
+  - UI Components:        Passed (Stats, Badges, Tabs, Panels)
+
+Code Quality & Linters:   Ruff clean (0 errors), tsc clean (0 errors)
+Frontend Production:      Vite build succeeded in 2.85s (dist/ compiled cleanly)
+Doc & Security Suite:     python3 scripts/verify_docs.py (All 28 docs verified, 0 leaked keys)
 ====================================================================================
 ```
 
 ---
 
-## Security & Credential Hygiene
+## 8. Connecting Another GitHub Repository
 
-- **Secret Protection**: All API credentials (`GROQ_*`, `GEMINI_*`, `TRACETEST_SECRET_KEY`) reside exclusively in local gitignored `.env` files.
-- **Sanitized Telemetry**: The API status endpoints `/api/v1/config` and `/api/v1/health` expose slot availability counts without logging, printing, or returning raw keys or key substrings.
-- **Connection Probes**: Live connection verification via `POST /api/v1/llm/test-connection` verifies provider connectivity and latency without secret leakage.
-- **Subprocess Isolation**: Untrusted test execution runs in clean workspaces under AST allowlists, POSIX limits, and Linux network namespaces.
+To ingest any arbitrary GitHub repository into TraceTest AI:
+
+1. Click **"Connect GitHub Repository"** in the top navigation or on the Dashboard.
+2. Enter the HTTPS GitHub URL (e.g. `https://github.com/owner/repository`).
+3. Select the target branch (default: `main` or `master`).
+4. Optionally provide a GitHub Personal Access Token for private repositories.
+5. Click **"Inspect & Connect Repository"**.
+6. TraceTest AI will:
+   - Perform SSRF and git injection validation.
+   - Scan the codebase for exposed credentials and secrets.
+   - Parse Python and TypeScript AST to extract endpoints and actions.
+   - Create an isolated project workspace (`id`, `key`, `environments`).
+   - Dynamically synthesize versioned requirements, clauses, acceptance criteria, and initial test cases.
+   - Isolate all QA data from existing projects without cross-contamination.
+
+---
+
+## 9. Security & Secret Protection
+
+- **Zero Credential Leakage**: All 6 Groq and Gemini API keys reside exclusively in gitignored `.env`. No credentials appear in git commits, logs, or documentation.
+- **POSIX Sandbox**: Subprocess execution enforces `RLIMIT_CPU=30s`, `RLIMIT_AS=512MB`, `RLIMIT_NOFILE=256`, and `RLIMIT_FSIZE=10MB`.
+- **AST Allowlist**: Disallows `os`, `sys`, `subprocess`, `socket`, `eval`, and dunder attribute traversal in generated test scripts.
+- **Single-Operator Workspace**: Eliminates superfluous login screens for local engineering productivity while maintaining full internal RBAC and CSRF token defenses.

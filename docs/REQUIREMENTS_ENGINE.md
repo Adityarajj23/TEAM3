@@ -68,3 +68,4 @@ Acceptance Criteria (AC) link clauses to concrete validation conditions:
 - **Preconditions**: Exact state required before verification (e.g. "Room created with owner credentials").
 - **Expected Behaviour**: Observable outcome (e.g. "HTTP 201 with expires_at = now + 86400").
 - **Confidence Metric**: Confidence score based on quote match verification (1.0 for verbatim matches).
+

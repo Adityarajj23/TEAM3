@@ -99,3 +99,4 @@ Executed using TraceTest AI's isolated POSIX sandbox (`app/execution/sandbox.py`
 - **Captured Artifacts**:
   - `docs/screenshots/echobox/echobox-frontend-landing.png`
   - `docs/screenshots/echobox/echobox-join-validation.png`
+

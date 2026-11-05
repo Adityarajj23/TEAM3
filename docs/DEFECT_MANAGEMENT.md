@@ -97,3 +97,4 @@ The Defect Management subsystem tracks defects discovered through automated test
 - **Root Cause**: DynamoDB table `EchoBox` is unseeded in region `ap-south-1` or Lambda execution role lacks IAM permission for `dynamodb:Query`.
 - **Recommended Fix**:
   Provision DynamoDB table `EchoBox` and verify IAM policy `arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess` or granular table policy on the Lambda role.
+
