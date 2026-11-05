@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     cors_origins: str = Field("http://localhost:5173", alias="TRACETEST_CORS_ORIGINS")
     seed_on_startup: bool = Field(False, alias="TRACETEST_SEED_ON_STARTUP")
     rate_limit_per_minute: int = Field(600, alias="TRACETEST_RATE_LIMIT_PER_MINUTE")
+    single_operator: bool = Field(True, alias="TRACETEST_SINGLE_OPERATOR")
 
     admin_email: str = Field("admin@dayforce-qa.local", alias="TRACETEST_ADMIN_EMAIL")
     admin_password: str | None = Field(None, alias="TRACETEST_ADMIN_PASSWORD")

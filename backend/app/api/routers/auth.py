@@ -86,14 +86,13 @@ def me(request: Request, response: Response, db: Session = Depends(get_db)):
             p = None
     if p is None:
         s = get_settings()
-        host = request.client.host if request.client else "127.0.0.1"
-        is_local = host in ("127.0.0.1", "::1", "localhost", "testclient")
-        if is_local and s.app_env == "development" and not request.headers.get("x-no-auto-login") and not request.query_params.get("no_auto"):
+        if s.single_operator and s.app_env != "test":
             dev_user = db.execute(select(User).where(User.email == s.dev_email.lower())).scalar_one_or_none()
             if not dev_user:
                 dev_user = db.execute(select(User)).scalars().first()
             if dev_user:
                 token, csrf = new_token(), new_token()
+                host = request.client.host if request.client else "127.0.0.1"
                 db.add(UserSession(token_hash=hash_token(token), csrf_token=csrf, user_id=dev_user.id, ip=host,
                                    expires_at=utcnow() + timedelta(hours=s.session_hours)))
                 db.commit()
@@ -107,6 +106,6 @@ def me(request: Request, response: Response, db: Session = Depends(get_db)):
                 out["project_ids"] = list(db.execute(select(Project.id)).scalars())
                 return out
         raise AppError(401, "unauthenticated", "Sign in required")
-    out = _me(db, p.user, p.roles, p.session.csrf_token)
+    out = _me(db, p.user, p.roles, p.session.csrf_token if p.session else "operator-csrf")
     out["project_ids"] = accessible_project_ids(db, p)
     return out
