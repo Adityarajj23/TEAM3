@@ -93,3 +93,4 @@ The dual-provider failover architecture functions as designed:
 1. **Google Gemini (`gemini-2.5-flash`)** delivers perfect 10/10 compliance and should be the designated primary provider for strict compliance generation.
 2. **Groq (`openai/gpt-oss-120b`)** provides high-speed throughput and complete coverage, acting as an effective secondary provider.
 3. The deterministic validation guardrails successfully caught ungrounded hallucinations without trusting model self-reports.
+

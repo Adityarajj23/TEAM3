@@ -84,3 +84,4 @@ This verification confirms:
 1. Defect detection: 100% of deliberate faults (HCM-F01 through HCM-F08) are caught on v1.0.
 2. Defect resolution verification: When retested on v1.1, all 54 resolved faults transition to `passed` and their associated defects can be verified and closed.
 3. Negative assurance: Engine gaps remain open and cannot be falsely verified without a genuine passing retest.
+

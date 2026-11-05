@@ -165,3 +165,4 @@ sqlite3 var/tracetest.db "VACUUM INTO 'var/backups/tracetest_$(date +%Y%m%d_%H%M
 # Verify integrity of backup
 sqlite3 var/backups/tracetest_*.db "PRAGMA integrity_check;"
 ```
+

@@ -217,3 +217,4 @@ sudo systemctl stop tracetest
 cp /opt/tracetest-ai/var/backups/tracetest_20261105_020000.db /opt/tracetest-ai/var/tracetest.db
 sudo systemctl start tracetest
 ```
+

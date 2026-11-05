@@ -234,3 +234,4 @@ Performs an online, zero-downtime hot backup of `tracetest.db` using SQLite back
 
 ### `GET /api/v1/config`
 Returns environment configuration, active AI provider status (with safe, masked credential indicators), and sandbox limits.
+

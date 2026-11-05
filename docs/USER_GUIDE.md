@@ -104,3 +104,4 @@ flowchart TD
    `Requirement Clause → Acceptance Criteria → Test Case → Execution Run → Defect`.
 3. Filter by coverage gaps, unlinked requirements, or open defects.
 4. Export the certified traceability ledger as CSV or PDF for compliance audit presentation.
+

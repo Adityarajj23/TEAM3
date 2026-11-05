@@ -144,3 +144,4 @@ Every state mutation (test creation, review submission, approval, execution trig
 - `project_id`, `resource_type`, and `resource_id`.
 - `action` (`CREATE`, `UPDATE`, `DELETE`, `APPROVE`, `EXECUTE`).
 - Structured JSON snapshot of mutated attributes.
+

@@ -120,3 +120,4 @@ For web application testing (`automation == 'playwright'`):
 The platform exposes endpoints for automated external CI/CD pipelines:
 - **Result Ingestion**: External runners post JUnit XML results to `POST /api/v1/ci/results`, recording the execution with `source = 'ci'`, Git commit hash, and branch name.
 - **Regression Comparison**: `GET /api/v1/executions-compare?a={id_1}&b={id_2}` computes a side-by-side diff of test statuses, identifying newly broken tests, resolved defects, and execution latency regressions.
+

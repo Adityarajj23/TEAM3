@@ -110,3 +110,4 @@ TraceTest AI includes an automated Playwright visual testing script (`scripts/ca
 
 ### 4.2 Screenshot Artifact Directory
 Captured screenshots are saved to `docs/screenshots/` and cataloged in `docs/screenshots/README.md`.
+

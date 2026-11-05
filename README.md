@@ -1,10 +1,25 @@
-# TraceTest AI
+# TraceTest AI — Dayforce Quality Engineering Platform
 
-TraceTest AI is an enterprise-grade QA lifecycle and test intelligence platform for mission-critical software teams. It turns business requirements into numbered clauses, grounded acceptance criteria, and executable Python test cases; validates every generated item deterministically; routes scripts through dual-control human review; executes approved tests in a secure sandbox against a real system under test; analyzes failures with AI root-cause diagnostics; manages defects through fix verification and retesting; and enforces full auditability and traceability across the entire testing lifecycle.
+TraceTest AI is an enterprise-grade AI Quality Engineering and Requirement Verification Platform specifically calibrated for **Dayforce HCM ecosystems**. It turns complex business requirements into atomic numbered clauses, grounded acceptance criteria, and executable Python test cases; validates every generated item deterministically; routes scripts through dual-control human review; executes approved tests in a secure Linux sandbox; analyzes failures with AI root-cause diagnostics; manages defects through fix verification and retesting; and enforces full auditability and bidirectional traceability across the entire HCM software lifecycle.
 
-The primary domain is Human Capital Management (payroll, time and attendance, leave, scheduling, and benefits). The workspace opens pre-populated with an enterprise reference system, **Northwind Workforce Solutions**, whose history was produced by executing tests against the bundled Reference HCM Engine (see *Synthetic Data Provenance*).
+### Dayforce Workspace Identity & Taxonomy
+The workspace opens with dedicated Dayforce Quality Engineering projects covering key HCM domains:
+- **DF-PAY**: Dayforce Payroll Verification (Gross-to-Net, FLSA overtime, shift differentials, statutory rounding)
+- **DF-WFM**: Dayforce Workforce Management (Punch pairing, meal break compliance, timesheet interval validation)
+- **DF-LVE**: Dayforce Absence & Leave (Accrual rules, annual carry-forward caps, termination payout calculations)
+- **DF-BEN**: Dayforce Benefits & Eligibility (Full-time employee eligibility, waiting periods, open enrollment)
 
-> TraceTest AI is an independent enterprise engineering system and is not affiliated with, endorsed by, or integrated with Dayforce or any commercial HCM vendor.
+> **Independent Prototype Notice:** TraceTest AI is an independent enterprise quality engineering system and is **not officially affiliated with, endorsed by, certified by, or integrated into Dayforce Inc. production environments**. It does not access proprietary Dayforce production systems or invent official APIs.
+
+---
+
+### Zero Fake Data Guarantee
+Unlike mock dashboards populated with synthetic placeholder data, the default user workspace contains **zero fake requirements, zero fake tests, zero fake executions, and zero fake defects**. The Dayforce project workspaces (`DF-PAY`, `DF-WFM`, `DF-LVE`, `DF-BEN`) provide clean, pre-configured module taxonomies and target environments ready for real user ingestion, analysis, and execution. Test fixtures are strictly quarantined to automated test harnesses.
+
+---
+
+### Local Development Seamless Entry
+For local development on localhost, the platform automatically authenticates as `Dayforce QA Engineer (Local Dev)` (`dev@dayforce-qa.local`), bypassing login screens while issuing real cryptographic session and CSRF tokens. Non-local and production environments enforce strict Argon2id session authentication, CSRF validation, and Role-Based Access Control (Admin, QA Engineer, Reviewer).
 
 ---
 
@@ -12,6 +27,9 @@ The primary domain is Human Capital Management (payroll, time and attendance, le
 
 | Document | Topic & Scope |
 |---|---|
+| [docs/DAYFORCE_DOMAIN.md](docs/DAYFORCE_DOMAIN.md) | Dayforce HCM domain specification: Payroll, WFM, Leave, and Benefits rules |
+| [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md) | Dayforce enterprise visual design system: tokens, typography, and components |
+| [docs/DESIGN_TOOLKIT_AUDIT.md](docs/DESIGN_TOOLKIT_AUDIT.md) | Audit of 14 Antigravity design skills, REA, Hopper, and MCP toolkit |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | C4-style architectural specifications, data flows, and subsystem components |
 | [docs/DECISIONS.md](docs/DECISIONS.md) | Architecture Decision Records (ADRs 001 through 010) |
 | [docs/API.md](docs/API.md) | Comprehensive REST API endpoint reference and authentication contracts |

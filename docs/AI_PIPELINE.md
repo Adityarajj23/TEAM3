@@ -117,3 +117,4 @@ TraceTest AI strictly separates generative suggestions from deterministic verifi
 - **Duplicate Prevention**: Generated test cases undergo pairwise similarity analysis (normalized Levenshtein and Jaccard token overlap). Duplicates exceeding a 0.85 similarity threshold are automatically pruned.
 - **Human Approval Barrier**: The LLM cannot mark a test case as approved or executable. Only an authorized human reviewer can transition a test to `approved`.
 - **Immutable Script Hash**: When a test is approved, a SHA-256 hash of the exact Python code is recorded. The execution engine refuses to run any test whose database hash does not match its current script.
+
