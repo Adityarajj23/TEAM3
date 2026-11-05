@@ -1047,6 +1047,20 @@
     "title": "SuitePatch",
     "type": "object"
    },
+   "TestConnectionIn": {
+    "properties": {
+     "provider": {
+      "pattern": "^(groq|gemini|ollama)$",
+      "title": "Provider",
+      "type": "string"
+     }
+    },
+    "required": [
+     "provider"
+    ],
+    "title": "TestConnectionIn",
+    "type": "object"
+   },
    "TestIn": {
     "properties": {
      "automation": {
@@ -3567,6 +3581,45 @@
     "summary": "Export Tests",
     "tags": [
      "integrations"
+    ]
+   }
+  },
+  "/api/v1/llm/test-connection": {
+   "post": {
+    "operationId": "test_connection_api_v1_llm_test_connection_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TestConnectionIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Test Connection",
+    "tags": [
+     "health"
     ]
    }
   },

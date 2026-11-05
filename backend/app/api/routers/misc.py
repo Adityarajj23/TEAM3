@@ -399,6 +399,73 @@ def config(p: Principal = Depends(current_principal), db: Session = Depends(get_
                         "max_output_bytes": s.exec_max_output_bytes}, "counts": counts}
 
 
+class TestConnectionIn(BaseModel):
+    provider: str = Field(pattern="^(groq|gemini|ollama)$")
+
+
+@router.post("/llm/test-connection", tags=["health"])
+def test_connection(body: TestConnectionIn, p: Principal = Depends(current_principal)):
+    import time
+    s = get_settings()
+    if s.llm_mode == "mock" or s.app_env == "test":
+        return {
+            "provider": body.provider,
+            "ok": True,
+            "latency_ms": 12,
+            "model": "fixture-v1",
+            "slots": [{"slot": 1, "masked": "test-key-mock", "state": "healthy", "requests": 1, "errors": 0}],
+            "error": None,
+        }
+
+    provider_obj = None
+    if body.provider == "groq":
+        from app.llm.providers import GroqProvider
+        provider_obj = GroqProvider(s)
+    elif body.provider == "gemini":
+        from app.llm.providers import GeminiProvider
+        provider_obj = GeminiProvider(s)
+    elif body.provider == "ollama":
+        from app.llm.providers import OllamaProvider
+        provider_obj = OllamaProvider(s)
+
+    if not provider_obj or not provider_obj.configured():
+        return {
+            "provider": body.provider,
+            "ok": False,
+            "latency_ms": 0,
+            "model": getattr(provider_obj, "model", "unknown") if provider_obj else "unknown",
+            "slots": provider_obj.slot_status() if hasattr(provider_obj, "slot_status") else [],
+            "error": f"Provider '{body.provider}' is not configured with any API keys.",
+        }
+
+    t0 = time.monotonic()
+    try:
+        provider_obj.complete_json(
+            system="You are an automated health check probe.",
+            user='Return JSON: {"status": "ok", "probe": "ping"}',
+            timeout=15.0,
+        )
+        latency = int((time.monotonic() - t0) * 1000)
+        return {
+            "provider": body.provider,
+            "ok": True,
+            "latency_ms": latency,
+            "model": provider_obj.model,
+            "slots": provider_obj.slot_status() if hasattr(provider_obj, "slot_status") else [],
+            "error": None,
+        }
+    except Exception as exc:
+        latency = int((time.monotonic() - t0) * 1000)
+        return {
+            "provider": body.provider,
+            "ok": False,
+            "latency_ms": latency,
+            "model": provider_obj.model,
+            "slots": provider_obj.slot_status() if hasattr(provider_obj, "slot_status") else [],
+            "error": str(exc),
+        }
+
+
 @router.post("/admin/backup", tags=["admin"])
 def backup(p: Principal = Depends(require("system.admin")), db: Session = Depends(get_db)):
     from app.db.maintenance import backup_database

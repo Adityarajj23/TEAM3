@@ -5,12 +5,12 @@ import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxi
 import { DataTable, FilterChips } from "@/components/DataTable";
 import { RunProgress } from "@/components/RunProgress";
 import { useToast } from "@/components/Toast";
-import { Badge, Button, Code, EmptyState, ErrorState, Field, Input, Key, KV, LoadingBlock, Notice, PageHeader, Panel, Select, Stat } from "@/components/ui";
+import { Badge, Button, Code, EmptyState, ErrorState, Input, Key, KV, LoadingBlock, Notice, PageHeader, Panel, Select, Stat } from "@/components/ui";
 import { useAuth } from "@/hooks/useAuth";
 import { useListState } from "@/hooks/useListState";
 import { useProjects } from "@/hooks/useProjects";
 import { api, downloadUrl } from "@/services/api";
-import type { AuditEntry, Page, Requirement, User } from "@/types/models";
+import type { AuditEntry, Page, Requirement } from "@/types/models";
 import { cn, fmtDate, label, pct } from "@/utils/format";
 
 // ---------------- traceability ----------------
@@ -279,54 +279,237 @@ export function IntegrationsPage() {
 export function SettingsPage() {
   const cfg = useQuery({ queryKey: ["config"], queryFn: () => api.get<any>("/config") });
   const health = useQuery({ queryKey: ["health"], queryFn: () => api.get<any>("/health") });
-  const { can, me } = useAuth();
-  const admin = can("user.admin");
-  const users = useQuery({ queryKey: ["users", "all"], enabled: admin, queryFn: () => api.get<Page<User>>("/users", { page_size: 200 }) });
   const toast = useToast();
   const qc = useQueryClient();
-  const [nu, setNu] = useState({ email: "", full_name: "", role: "qa_engineer" });
-  const create = useMutation({ mutationFn: () => api.post("/users", { email: nu.email, full_name: nu.full_name, roles: [nu.role] }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["users"] }); setNu({ email: "", full_name: "", role: "qa_engineer" }); toast.ok("User added without sign-in access"); }, onError: toast.error });
-  const upd = useMutation({ mutationFn: ({ id, body }: { id: number; body: any }) => api.patch(`/users/${id}`, body), onSuccess: () => qc.invalidateQueries({ queryKey: ["users"] }), onError: toast.error });
-  const backup = useMutation({ mutationFn: () => api.post<any>("/admin/backup"), onSuccess: (r) => toast.ok(`Backup written: ${r.backup}`), onError: toast.error });
+
+  const [testResults, setTestResults] = useState<Record<string, { ok: boolean; latency_ms: number; model: string; error?: string }>>({});
+  const [testingProvider, setTestingProvider] = useState<string | null>(null);
+
+  const testConn = async (provider: string) => {
+    setTestingProvider(provider);
+    try {
+      const res = await api.post<any>("/llm/test-connection", { provider });
+      setTestResults((prev) => ({ ...prev, [provider]: res }));
+      if (res.ok) {
+        toast.ok(`${label(provider)} verified (${res.latency_ms} ms)`);
+      } else {
+        toast.error(`${label(provider)} check failed: ${res.error ?? "Unknown error"}`);
+      }
+      qc.invalidateQueries({ queryKey: ["config"] });
+    } catch (e: any) {
+      toast.error(`Probe error: ${e.message}`);
+    } finally {
+      setTestingProvider(null);
+    }
+  };
+
+  const backup = useMutation({
+    mutationFn: () => api.post<any>("/admin/backup"),
+    onSuccess: (r) => toast.ok(`Backup written: ${r.backup}`),
+    onError: toast.error,
+  });
+
   const c = cfg.data;
+
   return (
     <>
-      <PageHeader title="Settings" subtitle="AI providers, execution sandbox, system health and user management." />
-      {!c ? <LoadingBlock rows={6} /> : <div className="grid gap-4 xl:grid-cols-2">
-        <Panel title="AI providers">
-          {!c.llm.any_configured && <div className="mb-3"><Notice tone="warn">No AI provider is configured. Set GROQ_API_KEY (primary) or GEMINI_API_KEY (backup)
-            in the server environment and restart. The rest of the application works without them.</Notice></div>}
-          {c.llm.mode === "mock" && <div className="mb-3"><Notice>Fixture mode is enabled (TRACETEST_LLM_MODE=mock). AI output comes from deterministic fixtures and is labelled as such.</Notice></div>}
-          <table className="w-full text-sm"><tbody>{c.llm.providers.map((p: any, i: number) => <tr key={p.name} className="border-t border-slate-100 first:border-0">
-            <td className="py-2 pr-3">{i === 0 ? "Primary" : i === 1 ? "Backup" : "Local"}</td><td className="py-2 pr-3 font-medium">{label(p.name)}</td>
-            <td className="py-2 pr-3 font-mono text-xs">{p.model}</td><td className="py-2 pr-3"><Badge value={p.configured ? "connected" : "not_configured"}>{p.configured ? "Configured" : "Not configured"}</Badge></td>
-            <td className="py-2 text-xs text-slate-500">circuit {p.circuit}</td></tr>)}</tbody></table>
-          <p className="mt-2 text-xs text-slate-500">Keys are never displayed. Fallback order: Groq, then Gemini, then an explicit failure state.</p>
-        </Panel>
-        <Panel title="System">
-          <KV items={[["Environment", c.environment], ["Database", health.data ? `${health.data.database.integrity}, ${health.data.database.journal_mode.toUpperCase()} journal, ${health.data.database.foreign_key_violations} FK violations` : "…"],
-            ["Data directory", c.data_dir ?? "Visible to administrators"], ["Sandbox timeout", `${c.sandbox.timeout_seconds} s`], ["Sandbox memory", `${c.sandbox.memory_mb} MB`],
-            ["Output limit", `${Math.round(c.sandbox.max_output_bytes / 1024)} KB`], ["Playwright target", c.playwright_target_url ?? "Not configured"],
-            ["Records", `${c.counts.requirements} requirements, ${c.counts.test_cases} tests, ${c.counts.executions} executions, ${c.counts.defects} defects`]]} />
-          {admin && <Button className="mt-3" onClick={() => backup.mutate()} loading={backup.isPending}>Back up database</Button>}
-        </Panel>
-        <Panel title="Your account"><KV items={[["Name", me?.user.full_name], ["Email", me?.user.email], ["Roles", me?.roles.map(label).join(", ")]]} /></Panel>
-        {admin && <Panel title="Users" className="xl:col-span-2" bodyClass="p-0">
-          <table className="w-full text-sm"><thead className="bg-slate-50 text-xs text-slate-600"><tr>{["Name", "Email", "Roles", "Sign-in", "Active"].map((h) => <th key={h} className="px-3 py-2 text-left font-medium">{h}</th>)}</tr></thead>
-            <tbody>{users.data?.items.map((u) => <tr key={u.id} className="border-t border-slate-100">
-              <td className="px-3 py-2 font-medium">{u.full_name}<p className="text-xs font-normal text-slate-500">{u.title}</p></td><td className="px-3 py-2">{u.email}</td>
-              <td className="px-3 py-2"><Select className="h-8 w-40" value={u.roles[0]} onChange={(e) => upd.mutate({ id: u.id, body: { roles: [e.target.value] } })} aria-label={`Role for ${u.full_name}`}>
-                {["admin", "qa_engineer", "reviewer"].map((r) => <option key={r} value={r}>{label(r)}</option>)}</Select></td>
-              <td className="px-3 py-2 text-xs">{u.can_login ? "Enabled" : "Directory only"}</td>
-              <td className="px-3 py-2"><input type="checkbox" checked={u.is_active} disabled={u.id === me?.user.id} aria-label={`Active ${u.full_name}`} onChange={(e) => upd.mutate({ id: u.id, body: { is_active: e.target.checked } })} /></td></tr>)}</tbody></table>
-          <div className="grid gap-2 border-t border-slate-200 p-3 sm:grid-cols-4">
-            <Field label="Full name" htmlFor="nn"><Input id="nn" value={nu.full_name} onChange={(e) => setNu({ ...nu, full_name: e.target.value })} /></Field>
-            <Field label="Email" htmlFor="ne"><Input id="ne" value={nu.email} onChange={(e) => setNu({ ...nu, email: e.target.value })} /></Field>
-            <Field label="Role" htmlFor="nr"><Select id="nr" value={nu.role} onChange={(e) => setNu({ ...nu, role: e.target.value })}>{["admin", "qa_engineer", "reviewer"].map((r) => <option key={r} value={r}>{label(r)}</option>)}</Select></Field>
-            <div className="flex items-end"><Button disabled={nu.full_name.length < 2 || !nu.email.includes("@")} loading={create.isPending} onClick={() => create.mutate()}>Add user</Button></div>
-          </div></Panel>}
-      </div>}
+      <PageHeader
+        title="Settings"
+        subtitle="AI provider configuration, multi-key rotation, execution engine sandbox, and workspace database health."
+      />
+      {!c ? (
+        <LoadingBlock rows={6} />
+      ) : (
+        <div className="grid gap-6 xl:grid-cols-2">
+          {/* AI Providers Panel */}
+          <Panel title="AI Providers & Key Rotation" className="space-y-4">
+            {!c.llm.any_configured && (
+              <Notice tone="warn">
+                No AI provider is configured. Configure GROQ_API_KEY (primary) or GEMINI_API_KEY (secondary) in
+                your local environment.
+              </Notice>
+            )}
+            {c.llm.mode === "mock" && (
+              <Notice>
+                Fixture mode is active (TRACETEST_LLM_MODE=mock). AI responses come from deterministic test fixtures.
+              </Notice>
+            )}
+
+            <div className="overflow-hidden rounded-md border border-slate-200 bg-white">
+              <table className="w-full text-xs">
+                <thead className="bg-slate-50 text-slate-500 font-medium border-b border-slate-200">
+                  <tr>
+                    <th className="py-2 px-3 text-left">Role</th>
+                    <th className="py-2 px-3 text-left">Provider</th>
+                    <th className="py-2 px-3 text-left">Model</th>
+                    <th className="py-2 px-3 text-left">Slots</th>
+                    <th className="py-2 px-3 text-left">Circuit</th>
+                    <th className="py-2 px-3 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {c.llm.providers.map((p: any, i: number) => {
+                    return (
+                      <tr key={p.name} className="hover:bg-slate-50/50">
+                        <td className="py-2.5 px-3 font-medium text-slate-500">
+                          {i === 0 ? "Primary" : i === 1 ? "Secondary" : "Local"}
+                        </td>
+                        <td className="py-2.5 px-3 font-semibold text-slate-900">{label(p.name)}</td>
+                        <td className="py-2.5 px-3 font-mono text-[11px] text-slate-600">{p.model}</td>
+                        <td className="py-2.5 px-3">
+                          <span className="inline-flex items-center gap-1">
+                            <Badge value={p.configured ? "connected" : "not_configured"}>
+                              {p.configured ? `${p.slots?.length ?? 1} Key${(p.slots?.length ?? 1) > 1 ? "s" : ""}` : "Unset"}
+                            </Badge>
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3 font-mono text-[11px] text-slate-500">{p.circuit}</td>
+                        <td className="py-2.5 px-3 text-right">
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            disabled={!p.configured || testingProvider === p.name}
+                            loading={testingProvider === p.name}
+                            onClick={() => testConn(p.name)}
+                          >
+                            Test Probe
+                          </Button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Test Probe Live Feedback */}
+            {Object.keys(testResults).length > 0 && (
+              <div className="space-y-2 pt-2">
+                <p className="text-xs font-semibold text-slate-700">Recent Connectivity Tests</p>
+                <div className="grid gap-2">
+                  {Object.entries(testResults).map(([pname, res]) => (
+                    <div
+                      key={pname}
+                      className={cn(
+                        "flex items-center justify-between rounded border px-3 py-2 text-xs",
+                        res.ok ? "border-emerald-200 bg-emerald-50/60 text-emerald-900" : "border-red-200 bg-red-50 text-red-900"
+                      )}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className={cn("h-2 w-2 rounded-full", res.ok ? "bg-emerald-600" : "bg-red-600")} />
+                        <span className="font-semibold">{label(pname)}:</span>
+                        <span>{res.ok ? `Verified probe successful (${res.model})` : res.error}</span>
+                      </div>
+                      <span className="font-mono text-2xs font-medium tabular-nums">{res.latency_ms} ms</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Slot Pools Table */}
+            {c.llm.providers.some((p: any) => p.slots?.length > 0) && (
+              <div className="space-y-2 pt-2">
+                <p className="text-xs font-semibold text-slate-700">Credential Slots & Health</p>
+                <div className="overflow-hidden rounded-md border border-slate-200 bg-slate-50/50">
+                  <table className="w-full text-2xs">
+                    <thead className="border-b border-slate-200 bg-slate-100/70 text-slate-500 font-medium">
+                      <tr>
+                        <th className="py-1.5 px-3 text-left">Provider</th>
+                        <th className="py-1.5 px-3 text-left">Slot</th>
+                        <th className="py-1.5 px-3 text-left">Masked Secret</th>
+                        <th className="py-1.5 px-3 text-left">State</th>
+                        <th className="py-1.5 px-3 text-right">Calls</th>
+                        <th className="py-1.5 px-3 text-right">Errors</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200/60">
+                      {c.llm.providers.flatMap((p: any) =>
+                        (p.slots || []).map((s: any) => (
+                          <tr key={`${p.name}-${s.slot}`}>
+                            <td className="py-1.5 px-3 font-medium text-slate-700">{label(p.name)}</td>
+                            <td className="py-1.5 px-3 font-mono">#{s.slot}</td>
+                            <td className="py-1.5 px-3 font-mono text-slate-600">{s.masked}</td>
+                            <td className="py-1.5 px-3">
+                              <span
+                                className={cn(
+                                  "inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium",
+                                  s.state === "healthy"
+                                    ? "bg-emerald-100 text-emerald-800"
+                                    : s.state === "rate_limited"
+                                    ? "bg-amber-100 text-amber-800"
+                                    : "bg-red-100 text-red-800"
+                                )}
+                              >
+                                {s.state}
+                              </span>
+                            </td>
+                            <td className="py-1.5 px-3 text-right font-mono tabular-nums">{s.requests}</td>
+                            <td className="py-1.5 px-3 text-right font-mono tabular-nums">{s.errors}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+            <p className="text-[11px] text-slate-500">
+              API secrets are stored in local environment configuration only. All generation workflows automatically
+              rotate across healthy credential slots with backoff cooldown.
+            </p>
+          </Panel>
+
+          {/* System & Execution Sandbox Panel */}
+          <div className="space-y-6">
+            <Panel title="Execution Sandbox & Environment">
+              <KV
+                items={[
+                  ["Execution environment", c.environment],
+                  ["Execution timeout", `${c.sandbox.timeout_seconds} seconds`],
+                  ["Execution memory limit", `${c.sandbox.memory_mb} MB`],
+                  ["Sandbox output limit", `${Math.round(c.sandbox.max_output_bytes / 1024)} KB`],
+                  ["Playwright target", c.playwright_target_url ?? "Chromium Local Harness"],
+                  [
+                    "Reference HCM Harness",
+                    "Deterministic payroll/WFM engine (v1.0 baseline & v1.1 candidate)",
+                  ],
+                ]}
+              />
+            </Panel>
+
+            <Panel title="Database Health & Workspace Storage">
+              <KV
+                items={[
+                  ["Database path", c.data_dir ? `${c.data_dir}/tracetest.db` : "var/tracetest.db"],
+                  [
+                    "Integrity verification",
+                    health.data ? `${health.data.database.integrity} (PRAGMA quick_check)` : "Checking...",
+                  ],
+                  [
+                    "Journal mode",
+                    health.data ? `${health.data.database.journal_mode.toUpperCase()} journal` : "WAL",
+                  ],
+                  [
+                    "Foreign key violations",
+                    health.data ? `${health.data.database.foreign_key_violations} violations` : "0 violations",
+                  ],
+                  [
+                    "Total workspace records",
+                    `${c.counts.requirements} requirements, ${c.counts.test_cases} tests, ${c.counts.executions} executions, ${c.counts.defects} defects`,
+                  ],
+                ]}
+              />
+              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+                <span className="text-xs text-slate-500">Create point-in-time database snapshot:</span>
+                <Button variant="secondary" size="sm" onClick={() => backup.mutate()} loading={backup.isPending}>
+                  Back up SQLite Database
+                </Button>
+              </div>
+            </Panel>
+          </div>
+        </div>
+      )}
     </>
   );
 }
