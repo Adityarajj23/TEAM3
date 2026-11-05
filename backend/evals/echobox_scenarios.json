@@ -1,0 +1,70 @@
+[
+  {
+    "key": "ECHO-GOLD-001",
+    "title": "Ephemeral Expiration and HTTP 410 Gone Status",
+    "requirement": "Discussion rooms expire exactly 86400 seconds (24 hours) after creation. When a user attempts to submit feedback to a room whose current timestamp exceeds expires_at, the system must return HTTP 410 Gone. Expired rooms must not accept any new messages.",
+    "expected_clause_count": 3,
+    "expected_ambiguity_terms": [],
+    "expected_covered_clauses": [1, 2, 3],
+    "expected_edge_cases": ["86400", "410", "24 hours"],
+    "forbidden_outputs": ["import subprocess", "import os"],
+    "failure_case": {
+      "result_status": "failed",
+      "message": "assert 200 == 410\n +  where 200 = res['statusCode']",
+      "stack_trace": "test_expiry.py:14: AssertionError",
+      "expected_category": "application_defect",
+      "environment": "EchoBox Local Test Harness"
+    }
+  },
+  {
+    "key": "ECHO-GOLD-002",
+    "title": "Owner Room Closure Authorization Boundary",
+    "requirement": "Only the verified owner whose sub matches the room owner_id may close a room. If a caller with a different sub invokes close_room, the system must return HTTP 403 Forbidden. Closed rooms must block subsequent feedback submissions.",
+    "expected_clause_count": 3,
+    "expected_ambiguity_terms": [],
+    "expected_covered_clauses": [1, 2, 3],
+    "expected_edge_cases": ["403", "owner_id", "sub"],
+    "forbidden_outputs": ["eval(", "exec("],
+    "failure_case": {
+      "result_status": "failed",
+      "message": "assert 200 == 403\n +  where 200 = res['statusCode']",
+      "stack_trace": "test_owner.py:22: AssertionError",
+      "expected_category": "application_defect",
+      "environment": "EchoBox Local Test Harness"
+    }
+  },
+  {
+    "key": "ECHO-GOLD-003",
+    "title": "Room Description Boundary and Truncation Inconsistency",
+    "requirement": "Room descriptions must not exceed 500 characters according to specifications. Inputs between 501 and 1000 characters must not be accepted silently. Oversized inputs must be rejected with HTTP 400 Bad Request.",
+    "expected_clause_count": 3,
+    "expected_ambiguity_terms": [],
+    "expected_covered_clauses": [1, 2, 3],
+    "expected_edge_cases": ["500", "1000", "400"],
+    "forbidden_outputs": [],
+    "failure_case": {
+      "result_status": "failed",
+      "message": "assert len(room_description) <= 500\n +  where 750 = len(res['room_description'])",
+      "stack_trace": "test_desc.py:18: AssertionError",
+      "expected_category": "application_defect",
+      "environment": "EchoBox Local Test Harness"
+    }
+  },
+  {
+    "key": "ECHO-GOLD-004",
+    "title": "Public Discovery Message Count Aggregation",
+    "requirement": "The discover_rooms handler lists active public rooms and reports message counts. Closed and expired rooms must be excluded. The system must not execute N+1 database queries per room.",
+    "expected_clause_count": 3,
+    "expected_ambiguity_terms": [],
+    "expected_covered_clauses": [1, 2],
+    "expected_edge_cases": ["message_count", "N+1"],
+    "forbidden_outputs": [],
+    "failure_case": {
+      "result_status": "error",
+      "message": "DynamoDB ProvisionedThroughputExceededException: The level of configured provisioned throughput for the table was exceeded",
+      "stack_trace": "botocore.exceptions.ClientError",
+      "expected_category": "environment_error",
+      "environment": "EchoBox AWS Live"
+    }
+  }
+]
