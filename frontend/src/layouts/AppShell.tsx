@@ -51,19 +51,19 @@ const NAV_SECTIONS: NavSection[] = [
 export function Wordmark({ compact, projectName }: { compact?: boolean; projectName?: string }) {
   const badgeLabel = projectName ? (projectName.length > 14 ? projectName.slice(0, 12) + "…" : projectName) : "Platform";
   return (
-    <div className="flex items-center gap-2.5">
-      <div className="flex h-7 w-7 items-center justify-center rounded bg-[#3067DB] text-white shadow-xs ring-1 ring-[#3067DB]/20">
+    <div className="flex items-center gap-2.5 min-w-0">
+      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded bg-[#3067DB] text-white shadow-xs ring-1 ring-[#3067DB]/20">
         <span className="font-mono text-xs font-bold tracking-tight">TT</span>
       </div>
       {!compact && (
-        <div className="flex flex-col leading-none">
-          <div className="flex items-center gap-1.5">
-            <span className="text-sm font-semibold tracking-tight text-slate-900">TraceTest<span className="font-normal text-slate-500"> AI</span></span>
-            <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-[#3067DB] border border-blue-100 truncate max-w-[110px]" title={projectName || "Platform"}>
+        <div className="flex min-w-0 flex-col leading-none">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="shrink-0 text-sm font-semibold tracking-tight text-slate-900">TraceTest<span className="font-normal text-slate-500"> AI</span></span>
+            <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-[#3067DB] border border-blue-100 truncate max-w-[100px]" title={projectName || "Platform"}>
               {badgeLabel}
             </span>
           </div>
-          <span className="text-[10px] text-slate-400 font-medium">Enterprise Quality Verification</span>
+          <span className="mt-1 text-[10px] text-slate-400 font-medium truncate">Enterprise Quality Verification</span>
         </div>
       )}
     </div>
@@ -75,7 +75,7 @@ function Breadcrumbs() {
   const parts = pathname.split("/").filter(Boolean);
   const allItems = NAV_SECTIONS.flatMap((s) => s.items);
   const nav = allItems.find((n) => n.to !== "/" && pathname.startsWith(n.to.split("?")[0]));
-  if (!parts.length) return <span className="text-xs font-medium text-slate-600">Enterprise Quality Command Center</span>;
+  if (!parts.length) return <span className="text-xs font-medium text-slate-600">Overview</span>;
   return (
     <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1.5 text-xs">
       <Link to={nav?.to ?? "/"} className="font-medium text-slate-600 hover:text-slate-900">{nav?.label ?? parts[0]}</Link>
@@ -296,10 +296,10 @@ export function AppShell() {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-5">
+        <header className="flex h-14 shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-6">
           <div className="flex items-center gap-2">
             <select aria-label="Project Workspace" value={projectId ?? ""} onChange={(e) => setProjectId(e.target.value ? Number(e.target.value) : null)}
-              className="h-9 max-w-[16rem] rounded border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-800 focus:border-[#3067DB] focus:outline-none focus:ring-1 focus:ring-[#3067DB]">
+              className="h-9 w-60 rounded border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-800 focus:border-[#3067DB] focus:outline-none focus:ring-1 focus:ring-[#3067DB] truncate">
               <option value="">All Project Workspaces</option>
               {projects.map((p) => <option key={p.id} value={p.id}>{p.key} — {p.name}</option>)}
             </select>
@@ -339,7 +339,7 @@ export function AppShell() {
           </div>
         </header>
 
-        <div className="flex h-9 shrink-0 items-center border-b border-slate-200 bg-slate-50/80 px-5">
+        <div className="flex h-9 shrink-0 items-center border-b border-slate-200 bg-slate-50/80 px-6">
           <Breadcrumbs />
         </div>
 

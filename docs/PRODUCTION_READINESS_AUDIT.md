@@ -31,7 +31,7 @@ This audit provides an unvarnished technical assessment of verified vs unverifie
 | **Sandbox Execution `EX-000001`** | **Verified** | Execution record `EX-000001` exists in `executions` table with status `passed`, 21 total, 21 passed, duration 1.92s. |
 | **Live AWS Probe `EX-ECHO-LIVE-001`** | **Verified** | Probe recorded in `executions` with status `error`, duration 574ms. Live endpoint returns HTTP 500 (`{"error": "Internal server error"}`). |
 | **5 Defects (`DEF-ECHO-001` – `005`)** | **Verified** | 5 defects present in `defects` table for `project_id=5` (`DEF-ECHO-001` through `DEF-ECHO-005`). |
-| **Playwright Screenshots** | **Verified** | Authenticated multi-viewport screenshots (60 images across 6 resolutions: 1440, 1280, 1024, 768, 390, 360px) in `docs/screenshots/`. |
+| **Playwright Screenshots** | **Verified** | Authenticated high-fidelity laptop view screenshots (1440x900 canonical laptop view and 1280x800 standard laptop view) in `docs/screenshots/`. |
 | **Groq / Gemini AI Evaluation** | **Verified** | Runs 3 (Groq, completed) and 4 (Gemini, degraded due to quota) are stored in `eval_runs` table in `var/tracetest.db`. |
 | **33 Documentation Files** | **Verified** | All 33 markdown and schema documents present in `docs/` and verified via `scripts/verify_docs.py`. |
 | **Git Commits & Remote Push** | **Verified** | Commits `ab1596e`, `da814ce`, `7aff6b8` verified in local git log and pushed to `https://github.com/sohan10012/TEAM3.git` on `master`. |

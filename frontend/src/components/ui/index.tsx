@@ -105,12 +105,12 @@ export function Panel({ title, actions, children, className, bodyClass }: { titl
 
 export function PageHeader({ title, subtitle, actions }: { title: ReactNode; subtitle?: ReactNode; actions?: ReactNode }) {
   return (
-    <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-      <div className="min-w-0">
+    <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="min-w-0 flex-1">
         <h1 className="text-xl font-semibold tracking-tight text-ink">{title}</h1>
-        {subtitle && <p className="mt-0.5 max-w-3xl text-sm text-slate-600">{subtitle}</p>}
+        {subtitle && <p className="mt-1 max-w-3xl text-xs text-slate-600 leading-relaxed">{subtitle}</p>}
       </div>
-      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+      {actions && <div className="flex shrink-0 flex-wrap items-center gap-2.5">{actions}</div>}
     </div>
   );
 }

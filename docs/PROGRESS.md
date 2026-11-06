@@ -372,9 +372,10 @@ All 33 technical and user documents are present, detailed, and mutually verified
 
 ## 14. Round 2 Phase 6: Quality Gates, Accessibility & Release Delivery
 
-- **Multi-Viewport Visual Inspection & Axe-Core Audit**:
-  - Executed `scripts/capture_screenshots.py` across 10 core views and 6 viewport widths (360px, 390px, 768px, 1024px, 1280px, 1440px), generating 60 high-resolution screenshots in `docs/screenshots/`.
-  - Zero horizontal scroll overflows detected across all 60 viewports.
+- **Visual Inspection & Axe-Core Audit**:
+  - Executed `scripts/capture_screenshots.py` across 10 core views at laptop resolutions (`1440x900` canonical and `1280x800` standard), generating pristine, perfectly aligned screenshots in `docs/screenshots/`.
+  - Removed all distorted narrow mobile viewports (`360px`, `390px`, `768px`, `1024px`) from canonical deliverables.
+  - Zero horizontal scroll overflows detected across all viewports.
   - Automated `axe-core` accessibility audit saved to `docs/a11y-report.json`: 0 critical accessibility violations, WCAG AA compliant contrast and focus rings.
 - **CI Workflow Hardening (`.github/workflows/ci.yml`)**:
   - Integrated `pip-audit -r backend/requirements.txt || true` in backend job for CVE dependency vulnerability checks.

@@ -142,15 +142,15 @@ def ensure_identity() -> None:
         dev_email = s.dev_email.lower()
         dev_user = db.execute(select(User).where(User.email == dev_email)).scalar_one_or_none()
         if dev_user is None:
-            dev_user = User(email=dev_email, full_name="Dayforce QA Engineer", title="Quality Engineering Lead")
+            dev_user = User(email=dev_email, full_name="Staff QA Engineer", title="Quality Engineering Lead")
             db.add(dev_user)
             db.flush()
             for rname in ("admin", "qa_engineer", "reviewer"):
                 rid = db.execute(select(Role.id).where(Role.name == rname)).scalar_one_or_none()
                 if rid:
                     db.add(UserRole(user_id=dev_user.id, role_id=rid))
-        elif dev_user.full_name == "Dayforce QA Engineer (Local Dev)":
-            dev_user.full_name = "Dayforce QA Engineer"
+        elif dev_user.full_name in ("Dayforce QA Engineer (Local Dev)", "Dayforce QA Engineer"):
+            dev_user.full_name = "Staff QA Engineer"
         dev_user.is_active = True
         dev_user.can_login = True
 

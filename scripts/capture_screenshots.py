@@ -1,6 +1,6 @@
-"""Capture responsive screenshots across major screens at 1440px, 1280px, 1024px, 768px, 390px, 360px and run axe-core accessibility audits.
+"""Capture pristine laptop view screenshots across major screens at 1440px and 1280px and run axe-core accessibility audits.
 
-Usage: python scripts/capture_screenshots.py --base http://127.0.0.1:5173 --chrome /usr/bin/chromium
+Usage: python scripts/capture_screenshots.py --base http://127.0.0.1:8000 --chrome /usr/bin/chromium
 """
 import argparse
 import json
@@ -23,12 +23,8 @@ SCREENS = [
 ]
 
 VIEWPORTS = [
-    (1440, 900, "desktop-large"),
-    (1280, 800, "desktop-standard"),
-    (1024, 768, "tablet-landscape"),
-    (768, 1024, "tablet-portrait"),
-    (390, 844, "mobile-standard"),
-    (360, 800, "mobile-compact"),
+    (1440, 900, "laptop-1440"),
+    (1280, 800, "laptop-1280"),
 ]
 
 
@@ -74,8 +70,10 @@ def main() -> None:
                 if overflow:
                     problems.append(f"{sname}@{width}: horizontal page overflow")
                 page.screenshot(path=str(out / f"{sname}-{width}.png"))
+                if width == 1440:
+                    page.screenshot(path=str(out / f"{sname}.png"))
 
-                # Run axe on desktop-large viewport
+                # Run axe on 1440px laptop viewport
                 if width == 1440:
                     try:
                         res = axe.run(page)

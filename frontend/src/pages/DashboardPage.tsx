@@ -30,7 +30,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { EmptyState, ErrorState, Input, LoadingBlock, PageHeader, Panel, Skeleton, Stat } from "@/components/ui";
+import { EmptyState, ErrorState, LoadingBlock, PageHeader, Panel, Skeleton, Stat } from "@/components/ui";
 import { useProjects } from "@/hooks/useProjects";
 import { ConnectRepoDialog } from "@/pages/ProjectsPage";
 import { api } from "@/services/api";
@@ -299,32 +299,33 @@ export default function DashboardPage() {
             : "Real-time verification metrics and quality intelligence for business requirements."
         }
         actions={
-          <div className="flex items-center gap-2 text-xs">
+          <div className="flex flex-wrap items-center gap-2.5 text-xs">
             <button
               onClick={() => setConnectOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded bg-[#3067DB] hover:bg-[#2554B8] px-3 py-1.5 text-xs font-medium text-white shadow-xs transition-colors cursor-pointer"
+              className="inline-flex h-9 items-center gap-1.5 rounded bg-[#3067DB] hover:bg-[#2554B8] px-3.5 text-xs font-medium text-white shadow-xs transition-colors cursor-pointer shrink-0"
             >
               <GitBranch className="h-3.5 w-3.5" />
               <span>Connect GitHub Repository</span>
             </button>
-            <label className="flex items-center gap-1.5 text-slate-600 font-medium ml-2">
-              From
-              <Input
+            <div className="flex h-9 items-center gap-2 rounded border border-slate-200 bg-white px-2.5 text-xs text-slate-600 shadow-2xs">
+              <span className="font-medium text-slate-500">From</span>
+              <input
                 type="date"
-                className="w-32 h-8 text-xs"
+                aria-label="Filter from date"
+                className="h-7 border-0 bg-transparent text-xs text-slate-800 focus:outline-none focus:ring-0"
                 value={range.from}
                 onChange={(e) => setRange({ ...range, from: e.target.value })}
               />
-            </label>
-            <label className="flex items-center gap-1.5 text-slate-600 font-medium">
-              To
-              <Input
+              <span className="text-slate-300">|</span>
+              <span className="font-medium text-slate-500">To</span>
+              <input
                 type="date"
-                className="w-32 h-8 text-xs"
+                aria-label="Filter to date"
+                className="h-7 border-0 bg-transparent text-xs text-slate-800 focus:outline-none focus:ring-0"
                 value={range.to}
                 onChange={(e) => setRange({ ...range, to: e.target.value })}
               />
-            </label>
+            </div>
           </div>
         }
       />
