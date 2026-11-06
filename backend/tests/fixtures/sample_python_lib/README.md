@@ -10,3 +10,4 @@ The library provides primality testing and greatest common divisor computation.
 
 ## Geometric Calculations
 Calculations for Euclidean distances, vector magnitudes, and hypotenuse lengths.
+

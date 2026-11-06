@@ -362,23 +362,23 @@ Initial validation of EchoBox used an in-memory simulation (`EchoBoxMemoryBacken
 
 ---
 
-## ADR-021: Generic Repository Ingestion, Inferred Requirement Confirmation Gate, and Diff-Aware Refresh
+## ADR-022: Multi-Run AI Evaluation Benchmarking with Statistical Spread and Transparent Quota Accounting
 
 ### Context
-TraceTest AI needed to demonstrate true generality across any non-EchoBox, non-HCM software repository, specifically small generic Python libraries, while preventing test generation for unconfirmed heuristic inferences. Furthermore, updating a repository via subsequent commits originally risked clobbering human reviews or failing to detect modifications in upstream files. Finally, the platform needed an explicit boundary between target stacks that can be executed in sandboxes versus those supported only via static analysis.
+Single-run AI evaluations can give misleading impressions of model reliability due to inference variance, token generation jitter, and transient cloud provider rate limiting (`HTTP 429 RESOURCE_EXHAUSTED`). In addition, presenting synthetic or fabricated evaluation scores when upstream credentials are rate-limited violates product integrity guidelines.
 
 ### Decision
-1. Implement generic repository ingestion (`ingest_generic_project`) in `app/services/repo_ingest/generic_derivation.py`. AST parsing extracts functions and classes, creating requirements with `origin="inferred_from_code"`, `status="needs_confirmation"`, exact `source_paths`, line ranges (`line_start`, `line_end`), and commit SHA.
-2. Require explicit human confirmation (`POST /api/v1/requirements/{id}/confirm`) before test generation can proceed, failing closed with HTTP 409 Conflict if test generation is requested while `status == "needs_confirmation"`.
-3. Support pure generic pytest generation and execution (`generate_tests_for_generic_requirement`) without any target-specific leakage (`echobox`, `cognito`, `ap-south-1`).
-4. Extend the execution sandbox to mount the target project's source tree into the isolated `/work` directory, enabling pure Python libraries to execute under `bwrap+rlimits` without requiring host filesystem access.
-5. Implement `diff_aware_refresh`, comparing commits via `git diff --name-only <old_sha> <new_sha>`. Only requirements grounded in modified files are updated with a new `RequirementVersion` (`version = current_version + 1`), while associated test cases transition to `status="needs_reapproval"`. Unchanged requirements retain their confirmed status.
-6. Publish `docs/SUPPORTED_TARGET_MATRIX.md` and enforce fail-closed execution refusal (`BadRequest: Static analysis only: no executable harness configured for target type 'static_only'`) when attempting execution on unsupported stacks.
+1. Enhance the evaluation harness (`app/services/run_ai_eval.py`) to execute a 3-iteration multi-run benchmark across all configured providers on golden scenarios.
+2. Compute and persist empirical statistical metrics: mean $\pm$ standard deviation for execution latency, requirement clause coverage, ungrounded rate, Pydantic schema validation rate, and ambiguity recall.
+3. Automatically inspect generated acceptance criteria and tests against source requirement clauses using `app/guardrails/quotes.py`, recording any ungrounded assertions or hallucinated quotes with exact scenario references.
+4. Enforce transparent rate-limiting and quota exhaustion accounting: when a provider returns `HTTP 429` or has unavailable credentials, the harness detects the condition, marks the run status as `degraded`, stops further wasteful calls to that provider, and reports completed runs accurately without fabricating missing data.
+5. Persist benchmark results to `docs/ai_eval_benchmark.json` and publish findings in `docs/eval-report.md`.
 
 ### Consequences
-- Reliable, repeatable verification of generic software repositories with zero domain bias or identifier leakage.
-- Strict governance preventing unreviewed code inferences from polluting the test suite.
-- Incremental, non-destructive synchronization across Git revision history.
+- Transparent, statistically grounded visibility into model performance and variance.
+- Robust protection against fabricated metrics or silent failures during upstream provider outages.
+- Clear separation between deterministic harness validation (mock) and live generative intelligence (Groq/Gemini).
+
 
 
 

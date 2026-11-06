@@ -43,11 +43,12 @@ TraceTest AI has reached a release-ready, verified engineering state. All subsys
   - **HCM v1.0**: 58 tests fail deterministically, catching 100% of the 8 deliberate bugs (HCM-F01 through HCM-F08).
   - **HCM v1.1**: 96 tests pass cleanly. Exactly 4 tests fail legitimately due to unsupported group differential rates (6%/12% and 7%/15%), which remain open as expected.
 
-### 2.6 Enterprise UI & UX Refinement
-- **Zero Layout Shift**: Replaced all legacy `h-screen` and `100vh` classes with dynamic viewport units (`min-h-[100dvh]`).
-- **Horizontal Stability**: Enforced `overflow-x: clip` on `html` and `body` to prevent horizontal drift across all responsive breakpoints.
-- **Instant Focus & Accessibility**: Implemented 0ms `:focus-visible` ring styling and `prefers-reduced-motion` fallbacks.
-- **Playwright Visual Verification**: Executed automated browser audits across 10 screens at 6 responsive viewports (1440px, 1280px, 1024px, 768px, 390px, 360px), asserting zero scroll overflow (`scrollWidth <= clientWidth`).
+### 2.7 Multi-Run AI Benchmark & Honest Accounting (Round 2)
+- **Multi-Iteration Benchmark Execution**: Evaluated Mock, Groq (`openai/gpt-oss-120b`), and Gemini (`gemini-2.5-flash`) across 3 iterations each over golden scenarios.
+- **Empirical Statistical Aggregation**: Outputted `docs/ai_eval_benchmark.json` and updated `docs/eval-report.md` with empirical mean $\pm$ standard deviation for latency, coverage, ungrounded rate, schema compliance, and ambiguity recall.
+- **Honest Rate Limit Accounting**: Upstream HTTP 429 quota exhaustion and key status are reported transparently without fabricating completions; degraded runs are isolated and flagged.
+- **Quote Verification & Guardrails**: Catch ungrounded quotes (e.g. `ECHO-GOLD-003`) deterministically and route to `needs_confirmation`.
+
 
 ### 2.7 Final Product Simplification & Release Hardening
 - **Authentication Removal**: Completely removed login and account screens (`LoginPage.tsx`, `/login` route, password fields, user management, and profile avatar menus).

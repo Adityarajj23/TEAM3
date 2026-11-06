@@ -33,3 +33,4 @@ def calculate_hypotenuse(a: float, b: float) -> float:
     if a < 0 or b < 0:
         raise ValueError("Triangle sides must be non-negative")
     return math.sqrt(a * a + b * b)
+

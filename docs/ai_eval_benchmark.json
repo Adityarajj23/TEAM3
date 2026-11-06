@@ -1,0 +1,95 @@
+{
+  "mock": {
+    "provider": "mock",
+    "model": "fixture-v1",
+    "iterations_completed": 3,
+    "iterations_requested": 3,
+    "quota_exhausted": false,
+    "note": "All iterations completed successfully.",
+    "latency_ms": {
+      "mean": 2.7,
+      "stddev": 0.4,
+      "min": 2.2,
+      "max": 3.0
+    },
+    "clause_coverage": {
+      "mean": 1.0,
+      "stddev": 0.0
+    },
+    "ungrounded_rate": {
+      "mean": 0.0,
+      "stddev": 0.0
+    },
+    "schema_pass_rate": {
+      "mean": 1.0,
+      "percentage": "100.0%"
+    },
+    "ambiguity_recall": {
+      "mean": 1.0,
+      "stddev": 0.0
+    },
+    "hallucinated_quotes": []
+  },
+  "groq": {
+    "provider": "groq",
+    "model": "openai/gpt-oss-120b",
+    "iterations_completed": 3,
+    "iterations_requested": 3,
+    "quota_exhausted": true,
+    "note": "Runs 4-3 skipped due to upstream HTTP 429 quota exhaustion.",
+    "latency_ms": {
+      "mean": 22318.8,
+      "stddev": 14113.4,
+      "min": 12339.2,
+      "max": 32298.5
+    },
+    "clause_coverage": {
+      "mean": 0.583,
+      "stddev": 0.52
+    },
+    "ungrounded_rate": {
+      "mean": 0.417,
+      "stddev": 0.52
+    },
+    "schema_pass_rate": {
+      "mean": 1.0,
+      "percentage": "100.0%"
+    },
+    "ambiguity_recall": {
+      "mean": 1.0,
+      "stddev": 0.0
+    },
+    "hallucinated_quotes": []
+  },
+  "gemini": {
+    "provider": "gemini",
+    "model": "gemini-2.5-flash",
+    "iterations_completed": 1,
+    "iterations_requested": 3,
+    "quota_exhausted": true,
+    "note": "Runs 2-3 skipped due to upstream HTTP 429 quota exhaustion.",
+    "latency_ms": {
+      "mean": 1651.8,
+      "stddev": 0.0,
+      "min": 1651.8,
+      "max": 1651.8
+    },
+    "clause_coverage": {
+      "mean": 0.0,
+      "stddev": 0.0
+    },
+    "ungrounded_rate": {
+      "mean": 1.0,
+      "stddev": 0.0
+    },
+    "schema_pass_rate": {
+      "mean": 0.0,
+      "percentage": "0.0%"
+    },
+    "ambiguity_recall": {
+      "mean": 0.0,
+      "stddev": 0.0
+    },
+    "hallucinated_quotes": []
+  }
+}

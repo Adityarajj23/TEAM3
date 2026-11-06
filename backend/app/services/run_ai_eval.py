@@ -1,7 +1,12 @@
-"""AI Evaluation Runner: Evaluates Groq vs Gemini on EchoBox Scenarios."""
+"""AI Evaluation Runner: Evaluates Groq vs Gemini on Golden HCM & EchoBox Scenarios.
+
+Supports multi-iteration benchmarking (3 iterations per provider) to report empirical mean,
+spread (stddev or min-max), exact hallucinated/ungrounded quotes, and transparent rate-limit handling.
+"""
 from __future__ import annotations
 
 import json
+import math
 import time
 from pathlib import Path
 from typing import Any
@@ -15,8 +20,24 @@ from app.services.evals import AGG, evaluate_scenario
 ECHBOX_SCENARIOS_PATH = Path(__file__).resolve().parents[2] / "evals" / "echobox_scenarios.json"
 
 
-def evaluate_provider_on_echobox(provider_name: str, model_name: str) -> dict[str, Any]:
-    print(f"--- Running AI Evaluation for {provider_name} ({model_name}) ---")
+def _mean(values: list[float]) -> float:
+    return sum(values) / len(values) if values else 0.0
+
+
+def _stddev(values: list[float]) -> float:
+    if len(values) <= 1:
+        return 0.0
+    m = _mean(values)
+    variance = sum((x - m) ** 2 for x in values) / (len(values) - 1)
+    return math.sqrt(variance)
+
+
+def evaluate_single_iteration(
+    provider_name: str,
+    model_name: str,
+    iteration: int = 1
+) -> dict[str, Any]:
+    """Runs a single evaluation iteration over scenarios."""
     scenarios = json.loads(ECHBOX_SCENARIOS_PATH.read_text())
     chain = router.explicit_chain(provider_name)
 
@@ -34,14 +55,43 @@ def evaluate_provider_on_echobox(provider_name: str, model_name: str) -> dict[st
         eval_run_id = eval_run.id
 
     results = []
+    ungrounded_quotes: list[dict[str, Any]] = []
+
     for sc in scenarios:
         t0 = time.time()
         try:
             r = evaluate_scenario(chain, sc)
-        except (router.AllProvidersFailed, router.NoProviderConfigured, Exception) as exc:
-            r = {"passed": False, "metrics": {"error": str(exc)[:500], "clause_coverage": 0.0, "ungrounded_rate": 1.0}}
-        dur_ms = int((time.time() - t0) * 1000)
-        r["metrics"]["latency_ms"] = dur_ms
+            dur_ms = int((time.time() - t0) * 1000)
+            r["metrics"]["latency_ms"] = dur_ms
+            # Collect quotes
+            for q in r["metrics"].get("ungrounded_quotes", []):
+                ungrounded_quotes.append({
+                    "scenario": sc["key"],
+                    "quote": q.get("quote"),
+                    "clauses": q.get("clauses"),
+                    "rationale": q.get("rationale"),
+                })
+        except Exception as exc:
+            dur_ms = int((time.time() - t0) * 1000)
+            err_str = str(exc)
+            is_rate_limited = (
+                "429" in err_str
+                or "quota" in err_str.lower()
+                or "resource_exhausted" in err_str.lower()
+                or "rate limited" in err_str.lower()
+                or "circuit open" in err_str.lower()
+            )
+            r = {
+                "passed": False,
+                "metrics": {
+                    "error": err_str[:500],
+                    "is_429": is_rate_limited,
+                    "clause_coverage": 0.0,
+                    "ungrounded_rate": 1.0,
+                    "latency_ms": dur_ms,
+                }
+            }
+
         results.append((sc["key"], r))
 
         with session_scope() as db:
@@ -50,19 +100,20 @@ def evaluate_provider_on_echobox(provider_name: str, model_name: str) -> dict[st
                 scenario_key=sc["key"],
                 passed=r["passed"],
                 metrics=r["metrics"],
-                notes=f"Evaluated on {provider_name} ({model_name}) in {dur_ms}ms"
+                notes=f"Iteration {iteration} on {provider_name} ({model_name}) in {dur_ms}ms"
             ))
-        print(f"  [{sc['key']}] passed={r['passed']} coverage={r['metrics'].get('clause_coverage')} ungrounded={r['metrics'].get('ungrounded_rate')} in {dur_ms}ms")
 
     agg: dict[str, Any] = {}
     for m in AGG:
         vals = [r["metrics"].get(m) for _, r in results if isinstance(r["metrics"].get(m), (int, float))]
-        agg[m] = round(sum(vals) / len(vals), 3) if vals else None
+        agg[m] = round(_mean(vals), 3) if vals else None
 
     fc = [r["metrics"].get("failure_classification_correct") for _, r in results if "error" not in r["metrics"]]
     agg["failure_classification_accuracy"] = round(sum(1 for x in fc if x) / len(fc), 3) if fc else 0.0
     agg["scenarios_passed"] = sum(1 for _, r in results if r["passed"])
-    agg["avg_latency_ms"] = round(sum(r["metrics"].get("latency_ms", 0) for _, r in results) / len(results), 1)
+    agg["avg_latency_ms"] = round(_mean([r["metrics"].get("latency_ms", 0) for _, r in results]), 1)
+    agg["ungrounded_quotes"] = ungrounded_quotes
+    agg["has_429"] = any(r["metrics"].get("is_429") for _, r in results)
 
     errored = any("error" in r["metrics"] for _, r in results)
     with session_scope() as db:
@@ -72,20 +123,124 @@ def evaluate_provider_on_echobox(provider_name: str, model_name: str) -> dict[st
             er.status = "degraded" if errored else "completed"
             er.finished_at = utcnow()
 
-    print(f"Evaluation finished for {provider_name}: {agg}\n")
-    return {"eval_run_id": eval_run_id, "provider": provider_name, "metrics": agg}
-
-
-def run_comparative_ai_evaluation():
-    settings = get_settings()
-    groq_res = evaluate_provider_on_echobox("groq", settings.groq_model)
-    gemini_res = evaluate_provider_on_echobox("gemini", settings.gemini_model)
     return {
-        "groq": groq_res,
-        "gemini": gemini_res
+        "eval_run_id": eval_run_id,
+        "iteration": iteration,
+        "provider": provider_name,
+        "metrics": agg,
+        "results": results,
     }
 
 
+def evaluate_provider_multi_run(
+    provider_name: str,
+    model_name: str,
+    iterations: int = 3
+) -> dict[str, Any]:
+    """Runs multiple evaluation iterations, aggregating mean ± stddev and capturing hallucinated quotes."""
+    print(f"\n==================================================")
+    print(f" Multi-Run AI Benchmark: {provider_name} ({model_name}) [{iterations} iterations]")
+    print(f"==================================================")
+
+    runs = []
+    quota_exhausted = False
+    exhaustion_note = ""
+
+    for i in range(1, iterations + 1):
+        if quota_exhausted:
+            break
+        print(f"--- Iteration {i}/{iterations} for {provider_name} ---")
+        run_data = evaluate_single_iteration(provider_name, model_name, iteration=i)
+        runs.append(run_data)
+
+        if run_data["metrics"].get("has_429"):
+            quota_exhausted = True
+            exhaustion_note = f"Runs {i+1}-{iterations} skipped due to upstream HTTP 429 quota exhaustion."
+            print(f"  [WARN] {exhaustion_note}")
+            break
+
+    # Aggregate metrics across completed runs
+    latencies = [r["metrics"]["avg_latency_ms"] for r in runs if r["metrics"].get("avg_latency_ms")]
+    coverages = [r["metrics"]["clause_coverage"] for r in runs if r["metrics"].get("clause_coverage") is not None]
+    ungrounded_rates = [r["metrics"]["ungrounded_rate"] for r in runs if r["metrics"].get("ungrounded_rate") is not None]
+    schema_passes = [r["metrics"]["schema_pass_rate"] for r in runs if r["metrics"].get("schema_pass_rate") is not None]
+    ambiguities = [r["metrics"]["ambiguity_recall"] for r in runs if r["metrics"].get("ambiguity_recall") is not None]
+
+    # Collect distinct ungrounded quotes across all iterations
+    all_quotes = []
+    seen = set()
+    for r in runs:
+        for q in r["metrics"].get("ungrounded_quotes", []):
+            k = (q.get("scenario"), q.get("quote"))
+            if k not in seen:
+                seen.add(k)
+                all_quotes.append(q)
+
+    summary = {
+        "provider": provider_name,
+        "model": model_name,
+        "iterations_completed": len(runs),
+        "iterations_requested": iterations,
+        "quota_exhausted": quota_exhausted,
+        "note": exhaustion_note if quota_exhausted else "All iterations completed successfully.",
+        "latency_ms": {
+            "mean": round(_mean(latencies), 1),
+            "stddev": round(_stddev(latencies), 1),
+            "min": min(latencies) if latencies else 0,
+            "max": max(latencies) if latencies else 0,
+        },
+        "clause_coverage": {
+            "mean": round(_mean(coverages), 3),
+            "stddev": round(_stddev(coverages), 3),
+        },
+        "ungrounded_rate": {
+            "mean": round(_mean(ungrounded_rates), 3),
+            "stddev": round(_stddev(ungrounded_rates), 3),
+        },
+        "schema_pass_rate": {
+            "mean": round(_mean(schema_passes), 3),
+            "percentage": f"{round(_mean(schema_passes) * 100, 1)}%",
+        },
+        "ambiguity_recall": {
+            "mean": round(_mean(ambiguities), 3),
+            "stddev": round(_stddev(ambiguities), 3),
+        },
+        "hallucinated_quotes": all_quotes,
+    }
+    print(f"Summary for {provider_name}: {summary['latency_ms']['mean']}ms ± {summary['latency_ms']['stddev']}ms | Coverage: {summary['clause_coverage']['mean']} | Ungrounded: {summary['ungrounded_rate']['mean']}\n")
+    return summary
+
+
+def run_comparative_benchmark(iterations: int = 3) -> dict[str, Any]:
+    """Runs multi-run comparative benchmark across Mock, Groq, and Gemini providers."""
+    settings = get_settings()
+    results = {}
+
+    # 1. Mock baseline (deterministic)
+    print("\n--- Evaluating Mock Baseline ---")
+    results["mock"] = evaluate_provider_multi_run("mock", "fixture-v1", iterations=iterations)
+
+    # 2. Groq (if configured)
+    if settings.groq_api_key:
+        print("\n--- Evaluating Groq Provider ---")
+        results["groq"] = evaluate_provider_multi_run("groq", settings.groq_model, iterations=iterations)
+    else:
+        results["groq"] = {"status": "skipped", "reason": "GROQ_API_KEY not configured"}
+
+    # 3. Gemini (if configured)
+    if settings.gemini_api_key:
+        print("\n--- Evaluating Gemini Provider ---")
+        results["gemini"] = evaluate_provider_multi_run("gemini", settings.gemini_model, iterations=iterations)
+    else:
+        results["gemini"] = {"status": "skipped", "reason": "GEMINI_API_KEY not configured"}
+
+    return results
+
+
 if __name__ == "__main__":
-    report = run_comparative_ai_evaluation()
-    print("Comparative AI Evaluation Complete:\n", json.dumps(report, indent=2))
+    benchmark = run_comparative_benchmark(iterations=3)
+    repo_root = Path(__file__).resolve().parents[3]
+    out_file = repo_root / "docs" / "ai_eval_benchmark.json"
+    out_file.parent.mkdir(parents=True, exist_ok=True)
+    out_file.write_text(json.dumps(benchmark, indent=2))
+    print(f"Benchmark results written to {out_file}")

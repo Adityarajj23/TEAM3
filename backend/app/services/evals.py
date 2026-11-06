@@ -48,10 +48,16 @@ def evaluate_scenario(chain, sc: dict) -> dict:
     tests = _call(chain, "test_cases", prompts.test_prompt(key, cl, [], untrusted, False), TestCaseBatch, stats)
     items = (acs.criteria if acs else []) + (tests.tests if tests else [])
     ungrounded = 0
+    ungrounded_quotes: list[dict[str, Any]] = []
     for it in items:
         if any(k not in texts for k in it.clause_keys) or not verify_quote(
                 it.source_quote, [texts[k] for k in it.clause_keys if k in texts]):
             ungrounded += 1
+            ungrounded_quotes.append({
+                "quote": it.source_quote,
+                "clauses": it.clause_keys,
+                "rationale": getattr(it, "rationale", ""),
+            })
     test_list = tests.tests if tests else []
     covered = {k for t in test_list for k in t.clause_keys if k in texts}
     expected_cov = [f"{key}.C{i}" for i in sc["expected_covered_clauses"]]
@@ -83,6 +89,7 @@ def evaluate_scenario(chain, sc: dict) -> dict:
         "deterministic_classification_correct": det_cat == fc["expected_category"],
         "edge_cases_found": f"{len(edge_hits)}/{len(sc.get('expected_edge_cases', []))}",
         "forbidden_outputs": forbidden, "unsafe_scripts": unsafe_scripts,
+        "ungrounded_quotes": ungrounded_quotes,
         "tests_generated": len(test_list), "criteria_generated": len(acs.criteria) if acs else 0,
     }
     passed = (not forbidden and metrics["schema_pass_rate"] == 1.0 and (metrics["ungrounded_rate"] or 0) <= 0.2

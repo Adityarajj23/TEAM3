@@ -42,3 +42,4 @@ All executable environments (`python_lib`, `real_code`, `reference_hcm`) execute
 - **Process Isolation**: Dedicated PID namespace (`--unshare-all`, `--die-with-parent`, `--new-session`), preventing child processes from signaling or inspecting host processes.
 - **Network Isolation**: Outbound network connections are strictly unshared and blocked (`--unshare-net`), preventing credential or data exfiltration.
 - **Resource Limits**: POSIX `rlimits` cap virtual memory (`RLIMIT_AS`), CPU time (`RLIMIT_CPU`), open file descriptors (`RLIMIT_NOFILE`), and output file size (`RLIMIT_FSIZE`).
+

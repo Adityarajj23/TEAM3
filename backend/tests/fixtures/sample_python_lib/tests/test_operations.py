@@ -30,3 +30,4 @@ def test_calculate_hypotenuse_valid():
 def test_calculate_hypotenuse_negative_raises():
     with pytest.raises(ValueError):
         calculate_hypotenuse(-1.0, 4.0)
+
