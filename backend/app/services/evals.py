@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 from app.db.base import session_scope, utcnow
 from app.db.models import EvalResult, EvalRun

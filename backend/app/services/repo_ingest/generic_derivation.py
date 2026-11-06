@@ -507,8 +507,8 @@ def diff_aware_refresh(
 
     if changed_files:
         reqs = list(db.execute(select(Requirement).where(Requirement.project_id == project.id)).scalars())
-        for r in reqs:
-            clauses = list(db.execute(select(Clause).where(Clause.requirement_id == r.id)).scalars())
+        for req in reqs:
+            clauses = list(db.execute(select(Clause).where(Clause.requirement_id == req.id)).scalars())
             # Check if any clause source_path matches one of changed_files
             is_affected = any(
                 any(cf == c.source_paths or (c.source_paths and cf in c.source_paths) for cf in changed_files)
@@ -516,27 +516,27 @@ def diff_aware_refresh(
             )
             if is_affected:
                 # Increment requirement version
-                new_version = r.current_version + 1
-                r.current_version = new_version
-                r.updated_at = utcnow()
-                r.source_commit_sha = current_sha
+                new_version = req.current_version + 1
+                req.current_version = new_version
+                req.updated_at = utcnow()
+                req.source_commit_sha = current_sha
 
                 ver = RequirementVersion(
-                    requirement_id=r.id,
+                    requirement_id=req.id,
                     version=new_version,
-                    title=r.title,
+                    title=req.title,
                     description=f"Diff-aware update for commit {current_sha[:8]} modifying {', '.join(changed_files)}.",
                     business_objective=f"Updated interface contract reflecting changes in {', '.join(changed_files)}.",
-                    content_hash=sha256_text(f"{r.title} {current_sha}"),
+                    content_hash=sha256_text(f"{req.title} {current_sha}"),
                     change_summary=f"Diff update: {', '.join(changed_files)} modified in {current_sha[:8]}",
                     author_id=actor_id
                 )
                 db.add(ver)
                 db.flush()
-                affected_reqs.append(r.key)
+                affected_reqs.append(req.key)
 
                 # Mark tests as needs_reapproval
-                tcs = list(db.execute(select(TestCase).where(TestCase.requirement_id == r.id)).scalars())
+                tcs = list(db.execute(select(TestCase).where(TestCase.requirement_id == req.id)).scalars())
                 for t in tcs:
                     t.status = "needs_reapproval"
                     t.needs_reapproval_reason = f"Upstream source file '{', '.join(changed_files)}' modified in commit {current_sha[:8]}"

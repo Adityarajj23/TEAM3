@@ -30,7 +30,8 @@ Unlike prototype dashboards that rely on mock assertions, simulated successes, o
 | **[docs/TEST_EVIDENCE_INDEX.md](docs/TEST_EVIDENCE_INDEX.md)** | Master index of empirical test runs (`EX-000001`, `EX-ECHO-LIVE-001`), AI benchmarks, and screenshots. |
 | **[docs/API_REFERENCE.md](docs/API_REFERENCE.md)** | REST API endpoint documentation covering all 77 OpenAPI paths. |
 | **[docs/DATABASE_SCHEMA.md](docs/DATABASE_SCHEMA.md)** | SQLite 3 WAL schema across 36 entities with foreign keys and tuning pragmas. |
-| **[docs/TESTING_GUIDE.md](docs/TESTING_GUIDE.md)** | Automated testing guide for backend pytest (102 tests + 1 xfail) and frontend Vitest (9 tests). |
+| **[docs/TESTING_GUIDE.md](docs/TESTING_GUIDE.md)** | Automated testing guide for backend pytest (121 tests + 1 xfail) and frontend Vitest (11 tests). |
+| **[docs/SUPPORTED_TARGET_MATRIX.md](docs/SUPPORTED_TARGET_MATRIX.md)** | Supported SUT targets, execution environments, isolation tiers, and failure boundaries. |
 | **[docs/demo-script.md](docs/demo-script.md)** | 10-minute minute-by-minute live presentation script with exact click paths. |
 | **[docs/slides-outline.md](docs/slides-outline.md)** | 5-slide executive and technical deck outline with speaker talking tracks. |
 | **[docs/eval-report.md](docs/eval-report.md)** | Reproducible AI benchmark evaluation report with exact execution commands. |

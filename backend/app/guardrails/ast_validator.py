@@ -53,7 +53,7 @@ def validate_script(source: str, allow_playwright: bool = False, env_kind: str =
 
     if env_kind == "simulation":
         allowed = BASE_ALLOWED | HCM_ALLOWED | SIMULATION_ALLOWED
-    elif env_kind in ("real_code", "platform_run", "default"):
+    elif env_kind in ("real_code", "platform_run", "default", "reference_hcm"):
         allowed = BASE_ALLOWED | HCM_ALLOWED | REAL_SUT_ALLOWED
     else:  # generic / python_lib
         allowed = BASE_ALLOWED

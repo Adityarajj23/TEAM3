@@ -138,9 +138,9 @@ def evaluate_provider_multi_run(
     iterations: int = 3
 ) -> dict[str, Any]:
     """Runs multiple evaluation iterations, aggregating mean ± stddev and capturing hallucinated quotes."""
-    print(f"\n==================================================")
+    print("\n==================================================")
     print(f" Multi-Run AI Benchmark: {provider_name} ({model_name}) [{iterations} iterations]")
-    print(f"==================================================")
+    print("==================================================")
 
     runs = []
     quota_exhausted = False
@@ -176,7 +176,11 @@ def evaluate_provider_multi_run(
                 seen.add(k)
                 all_quotes.append(q)
 
-    summary = {
+    lat_mean = round(_mean(latencies), 1)
+    lat_std = round(_stddev(latencies), 1)
+    cov_mean = round(_mean(coverages), 3)
+    ung_mean = round(_mean(ungrounded_rates), 3)
+    summary: dict[str, Any] = {
         "provider": provider_name,
         "model": model_name,
         "iterations_completed": len(runs),
@@ -184,17 +188,17 @@ def evaluate_provider_multi_run(
         "quota_exhausted": quota_exhausted,
         "note": exhaustion_note if quota_exhausted else "All iterations completed successfully.",
         "latency_ms": {
-            "mean": round(_mean(latencies), 1),
-            "stddev": round(_stddev(latencies), 1),
+            "mean": lat_mean,
+            "stddev": lat_std,
             "min": min(latencies) if latencies else 0,
             "max": max(latencies) if latencies else 0,
         },
         "clause_coverage": {
-            "mean": round(_mean(coverages), 3),
+            "mean": cov_mean,
             "stddev": round(_stddev(coverages), 3),
         },
         "ungrounded_rate": {
-            "mean": round(_mean(ungrounded_rates), 3),
+            "mean": ung_mean,
             "stddev": round(_stddev(ungrounded_rates), 3),
         },
         "schema_pass_rate": {
@@ -207,7 +211,7 @@ def evaluate_provider_multi_run(
         },
         "hallucinated_quotes": all_quotes,
     }
-    print(f"Summary for {provider_name}: {summary['latency_ms']['mean']}ms ± {summary['latency_ms']['stddev']}ms | Coverage: {summary['clause_coverage']['mean']} | Ungrounded: {summary['ungrounded_rate']['mean']}\n")
+    print(f"Summary for {provider_name}: {lat_mean}ms ± {lat_std}ms | Coverage: {cov_mean} | Ungrounded: {ung_mean}\n")
     return summary
 
 

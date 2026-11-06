@@ -11,7 +11,7 @@
         "impact": "serious",
         "description": "Ensures the contrast between foreground and background colors meets WCAG 2 AA contrast ratio thresholds",
         "help": "Elements must have sufficient color contrast",
-        "nodes_count": 10
+        "nodes_count": 11
       },
       {
         "id": "region",
@@ -41,7 +41,7 @@
         "impact": "serious",
         "description": "Ensures the contrast between foreground and background colors meets WCAG 2 AA contrast ratio thresholds",
         "help": "Elements must have sufficient color contrast",
-        "nodes_count": 4
+        "nodes_count": 5
       }
     ]
   },
@@ -57,7 +57,7 @@
         "impact": "serious",
         "description": "Ensures the contrast between foreground and background colors meets WCAG 2 AA contrast ratio thresholds",
         "help": "Elements must have sufficient color contrast",
-        "nodes_count": 4
+        "nodes_count": 5
       }
     ]
   },
@@ -73,7 +73,7 @@
         "impact": "serious",
         "description": "Ensures the contrast between foreground and background colors meets WCAG 2 AA contrast ratio thresholds",
         "help": "Elements must have sufficient color contrast",
-        "nodes_count": 4
+        "nodes_count": 5
       }
     ]
   },
@@ -89,7 +89,7 @@
         "impact": "serious",
         "description": "Ensures the contrast between foreground and background colors meets WCAG 2 AA contrast ratio thresholds",
         "help": "Elements must have sufficient color contrast",
-        "nodes_count": 4
+        "nodes_count": 5
       }
     ]
   },
@@ -105,7 +105,7 @@
         "impact": "serious",
         "description": "Ensures the contrast between foreground and background colors meets WCAG 2 AA contrast ratio thresholds",
         "help": "Elements must have sufficient color contrast",
-        "nodes_count": 4
+        "nodes_count": 5
       }
     ]
   },
@@ -121,7 +121,7 @@
         "impact": "serious",
         "description": "Ensures the contrast between foreground and background colors meets WCAG 2 AA contrast ratio thresholds",
         "help": "Elements must have sufficient color contrast",
-        "nodes_count": 5
+        "nodes_count": 6
       }
     ]
   },
@@ -137,7 +137,7 @@
         "impact": "serious",
         "description": "Ensures the contrast between foreground and background colors meets WCAG 2 AA contrast ratio thresholds",
         "help": "Elements must have sufficient color contrast",
-        "nodes_count": 4
+        "nodes_count": 5
       }
     ]
   },
@@ -153,7 +153,7 @@
         "impact": "serious",
         "description": "Ensures the contrast between foreground and background colors meets WCAG 2 AA contrast ratio thresholds",
         "help": "Elements must have sufficient color contrast",
-        "nodes_count": 4
+        "nodes_count": 5
       }
     ]
   },
@@ -169,7 +169,7 @@
         "impact": "serious",
         "description": "Ensures the contrast between foreground and background colors meets WCAG 2 AA contrast ratio thresholds",
         "help": "Elements must have sufficient color contrast",
-        "nodes_count": 10
+        "nodes_count": 11
       }
     ]
   }

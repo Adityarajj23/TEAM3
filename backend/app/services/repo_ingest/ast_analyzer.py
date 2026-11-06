@@ -24,7 +24,7 @@ class RepoAnalysisResult:
     modules: list[dict[str, str]]
     discrepancies: list[dict[str, Any]]
     actions_found: list[str]
-    endpoints_found: list[dict[str, str]]
+    endpoints_found: list[dict[str, Any]]
     frameworks: list[str]
     secret_findings: list[dict[str, Any]]
 
@@ -50,7 +50,7 @@ def analyze_repository(repo_path: Path) -> RepoAnalysisResult:
     file_count = 0
     languages: dict[str, int] = {}
     actions: list[str] = []
-    endpoints: list[dict[str, str]] = []
+    endpoints: list[dict[str, Any]] = []
     frameworks: list[str] = []
 
     # Detect EchoBox specifically

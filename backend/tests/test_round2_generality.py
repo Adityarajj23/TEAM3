@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import re
 import subprocess
-from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -24,7 +23,6 @@ from sqlalchemy import select
 from app.core.config import REPO_ROOT
 from app.db.base import session_scope
 from app.db.models import Clause, Environment, Execution, Project, Requirement, RequirementVersion, TestCase
-from app.main import app
 from app.services.executions import create_execution, perform_execution
 from app.services.repo_ingest import (
     diff_aware_refresh,

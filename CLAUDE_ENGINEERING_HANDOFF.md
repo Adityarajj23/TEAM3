@@ -50,18 +50,22 @@ To maintain complete technical integrity, this ledger honestly distinguishes bet
 | Subsystem | Status | Verification Evidence | Notes & Limitations |
 |---|---|---|---|
 | **Repository Ingestion** | **VERIFIED** | `test_multi_project_isolation.py` (5/5 passed) | Supports public/private repos, SSRF validation, git option injection defense, secret scanning, and AST endpoint extraction. |
+| **DNS Rebinding Defense** | **VERIFIED** | `test_round2_security.py` (9/9 passed) | Validates public IPs upfront with `socket.getaddrinfo`, pins IP via `-c http.curloptResolve=github.com:443:{ip}`. |
 | **Multi-Project Isolation** | **VERIFIED** | Database assertions across `ECHO` and `SMPL` | Projects have strictly partitioned requirements, clauses, ACs, tests, executions, defects, and environments in SQLite. |
 | **EchoBox Ingestion** | **VERIFIED** | 21 requirements, 62 clauses, 21 ACs, 21 tests | Ingested from commit `b3740a62ad414a141e82146adafb47c4850fd782` across 8 functional modules. |
-| **EchoBox In-Memory Harness** | **VERIFIED** | Run `EX-000001`: 21/21 passed in 1.92s; `test_echobox_harness_contract.py` (5/5 passed) | High-fidelity mock of DynamoDB Single Table API and 13 Lambda RPC dispatch actions. |
+| **Real SUT Primary Fidelity** | **VERIFIED** | `test_round2_execution.py` (4/4 passed) | `RealLambdaBackend` under `moto` DynamoDB promoted to default (`kind="real_code"`, `is_default=True`). |
+| **EchoBox In-Memory Harness** | **VERIFIED** | Run `EX-000001`: 21/21 passed in 1.92s; `test_echobox_harness_contract.py` (5/5 passed) | High-fidelity mock of DynamoDB Single Table API and 13 Lambda RPC dispatch actions (`kind="simulation"`). |
 | **EchoBox Live AWS Probing** | **VERIFIED BLOCKED** | Run `EX-ECHO-LIVE-001`: HTTP 500 in 574ms (Req ID: `[REQUEST-ID]`) | Documented honestly under `DEF-ECHO-005`. Blocked on missing AWS CloudWatch/IAM access to unseeded DynamoDB table. |
 | **EchoBox Security Audit** | **VERIFIED** | `test_echobox_jwt_security.py` (10/10 passed) | Discovered and cataloged `DEF-ECHO-006` (unverified cryptographic JWT signatures in `lambda_function.py`). |
+| **Generic Library Ingestion** | **VERIFIED** | `test_round2_generality.py` (6/6 passed) | AST analysis creates requirements with `origin="inferred_from_code"`, human confirmation gate, zero domain leakage. |
+| **Diff-Aware Refresh** | **VERIFIED** | `test_round2_generality.py` (6/6 passed) | Compares git revisions via `git diff`; increments version only on touched files; sets dependent tests to `needs_reapproval`. |
 | **Browser E2E Automation** | **VERIFIED** | Run `EX-E2E-BROWSER-001`: Playwright Chromium screenshots | Verified clean landing page and client-side room ID validation error states (`docs/screenshots/echobox/`). |
-| **AI Multi-Key Orchestration** | **VERIFIED** | Benchmark Run 3 (Groq 100% coverage, 61.1s) & Run 4 (Gemini cooldown) | 3 Groq keys (`GROQ_API_KEY*`) and 3 Gemini keys (`GEMINI_API_KEY*`) with round-robin, cooldown, and failover. |
+| **AI Multi-Key Orchestration** | **VERIFIED** | Multi-run benchmark (3 iterations) in `docs/ai_eval_benchmark.json` | 3 Groq keys (`GROQ_API_KEY*`) and 3 Gemini keys (`GEMINI_API_KEY*`) with round-robin, cooldown, and transparent 429 accounting. |
 | **Dual-Control Human Review** | **VERIFIED** | Vitest `pages.test.tsx` review test suite | Blocks authors from approving own tests; blocks approval of tests failing AST validation; records signed decisions. |
-| **Test Execution Sandbox** | **VERIFIED** | `test_sandbox.py` (4/4 passed) | Enforces POSIX `rlimits` (CPU 30s, AS 512MB, NOFILE 256, FSIZE 10MB), network namespace isolation, AST allowlist. |
+| **Bubblewrap Sandbox (`bwrap+rlimits`)** | **VERIFIED** | `test_round2_security.py` (9/9 passed) | Containerized Bubblewrap filesystem isolation masking `/home`, `/var`, `/tmp`, tmpfs `/work`, network namespace isolation. |
 | **Traceability Matrix** | **VERIFIED** | Vitest matrix component test | Bidirectional matrix mapping Requirements $\rightarrow$ Clauses $\rightarrow$ Tests $\rightarrow$ Results with export capabilities. |
-| **Defect Lifecycle** | **VERIFIED** | `test_review_and_defects.py` (5/5 passed) | Full state machine; transition to `verified` strictly requires a passing retest execution run. |
-| **Frontend Enterprise UI** | **VERIFIED** | Vitest suite (9/9 passed), `vite build` clean in 2.85s | Streamlined 3-group navigation, Project Source Banner, Execution Ledger, Google Sans typography, WCAG AA contrast. |
+| **Defect Lifecycle** | **VERIFIED** | `test_review_and_defects.py` (5/5 passed) | Full state machine with `evidence_type` classification; transition to `verified` strictly requires a passing retest execution run. |
+| **Frontend Enterprise UI** | **VERIFIED** | Vitest suite (11/11 passed), `vite build` clean in 3.18s | Neutral "TT" wordmark, active project chip, `Cmd+K` command palette, dynamic 6-stage journey, 60 screenshots, axe-core clean. |
 
 ---
 
@@ -601,13 +605,18 @@ cd frontend && npm run dev
 | **P0** | `SEC-02` | Untrusted Repo Code Execution on Host | Prohibited host execution (`npm run build`, `vite preview`). Replaced with safe static AST/manifest analysis. | `0a48b30` | **FIXED** |
 | **P0** | `SEC-03` | Unsafe Git Subprocess Ingestion & Credentials | Created `run_hardened_git` in `git_client.py` using `0700` transient `GIT_ASKPASS` script, restricted git flags (`core.hooksPath=/dev/null`, `protocol.file.allow=never`), and 250MB/10K limits. | `b1676bb` | **FIXED** |
 | **P0** | `SEC-04` | Fail-Open Sandbox & Weak Process Limits | Added `detect_isolation_level()`, Alembic migration `0002_security_and_provenance.py`, fail-closed execution (`require_network_isolation=True`), `RLIMIT_NPROC=64`, and AST dunder traversal blocks. | `cca51d0` | **FIXED** |
-| **P1** | `FID-01` | In-Memory Simulation vs SUT Code Execution | Built `RealLambdaBackend` in `echobox_harness/backend.py` executing real `lambda_function.py` against DynamoDB single table under `moto.mock_aws()`. Accurately exposes `DEF-ECHO-006`. | `b2c27cf` | **FIXED** |
-| **P1** | `DAT-01` | Defect Evidence Classification & Provenance | Added `evidence_type` and `source_commit_sha` to `defects` table; added `origin`, `source_commit_sha`, and `confidence` to `requirements` (inferred requirements default to `needs_confirmation`). | `b2c27cf` | **FIXED** |
+| **P0** | `SEC-06` | DNS Rebinding on Repo Ingestion | Pre-resolves IP via `socket.getaddrinfo`, asserts public IP address, and pins it for Git clone using `-c http.curloptResolve=github.com:443:{ip}`. | `b8cfe67` | **FIXED** |
+| **P0** | `SEC-07` | Host Filesystem Exposure in Sandbox | Implemented Bubblewrap filesystem sandbox (`bwrap+rlimits`) with tmpfs `/work`, masked `/home`, `/var`, `/tmp`, and read-only `/usr`, `/lib`, `/etc`. | `b8cfe67` | **FIXED** |
+| **P1** | `FID-01` | In-Memory Simulation vs SUT Code Execution | Built `RealLambdaBackend` in `echobox_harness/backend.py` executing real `lambda_function.py` against DynamoDB single table under `moto.mock_aws()`. Promoted to default primary environment (`kind="real_code"`). | `0585673` | **FIXED** |
+| **P1** | `DAT-01` | Defect Evidence Classification & Provenance | Added `evidence_type` (`execution_failure`, `static_analysis`, `manual`) and `source_commit_sha` to `defects` table; added `origin`, `source_commit_sha`, and `confidence` to `requirements`. | `0585673` | **FIXED** |
+| **P1** | `GEN-01` | Universal Generic Target Ingestion | Implemented `generic_derivation.py`, human confirmation gate `POST /requirements/{id}/confirm`, zero domain leakage test generation, and `docs/SUPPORTED_TARGET_MATRIX.md`. | `29314fb` | **FIXED** |
+| **P1** | `GEN-02` | Diff-Aware Ingestion & Invalidation | Compares commits via `git diff --name-only`; increments version and invalidates tests to `needs_reapproval` only for modified source files. | `29314fb` | **FIXED** |
 | **P1** | `SEC-05` | LLM Prompt Secret Redaction | Implemented pre-flight regex redaction in `app/llm/router.py` stripping AWS keys, SSH keys, GitHub tokens, and Groq/Gemini API keys before model submission. | `b2c27cf` | **FIXED** |
+| **P2** | `EVAL-01` | Multi-Run Empirical AI Benchmarks | Executed 3 iterations each across Mock, Groq, and Gemini; calculated mean $\pm$ stddev/spread; documented verbatim ungrounded quotes and transparent 429 quota handling. | `e81466b` | **FIXED** |
 | **P2** | `REL-01` | Monolithic `repo_ingest.py` Maintainability | Modularized 2,070-line file into 5 submodules (`url_validator.py`, `secret_scanner.py`, `ast_analyzer.py`, `echobox_derivation.py`, `generic_derivation.py`). | `5665d34` | **FIXED** |
 | **P2** | `REL-02` | SQLite WAL Concurrency & Orphaned Tasks | Configured SQLite `busy_timeout=10000`, verified with 30 concurrent writes across 8 threads. Added startup background task reconciliation (`interrupted`). | `5665d34` | **FIXED** |
 | **P2** | `REL-03` | Cross-Project Endpoint Data Isolation | Implemented strict project boundary checks across test cases, executions, and requirements; verified with cross-project access rejection test (HTTP 404). | `5665d34` | **FIXED** |
-| **UI** | `POL-01` | Project Journey & Isolation Visibility | Implemented 6-stage project journey header in `DashboardPage.tsx`, environment and sandbox isolation badges in `AppShell.tsx` and `/config` API, and defect evidence metadata. | `8bcd14f` | **FIXED** |
+| **UI** | `POL-01` | Enterprise Chrome & Dynamic 6-Stage Journey | Neutral "TT" wordmark, dynamic active project chip, `Cmd+K` command palette, data-driven journey counts, copyable commit SHA, and defect `evidence_type` filtering. | `d27767c` | **FIXED** |
 
 ---
 
