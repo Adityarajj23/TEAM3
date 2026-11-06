@@ -6,8 +6,8 @@ import type { Me } from "@/types/models";
 const DEFAULT_OPERATOR: Me = {
   user: {
     id: 1,
-    email: "operator@dayforce-qa.local",
-    full_name: "Dayforce QA Engineer",
+    email: "operator@tracetest.local",
+    full_name: "Lead QA Engineer",
     title: "Quality Engineering Lead",
     is_active: true,
     can_login: true,

@@ -281,9 +281,11 @@ export function AppShell() {
 
         {/* Platform Verification System Notice */}
         {!collapsed && (
-          <div className="mx-2 mb-2 p-2 bg-slate-50 rounded border border-slate-200 text-[10px] text-slate-500 leading-tight">
-            <span className="font-semibold text-slate-700 block">Production QE Platform</span>
-            Autonomous requirement verification, sandboxed test execution & defect lifecycle.
+          <div className="mx-2 mb-2 p-2 bg-slate-50 rounded border border-slate-200 text-[10px] text-slate-500 leading-tight flex items-center justify-between">
+            <span className="font-semibold text-slate-700">TraceTest AI</span>
+            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-800 border border-amber-200">
+              Local beta
+            </span>
           </div>
         )}
 

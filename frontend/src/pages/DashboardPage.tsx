@@ -58,8 +58,8 @@ const axis = { fontSize: 11, fill: "#64748B" };
 
 function ProjectOnboardingHub({ current }: { current?: any }) {
   const nav = useNavigate();
-  const isDayforce = !current || current?.key?.startsWith("DF");
-  const isEcho = current?.key === "ECHO";
+  const isDayforce = Boolean(current?.key?.startsWith("DF") || current?.name?.toLowerCase().includes("dayforce"));
+  const isEcho = Boolean(current?.key === "ECHO" || current?.name?.toLowerCase().includes("echobox"));
 
   return (
     <div className="space-y-6">
@@ -176,7 +176,7 @@ function ProjectOnboardingHub({ current }: { current?: any }) {
           <div className="flex items-center gap-2">
             <BookOpen className="h-4 w-4 text-[#3067DB]" />
             <h3 className="text-xs font-semibold text-slate-900">
-              {isEcho ? "EchoBox Target Architecture Components" : isDayforce ? "Dayforce Active Verification Domains" : "Target System Modules"}
+              {isEcho ? "EchoBox Target Architecture Components" : isDayforce ? "Dayforce Active Verification Domains" : (current ? `${current.name} Verification Modules` : "Target System Modules")}
             </h3>
           </div>
           <Link to="/projects" className="text-xs font-medium text-[#3067DB] hover:underline">
@@ -210,7 +210,7 @@ function ProjectOnboardingHub({ current }: { current?: any }) {
               </span>
             </div>
           </div>
-        ) : (
+        ) : isDayforce ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
             <div className="rounded border border-slate-200 p-3 bg-slate-50/50">
               <span className="font-semibold text-slate-800 block">DF-PAY: Payroll</span>
@@ -234,6 +234,33 @@ function ProjectOnboardingHub({ current }: { current?: any }) {
               <span className="font-semibold text-slate-800 block">DF-BEN: Benefits & Eligibility</span>
               <span className="text-[11px] text-slate-500 block mt-1">
                 Full-time hours threshold (≥30 hr), contractor exclusions, enrollment windows.
+              </span>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+            <div className="rounded border border-slate-200 p-3 bg-slate-50/50">
+              <span className="font-semibold text-slate-800 block">Requirements Analysis</span>
+              <span className="text-[11px] text-slate-500 block mt-1">
+                Source document parsing, clause extraction, ambiguity scoring, and rule discovery.
+              </span>
+            </div>
+            <div className="rounded border border-slate-200 p-3 bg-slate-50/50">
+              <span className="font-semibold text-slate-800 block">Test Synthesis</span>
+              <span className="text-[11px] text-slate-500 block mt-1">
+                Grounded acceptance criteria generation, automated test cases, and fixture synthesis.
+              </span>
+            </div>
+            <div className="rounded border border-slate-200 p-3 bg-slate-50/50">
+              <span className="font-semibold text-slate-800 block">Isolated Execution</span>
+              <span className="text-[11px] text-slate-500 block mt-1">
+                Sandboxed runtime execution, assertion verification, and execution trace recording.
+              </span>
+            </div>
+            <div className="rounded border border-slate-200 p-3 bg-slate-50/50">
+              <span className="font-semibold text-slate-800 block">Defect & Quality Audit</span>
+              <span className="text-[11px] text-slate-500 block mt-1">
+                Automated triage, immutable defect logging, regression tracking, and exportable reports.
               </span>
             </div>
           </div>

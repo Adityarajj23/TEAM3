@@ -7,9 +7,16 @@ import { TraceabilityPage } from "@/pages/InsightPages";
 import { TestDetailPage } from "@/pages/TestPages";
 import { ME, mockFetch, page, renderApp } from "./helpers";
 
+const store = new Map<string, string>();
 beforeAll(() => {
   globalThis.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} } as any;
   (globalThis as any).EventSource = undefined;
+  (globalThis as any).localStorage = {
+    getItem: (k: string) => store.get(k) ?? null,
+    setItem: (k: string, v: string) => store.set(k, String(v)),
+    removeItem: (k: string) => store.delete(k),
+    clear: () => store.clear(),
+  };
 });
 
 const PROJECTS = page([{ id: 1, key: "PAY", name: "Payroll Management", description: "", status: "active",
@@ -120,4 +127,39 @@ test("navigation shell exposes every product area", async () => {
     expect(within(nav).getByRole("link", { name: l })).toBeInTheDocument();
   }
   expect(await screen.findByText(/AI not configured/)).toBeInTheDocument();
+});
+
+test("non-Dayforce generic projects contain zero Dayforce residue in UI", async () => {
+  localStorage.setItem("tracetest.project", "2");
+  const genericProjects = page([{ id: 2, key: "SMPL", name: "Sample Python Library", description: "Generic library", status: "active",
+    stats: { requirements: 0, tests: 0, suites: 0, open_defects: 0, members: 1, coverage_pct: 0 } }]);
+  const dash = { kpis: { total_projects: 1, active_projects: 1, total_requirements: 0, analysed_requirements: 0, total_test_cases: 0,
+    approved_test_cases: 0, pending_reviews: 0, total_executions: 0, pass_rate: 0, failed_executions: 0, open_defects: 0,
+    critical_defects: 0, requirement_coverage: 0 }, charts: { execution_trend: [], result_distribution: [], coverage_by_project: [],
+    defect_severity: [], defect_resolution: [], test_status: [] }, recent_changes: [], recent_executions: [], projects: [] };
+
+  mockFetch([
+    [/auth\/me/, ME],
+    [/projects/, genericProjects],
+    [/analytics\/dashboard/, dash],
+    [/config/, { environment: "test", llm: { any_configured: false, providers: [] } }],
+    [/notifications/, []],
+  ]);
+
+  renderApp(
+    <Routes>
+      <Route element={<AppShell />}>
+        <Route index element={<DashboardPage />} />
+      </Route>
+    </Routes>
+  );
+
+  // AppShell renders Local beta, not Production QE Platform
+  expect(await screen.findByText("Local beta")).toBeInTheDocument();
+  expect(screen.queryByText(/Production QE Platform/i)).not.toBeInTheDocument();
+
+  // Dashboard with generic project has NO Dayforce text
+  expect(await screen.findByText(/Sample Python Library Verification Modules/i)).toBeInTheDocument();
+  const dayforceOccurrences = screen.queryAllByText(/Dayforce/i);
+  expect(dayforceOccurrences).toHaveLength(0);
 });
