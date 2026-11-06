@@ -233,7 +233,7 @@ def _parse_junit(xml_text: str, file_to_key: dict[str, str]) -> dict[str, TestOu
 def run_pytest(specs: list[ScriptSpec], hcm_version: str | None, runner: str = "pytest",
                target_url: str | None = None, timeout_s: int | None = None,
                artifact_dir: Path | None = None, skip_ast_validation: bool = False,
-               env_kind: str = "real_code") -> SandboxResult:
+               env_kind: str = "real_code", source_repo_dir: Path | None = None) -> SandboxResult:
     settings = get_settings()
     timeout_s = timeout_s or settings.exec_timeout_seconds
     allow_pw = runner == "playwright"
@@ -243,6 +243,16 @@ def run_pytest(specs: list[ScriptSpec], hcm_version: str | None, runner: str = "
     work = Path(tempfile.mkdtemp(prefix="tt-sandbox-"))
     try:
         if runner == "pytest":
+            if source_repo_dir and Path(source_repo_dir).exists():
+                p_src = Path(source_repo_dir)
+                for item in p_src.iterdir():
+                    if item.name in (".git", ".venv", "node_modules", "dist", "__pycache__", ".pytest_cache"):
+                        continue
+                    dest = work / item.name
+                    if item.is_dir():
+                        shutil.copytree(item, dest, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+                    elif item.is_file():
+                        shutil.copy2(item, dest)
             if (REPO_ROOT / "reference_hcm").exists():
                 shutil.copytree(REPO_ROOT / "reference_hcm", work / "reference_hcm",
                                 ignore=shutil.ignore_patterns("__pycache__"))

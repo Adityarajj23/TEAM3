@@ -19,6 +19,11 @@ SIMULATION_ALLOWED = {
 }
 ALLOWED_IMPORTS = BASE_ALLOWED | HCM_ALLOWED | REAL_SUT_ALLOWED | SIMULATION_ALLOWED
 PLAYWRIGHT_IMPORTS = {"playwright", "playwright.sync_api"}
+FORBIDDEN_MODULES = {
+    "os", "sys", "subprocess", "socket", "shutil", "urllib", "requests", "http",
+    "ftplib", "smtplib", "xmlrpc", "ctypes", "posix", "pty", "commands", "importlib",
+    "pickle", "shelve", "builtins", "signal", "multiprocessing", "threading",
+}
 FORBIDDEN_NAMES = {
     "open", "eval", "exec", "compile", "__import__", "__builtins__", "globals", "locals", "vars", "getattr", "setattr",
     "delattr", "input", "breakpoint", "exit", "quit", "memoryview", "help",
@@ -50,19 +55,30 @@ def validate_script(source: str, allow_playwright: bool = False, env_kind: str =
         allowed = BASE_ALLOWED | HCM_ALLOWED | SIMULATION_ALLOWED
     elif env_kind in ("real_code", "platform_run", "default"):
         allowed = BASE_ALLOWED | HCM_ALLOWED | REAL_SUT_ALLOWED
-    else:  # generic
+    else:  # generic / python_lib
         allowed = BASE_ALLOWED
     if allow_playwright:
         allowed |= PLAYWRIGHT_IMPORTS
+
+    def is_mod_allowed(mod_name: str) -> bool:
+        if env_kind == "python_lib":
+            # In python_lib, allow project modules and base modules while strictly banning system/network/exec modules
+            if any(mod_name == f or mod_name.startswith(f + ".") for f in FORBIDDEN_MODULES):
+                return False
+            if mod_name.startswith("_"):
+                return False
+            return True
+        return mod_name in allowed
+
     tests: list[str] = []
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for alias in node.names:
-                if alias.name not in allowed:
+                if not is_mod_allowed(alias.name):
                     errors.append(f"Import of '{alias.name}' is not allowed (line {node.lineno})")
         elif isinstance(node, ast.ImportFrom):
             mod = node.module or ""
-            if node.level or mod not in allowed:
+            if node.level or not is_mod_allowed(mod):
                 errors.append(f"Import from '{mod or '.'}' is not allowed (line {node.lineno})")
             for alias in node.names:
                 if alias.name == "*":

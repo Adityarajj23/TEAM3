@@ -360,5 +360,26 @@ Initial validation of EchoBox used an in-memory simulation (`EchoBoxMemoryBacken
 - Complete clarity in defect records distinguishing verified runtime test failures from static analysis notices.
 - Robust, leak-free test suite execution across sequential invocations.
 
+---
+
+## ADR-021: Generic Repository Ingestion, Inferred Requirement Confirmation Gate, and Diff-Aware Refresh
+
+### Context
+TraceTest AI needed to demonstrate true generality across any non-EchoBox, non-HCM software repository, specifically small generic Python libraries, while preventing test generation for unconfirmed heuristic inferences. Furthermore, updating a repository via subsequent commits originally risked clobbering human reviews or failing to detect modifications in upstream files. Finally, the platform needed an explicit boundary between target stacks that can be executed in sandboxes versus those supported only via static analysis.
+
+### Decision
+1. Implement generic repository ingestion (`ingest_generic_project`) in `app/services/repo_ingest/generic_derivation.py`. AST parsing extracts functions and classes, creating requirements with `origin="inferred_from_code"`, `status="needs_confirmation"`, exact `source_paths`, line ranges (`line_start`, `line_end`), and commit SHA.
+2. Require explicit human confirmation (`POST /api/v1/requirements/{id}/confirm`) before test generation can proceed, failing closed with HTTP 409 Conflict if test generation is requested while `status == "needs_confirmation"`.
+3. Support pure generic pytest generation and execution (`generate_tests_for_generic_requirement`) without any target-specific leakage (`echobox`, `cognito`, `ap-south-1`).
+4. Extend the execution sandbox to mount the target project's source tree into the isolated `/work` directory, enabling pure Python libraries to execute under `bwrap+rlimits` without requiring host filesystem access.
+5. Implement `diff_aware_refresh`, comparing commits via `git diff --name-only <old_sha> <new_sha>`. Only requirements grounded in modified files are updated with a new `RequirementVersion` (`version = current_version + 1`), while associated test cases transition to `status="needs_reapproval"`. Unchanged requirements retain their confirmed status.
+6. Publish `docs/SUPPORTED_TARGET_MATRIX.md` and enforce fail-closed execution refusal (`BadRequest: Static analysis only: no executable harness configured for target type 'static_only'`) when attempting execution on unsupported stacks.
+
+### Consequences
+- Reliable, repeatable verification of generic software repositories with zero domain bias or identifier leakage.
+- Strict governance preventing unreviewed code inferences from polluting the test suite.
+- Incremental, non-destructive synchronization across Git revision history.
+
+
 
 

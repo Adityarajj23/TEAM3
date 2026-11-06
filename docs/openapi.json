@@ -4845,6 +4845,46 @@
     ]
    }
   },
+  "/api/v1/requirements/{req_id}/confirm": {
+   "post": {
+    "operationId": "confirm_requirement_api_v1_requirements__req_id__confirm_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "req_id",
+      "required": true,
+      "schema": {
+       "title": "Req Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Confirm Requirement",
+    "tags": [
+     "requirements"
+    ]
+   }
+  },
   "/api/v1/requirements/{req_id}/diff": {
    "get": {
     "operationId": "diff_api_v1_requirements__req_id__diff_get",

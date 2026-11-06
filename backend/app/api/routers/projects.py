@@ -179,19 +179,16 @@ def refresh_repository(project_id: int, p: Principal = Depends(require("project.
     # Fetch latest commit snapshot securely without in-place overwrite
     new_sha, has_changed = fetch_and_snapshot(target_dir)
     analysis = analyze_repository(target_dir)
-    # Update integration config
-    cfg = dict(ig.config)
-    cfg["commit_sha"] = analysis.commit_sha
-    cfg["last_refresh_at"] = utcnow().isoformat() + "Z"
-    ig.config = cfg
-    db.commit()
+    from app.services.repo_ingest import diff_aware_refresh
+    diff_res = diff_aware_refresh(db, proj, target_dir, p.id)
 
     return {
         "ok": True,
         "project_id": proj.id,
         "latest_commit": analysis.commit_sha,
         "file_count": analysis.file_count,
-        "analysis": analysis.__dict__
+        "analysis": analysis.__dict__,
+        "diff_refresh": diff_res
     }
 
 

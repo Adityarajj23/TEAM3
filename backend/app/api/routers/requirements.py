@@ -23,7 +23,7 @@ from app.api.deps import (
 from app.core.config import get_settings
 from app.core.errors import BadRequest, Conflict, NotFound
 from app.core.security import sha256_text
-from app.db.base import get_db
+from app.db.base import get_db, utcnow
 from app.db.models import AcceptanceCriterion, Module, Requirement, RequirementVersion, Review, TestCase
 from app.domain.enums import PRIORITIES
 from app.graph import requirement_graph
@@ -259,9 +259,24 @@ def analyse(req_id: int, p: Principal = Depends(require("requirement.analyse")),
     return _start_workflow(db, p, r, "analyse")
 
 
+@router.post("/requirements/{req_id}/confirm", status_code=200)
+def confirm_requirement(req_id: int, p: Principal = Depends(require("requirement.write")), db: Session = Depends(get_db)):
+    r = check_entity_project(db, p, db.get(Requirement, req_id), "Requirement")
+    r.status = "approved"
+    r.updated_at = utcnow()
+    audit.record(db, p.id, "requirement.confirmed", "requirement", r.id, r.key, r.project_id)
+    db.commit()
+    return S.requirement(db, r)
+
+
 @router.post("/requirements/{req_id}/generate-tests", status_code=202)
 def generate_tests(req_id: int, p: Principal = Depends(require("requirement.analyse")), db: Session = Depends(get_db)):
     r = check_entity_project(db, p, db.get(Requirement, req_id), "Requirement")
+    if r.status == "needs_confirmation":
+        raise Conflict(
+            f"Requirement {r.key} requires human confirmation before test generation.",
+            {"requirement_id": r.id, "key": r.key, "status": r.status}
+        )
     return _start_workflow(db, p, r, "generate")
 
 

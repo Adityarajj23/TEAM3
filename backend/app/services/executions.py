@@ -49,6 +49,8 @@ def create_execution(db: Session, project: Project, env: Environment, tests: lis
                      commit_sha: str | None = None, branch: str | None = None) -> tuple[Execution, list[TestCase]]:
     if env.project_id != project.id:
         raise BadRequest("Environment does not belong to this project")
+    if env.kind in ("static_only", "unsupported"):
+        raise BadRequest(f"Static analysis only: no executable harness configured for target type '{env.kind}'")
     runnable = [t for t in tests if is_executable(t)[0]]
     if not runnable:
         raise Conflict("No approved, validated automated tests to execute",
@@ -128,9 +130,32 @@ def perform_execution(execution_id: int, test_ids: list[int], target_url: str | 
         hcm_version, runner, url = env.hcm_version, ex.runner, target_url or env.base_url
         started = ex.started_at
         key = ex.key
+        env_kind = getattr(env, "kind", "real_code")
+
+        # Detect source repo directory if project has GitHub integration
+        source_repo_dir = None
+        from app.core.config import REPO_ROOT
+        from app.db.models import Integration
+        ig = db.execute(select(Integration).where(Integration.project_id == ex.project_id, Integration.kind == "github")).scalar_one_or_none()
+        if ig and ig.config:
+            if ig.config.get("local_path") and Path(ig.config["local_path"]).exists():
+                source_repo_dir = Path(ig.config["local_path"])
+            else:
+                repo_full = ig.config.get("repo", "")
+                if "/" in repo_full:
+                    owner, repo_name = repo_full.split("/")
+                    candidates = [
+                        REPO_ROOT / "var" / "repos" / f"{owner}_{repo_name}",
+                        REPO_ROOT / "var" / "repos" / repo_name,
+                        REPO_ROOT / "backend" / "tests" / "fixtures" / repo_name,
+                    ]
+                    for c in candidates:
+                        if c.exists():
+                            source_repo_dir = c
+                            break
     art_dir = get_settings().artifacts_dir / "executions" / key / "browser" if runner == "playwright" else None
     try:
-        res = run_pytest(specs, hcm_version, runner=runner, target_url=url, artifact_dir=art_dir)
+        res = run_pytest(specs, hcm_version, runner=runner, target_url=url, artifact_dir=art_dir, env_kind=env_kind, source_repo_dir=source_repo_dir)
     except Exception as exc:  # sandbox infrastructure failure -> environment error, never "passed"
         with session_scope() as db:
             ex = db.get(Execution, execution_id)

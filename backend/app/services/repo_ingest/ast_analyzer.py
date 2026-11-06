@@ -183,9 +183,21 @@ def analyze_repository(repo_path: Path) -> RepoAnalysisResult:
                         tree = ast.parse(p.read_text(encoding="utf-8", errors="ignore"))
                         for node in tree.body:
                             if isinstance(node, ast.FunctionDef) and not node.name.startswith("_"):
-                                endpoints.append({"method": "DEF", "url": node.name, "target": str(p.relative_to(repo_path))})
+                                endpoints.append({
+                                    "method": "DEF",
+                                    "url": node.name,
+                                    "target": str(p.relative_to(repo_path)),
+                                    "line_start": node.lineno,
+                                    "line_end": getattr(node, "end_lineno", node.lineno),
+                                })
                             elif isinstance(node, ast.ClassDef) and not node.name.startswith("_"):
-                                endpoints.append({"method": "CLASS", "url": node.name, "target": str(p.relative_to(repo_path))})
+                                endpoints.append({
+                                    "method": "CLASS",
+                                    "url": node.name,
+                                    "target": str(p.relative_to(repo_path)),
+                                    "line_start": node.lineno,
+                                    "line_end": getattr(node, "end_lineno", node.lineno),
+                                })
                     except Exception:
                         pass
 

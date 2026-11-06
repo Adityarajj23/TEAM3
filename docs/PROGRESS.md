@@ -299,5 +299,32 @@ All 33 technical and user documents are present, detailed, and mutually verified
   - `backend/tests/test_round2_execution.py`: 4/4 passed.
   - `backend/tests/test_p1_fidelity_and_provenance.py`: 5 passed, 1 xfailed (DEF-ECHO-006 expected failure).
 
+---
+
+## 11. Round 2 Phase 3: Generality, Diff-Aware Ingestion & Supported Target Matrix
+
+- **Generic Repository Ingestion (`sample_python_lib`)**:
+  - Validated full platform lifecycle on a generic Python math library (`sample_math_lib`) containing zero EchoBox and zero HCM domain logic.
+  - AST analysis extracts Python functions and classes into requirements with `origin="inferred_from_code"`, `status="needs_confirmation"`, exact file paths, line ranges (`line_start`, `line_end`), and commit SHA.
+- **Human Confirmation Gate**:
+  - Automated test generation is strictly blocked with HTTP 409 Conflict when a requirement is in `status="needs_confirmation"`.
+  - Added `POST /api/v1/requirements/{id}/confirm` transition to `"approved"` with full audit logging.
+- **Zero-Domain Leakage Test Generation**:
+  - Test generator constructs pure generic pytest test cases with zero EchoBox, AWS, or Cognito identifiers.
+  - Executed inside Bubblewrap sandbox (`bwrap+rlimits`) with dynamic target module mounting into `/work`.
+  - Stored genuine execution outcomes, logs, and isolation levels.
+- **Supported Target Matrix & Fail-Closed Boundaries**:
+  - Published `docs/SUPPORTED_TARGET_MATRIX.md` detailing supported stacks (`python_lib`, `real_code`, `reference_hcm`, `web`, `simulation`) and unsupported stacks (`static_only`).
+  - Attempting execution on `static_only` environments immediately rejects with HTTP 400 `BadRequest: Static analysis only: no executable harness configured for target type 'static_only'`.
+- **Diff-Aware Refresh**:
+  - Implemented `diff_aware_refresh` comparing commits via `git diff --name-only <old_sha> <new_sha>`.
+  - Only requirements grounded in changed files receive a new `RequirementVersion` (`version = current_version + 1`).
+  - Unaffected requirements retain their confirmed status.
+  - Tests tied to modified requirements transition to `status="needs_reapproval"`.
+- **Verification Suites**:
+  - `backend/tests/test_round2_generality.py`: 6/6 passed.
+  - `docs/openapi.json`: 78 paths synchronized with `frontend/src/types/api.gen.ts`.
+
+
 
 
