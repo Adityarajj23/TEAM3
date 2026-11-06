@@ -39,6 +39,7 @@ This authoritative document details all environment variables recognized across 
 | `GROQ_MODEL` | Primary LLM model for Groq completions. | Optional | `openai/gpt-oss-120b` | `backend/app/core/config.py` | No |
 | `GROQ_FALLBACK_MODEL` | Secondary fallback model for Groq when primary model rate limits are exhausted. | Optional | `openai/gpt-oss-20b` | `backend/app/core/config.py` | No |
 | `GROQ_BASE_URL` | Base endpoint URL for Groq OpenAI-compatible API. | Optional | `https://api.groq.com/openai/v1` | `backend/app/core/config.py` | No |
+| `GROQ_CONCURRENCY_PER_SLOT` | Maximum concurrent in-flight requests per Groq API key slot. | Optional | `2` | `backend/app/core/config.py` | No |
 | `GEMINI_API_KEY` | Primary API credential for Google Gemini provider (Slot 1). | Optional | None | `backend/app/core/config.py` | **Yes** |
 | `GEMINI_API_KEY2` | Secondary API credential for Google Gemini provider (Slot 2). | Optional | None | `backend/app/core/config.py` | **Yes** |
 | `GEMINI_API_KEY3` | Tertiary API credential for Google Gemini provider (Slot 3). | Optional | None | `backend/app/core/config.py` | **Yes** |

@@ -451,20 +451,44 @@ Prior to modifying frontend code, every view across `docs/screenshots/` and live
 ### Full Quality Suite Execution Summary
 ```
 ============================= Final Verification Summary =============================
-Backend Pytest Suite:     128 passed, 1 xfailed in 23.19s (100% of non-flaky suites)
+Backend Pytest Suite:     144 passed, 1 skipped, 1 xfailed in 22.74s (100% of non-flaky suites)
 Backend Code Standards:   Ruff clean (0 errors), Mypy clean (0 errors in 70 files)
 Frontend TypeScript:      tsc -b --noEmit (0 errors across 156 source files)
 Frontend Linter:          ESLint clean (0 errors, 0 warnings)
 Frontend Vitest Suite:    12 passed in 2.47s
 Frontend Production Build: Vite production build succeeded in 3.76s
-OpenAPI Synchronization:  docs/openapi.json (78 paths) 100% matched to api.gen.ts
+OpenAPI Synchronization:  docs/openapi.json (80 paths) 100% matched to api.gen.ts
 Documentation Invariants: scripts/verify_docs.py (8/8 checks passed)
 Playwright E2E Suite:     3 passed in 7.82s (with automated axe-core audit)
-Visual Regression Suite:  60 screenshots captured, 0 horizontal scroll overflows
 Accessibility Audit:      axe-core audit clean (0 critical violations)
 Secret & Leak Scan:       0 leaked keys/tokens in repo, screenshots, or git history
 ======================================================================================
 ```
+
+---
+
+## 17. Final Build (v2): Task 1 Implementation (LLM Key Rotation & Resilience)
+
+- **Least-Recently-Used (LRU) SlotPool Rotation**:
+  - Implemented `SlotPool.get_candidate_slots()` sorting healthy slots by `last_used_at` ascending.
+  - Added format validation in `ManagedSlot` ensuring invalid shapes are disabled immediately.
+- **Concurrency Rate Pacing**:
+  - Built per-slot threading semaphore (`concurrency_limit` governed by `GROQ_CONCURRENCY_PER_SLOT`, default 2).
+  - Enforced structured throttle context manager (`slot.throttle()`).
+- **Comprehensive Error Handling**:
+  - `HTTP 429`: Differentiates per-minute burst cooldowns (15s or `Retry-After`) from daily quota exhaustion (capped at 300s).
+  - `HTTP 401/403`: Permanently invalidates failing slot until server restart without pool crash.
+  - `HTTP 5xx / Timeouts`: Exponential backoff with jitter and degraded slot state.
+- **Hierarchical Model Fallbacks**:
+  - Groq primary model (`openai/gpt-oss-120b`) falls back to `GROQ_FALLBACK_MODEL` (`openai/gpt-oss-20b`) on LRU slot before Gemini failover.
+  - Gemini primary model (`gemini-2.5-flash`) falls back to `GEMINI_FALLBACK_MODEL` (`gemini-2.5-flash-lite`).
+- **Observability & Schema Persistence**:
+  - Added `slot_id` to `Completion` and `ProviderTrace` table (Alembic migration `0003_trace_slot_id.py`).
+  - Added `GET /api/v1/system/provider-status` returning slot health, pool size, active models, error rates, and masked keys.
+- **Testing & Verification**:
+  - Created `backend/tests/test_key_rotation.py` with 9 tests covering LRU rotation, 429 burst vs quota, 401 invalidation, 500 backoff, mock transport fallback, concurrency limits, secret masking, provider status endpoint, and opt-in live test (`TRACETEST_LIVE_KEY_TEST=1`).
+  - Executed 3-run live evaluation benchmark via `backend/app/services/run_ai_eval.py` and recorded results in `docs/ai_eval_benchmark.json` and `docs/eval-report.md`.
+
 
 
 

@@ -485,6 +485,7 @@ class ProviderTrace(Base):
     run_id: Mapped[int | None] = mapped_column(ForeignKey("runs.id", ondelete="SET NULL"), index=True)
     provider: Mapped[str] = mapped_column(String(30))
     model: Mapped[str] = mapped_column(String(100))
+    slot_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     task: Mapped[str] = mapped_column(String(60))
     prompt_hash: Mapped[str] = mapped_column(String(64), index=True)
     status: Mapped[str] = mapped_column(String(20))  # ok | error | invalid_output | cached

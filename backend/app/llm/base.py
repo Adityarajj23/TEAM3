@@ -17,6 +17,7 @@ class Completion:
     model: str
     input_tokens: int | None = None
     output_tokens: int | None = None
+    slot_id: int | None = None
 
 
 class LLMProvider:

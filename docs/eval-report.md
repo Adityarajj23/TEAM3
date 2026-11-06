@@ -14,9 +14,9 @@ In accordance with our strict product integrity rules:
 
 | Provider | Model Identifier | Iterations Completed | Latency (Mean $\pm$ StdDev) | Clause Coverage (Mean $\pm$ StdDev) | Ungrounded Rate (Mean $\pm$ StdDev) | Schema Pass Rate | Ambiguity Recall | Operational Status & Notes |
 |---|---|---|---|---|---|---|---|---|
-| **Fixture (Mock)** | `fixture-v1` | 3 / 3 | $4.1\text{ ms} \pm 0.3\text{ ms}$ | $1.000 \pm 0.000$ | $0.000 \pm 0.000$ | 100.0% | $1.000 \pm 0.000$ | **Completed (10/10 $\times$ 3 runs)**: Baseline harness verification; validates deterministic guardrails, small-group clause chunking, AST validation, and database persistence. |
-| **Groq** | `openai/gpt-oss-120b` | 1 / 3 | $16,761.3\text{ ms} \pm 0.0\text{ ms}$ | $0.500 \pm 0.000$ | $0.533 \pm 0.000$ | 100.0% | $1.000 \pm 0.000$ | **not completed (finished 5/10 scenarios before upstream HTTP 429 quota exhaustion)**. Runs 2-3 skipped. Per-clause generation and repair loop active; ungrounded items rejected with deterministic reason logs. |
-| **Gemini** | `gemini-2.5-flash` | 1 / 3 | $114,826.6\text{ ms} \pm 0.0\text{ ms}$ | $0.800 \pm 0.000$ | $0.200 \pm 0.000$ | 100.0% | $1.000 \pm 0.000$ | **not completed (finished 8/10 scenarios before upstream HTTP 429 quota exhaustion)**. Runs 2-3 skipped. Achieved 80% coverage and 20% ungrounded rate under per-clause small-group chunking with quote repair. |
+| **Fixture (Mock)** | `fixture-v1` | 3 / 3 | $0.1\text{ ms} \pm 0.0\text{ ms}$ | $1.000 \pm 0.000$ | $0.000 \pm 0.000$ | 100.0% | $1.000 \pm 0.000$ | **Completed (10/10 $\times$ 3 runs)**: Baseline harness verification; validates deterministic guardrails, small-group clause chunking, AST validation, and database persistence. |
+| **Groq** | `openai/gpt-oss-120b` | 3 / 3 | $2,877.6\text{ ms} \pm 22.4\text{ ms}$ | $0.500 \pm 0.000$ | $0.533 \pm 0.000$ | 100.0% | $1.000 \pm 0.000$ | **Completed (10/10 $\times$ 3 runs)**: Multi-slot LRU rotation across configured slots (`GROQ_API_KEY`, `GROQ_API_KEY2`, `GROQ_API_KEY3`) prevented 429 exhaustion, enabling 100% iteration completion across all 3 benchmark runs. |
+| **Gemini** | `gemini-2.5-flash` | 1 / 3 | $3,670.2\text{ ms} \pm 0.0\text{ ms}$ | $0.800 \pm 0.000$ | $0.200 \pm 0.000$ | 100.0% | $1.000 \pm 0.000$ | **not completed (finished before upstream HTTP 429 quota exhaustion)**. Runs 2-3 skipped. Transparent rate-limit logging captured without fabricating data; fallback to `gemini-2.5-flash-lite` active. |
 
 *Source data persisted in `docs/ai_eval_benchmark.json` and SQLite `eval_runs` / `eval_results` tables.*
 

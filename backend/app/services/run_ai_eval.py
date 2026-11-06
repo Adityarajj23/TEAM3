@@ -235,18 +235,18 @@ def run_comparative_benchmark(iterations: int = 3) -> dict[str, Any]:
     results["mock"] = evaluate_provider_multi_run("mock", "fixture-v1", iterations=iterations)
 
     # 2. Groq (if configured)
-    if settings.groq_api_key:
+    if settings.groq_keys:
         print("\n--- Evaluating Groq Provider ---")
         results["groq"] = evaluate_provider_multi_run("groq", settings.groq_model, iterations=iterations)
     else:
-        results["groq"] = {"status": "skipped", "reason": "GROQ_API_KEY not configured"}
+        results["groq"] = {"status": "skipped", "reason": "No Groq API keys configured"}
 
     # 3. Gemini (if configured)
-    if settings.gemini_api_key:
+    if settings.gemini_keys:
         print("\n--- Evaluating Gemini Provider ---")
         results["gemini"] = evaluate_provider_multi_run("gemini", settings.gemini_model, iterations=iterations)
     else:
-        results["gemini"] = {"status": "skipped", "reason": "GEMINI_API_KEY not configured"}
+        results["gemini"] = {"status": "skipped", "reason": "No Gemini API keys configured"}
 
     return results
 

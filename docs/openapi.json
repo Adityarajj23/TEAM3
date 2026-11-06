@@ -5615,6 +5615,25 @@
     ]
    }
   },
+  "/api/v1/system/provider-status": {
+   "get": {
+    "operationId": "get_provider_status_api_v1_system_provider_status_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Get Provider Status",
+    "tags": [
+     "health"
+    ]
+   }
+  },
   "/api/v1/tests": {
    "get": {
     "operationId": "list_tests_api_v1_tests_get",

@@ -404,6 +404,11 @@ def config(p: Principal = Depends(current_principal), db: Session = Depends(get_
                         "max_output_bytes": s.exec_max_output_bytes, "isolation_level": iso}, "counts": counts}
 
 
+@router.get("/system/provider-status", tags=["health"])
+def get_provider_status(p: Principal = Depends(current_principal)):
+    return provider_status()
+
+
 class TestConnectionIn(BaseModel):
     provider: str = Field(pattern="^(groq|gemini|ollama)$")
 

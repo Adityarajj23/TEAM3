@@ -454,6 +454,31 @@ Static passwords committed or defaulted in `.env` files (e.g. `TRACETEST_ADMIN_P
 - Demonstrable, cryptographically enforced dual-control four-eyes approval workflow.
 - Secure exception handling preventing accidental credential reflection in logs or responses.
 
+---
+
+## ADR-027: Multi-Credential LRU Key Rotation, Paced Concurrency Control, and In-Provider Model Fallbacks
+
+### Context
+External generative model providers enforce strict rate limits (per-minute requests/tokens and daily quotas). Sequential rotation or simple round-robin can prematurely exhaust a single hot credential or repeatedly strike a slot that is under cooldown. Furthermore, when a primary model (e.g. `openai/gpt-oss-120b`) encounters an outage or model-specific quota limit, failing over directly across providers can degrade cost and throughput when a secondary model within the same provider (e.g. `openai/gpt-oss-20b`) is available.
+
+### Decision
+1. In `app.llm.providers.SlotPool`, implement thread-safe Least-Recently-Used (LRU) candidate selection among healthy slots, tracking `last_used_at` timestamps.
+2. Implement rate pacing using per-slot semaphores (`concurrency_limit` governed by `GROQ_CONCURRENCY_PER_SLOT`, default 2).
+3. Handle errors systematically:
+   - `HTTP 429`: Parse `Retry-After` and `x-ratelimit-reset` headers. Differentiate per-minute burst cooldowns (15s or `Retry-After`) from daily quota limits (cooldown capped at 300s). Mark slot `rate_limited` and rotate immediately.
+   - `HTTP 401 / 403`: Permanently mark slot `invalid` until server restart without crashing the request pool.
+   - `HTTP 5xx / Timeouts`: Mark slot `degraded` with exponential backoff (2, 4, 8s with 10% jitter).
+4. Implement hierarchical fallback models before cross-provider failover:
+   - Groq: Attempt candidate slots on `GROQ_MODEL` (`openai/gpt-oss-120b`); on exhaustion, attempt `GROQ_FALLBACK_MODEL` (`openai/gpt-oss-20b`) before failing over to Gemini.
+   - Gemini: Attempt candidate slots on `GEMINI_MODEL` (`gemini-2.5-flash`); on exhaustion, attempt `GEMINI_FALLBACK_MODEL` (`gemini-2.5-flash-lite`) before raising `ProviderError`.
+5. Expose `GET /api/v1/system/provider-status` returning pool size, active models, slot health, and request/error metrics with masked keys. Persist `slot_id` in `ProviderTrace` table.
+
+### Consequences
+- Resilient burst test generation without unhandled 429 drops.
+- Multi-tier fallback hierarchy maximizes completion rates prior to provider failover.
+- Complete operational observability with zero secret exposure.
+
+
 
 
 

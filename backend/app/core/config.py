@@ -12,7 +12,13 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=str(REPO_ROOT / ".env"), env_prefix="", extra="ignore", hide_input_in_errors=True)
+    model_config = SettingsConfigDict(
+        env_file=str(REPO_ROOT / ".env"),
+        env_prefix="",
+        extra="ignore",
+        hide_input_in_errors=True,
+        populate_by_name=True,
+    )
 
     app_env: str = Field("development", alias="TRACETEST_ENV")
     data_dir: Path = Field(REPO_ROOT / "var", alias="TRACETEST_DATA_DIR")
@@ -45,6 +51,7 @@ class Settings(BaseSettings):
     groq_model: str = Field("openai/gpt-oss-120b", alias="GROQ_MODEL")
     groq_fallback_model: str = Field("openai/gpt-oss-20b", alias="GROQ_FALLBACK_MODEL")
     groq_base_url: str = Field("https://api.groq.com/openai/v1", alias="GROQ_BASE_URL")
+    groq_concurrency_per_slot: int = Field(2, alias="GROQ_CONCURRENCY_PER_SLOT")
 
     gemini_api_key: str | None = Field(None, alias="GEMINI_API_KEY")
     gemini_api_key2: str | None = Field(None, alias="GEMINI_API_KEY2")

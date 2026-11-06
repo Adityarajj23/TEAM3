@@ -120,10 +120,19 @@ def provider_status() -> dict:
     s = get_settings()
     out: dict[str, Any] = {"mode": s.llm_mode, "providers": []}
     for p in (GroqProvider(s), GeminiProvider(s), OllamaProvider(s)):
-        p_info: dict[str, Any] = {"name": p.name, "model": p.model, "configured": p.configured(),
-                                  "circuit": BREAKER.state(p.name)}
+        p_info: dict[str, Any] = {
+            "name": p.name,
+            "model": getattr(p, "model", ""),
+            "primary_model": getattr(p, "primary_model", getattr(p, "model", "")),
+            "fallback_model": getattr(p, "fallback_model", None),
+            "configured": p.configured(),
+            "circuit": BREAKER.state(p.name),
+        }
         if hasattr(p, "slot_status"):
-            p_info["slots"] = p.slot_status()
+            slots = p.slot_status()
+            p_info["slots"] = slots
+            p_info["pool_size"] = len(slots)
+            p_info["healthy_slots"] = sum(1 for s in slots if s.get("state") == "healthy")
         out["providers"].append(p_info)
     out["any_configured"] = s.llm_mode == "mock" or any(p["configured"] for p in out["providers"])
     return out
@@ -144,7 +153,9 @@ def _trace(run_id, provider, model, task, phash, status, latency, attempt, comp:
     from app.db.base import session_scope
     from app.db.models import ProviderTrace
     with session_scope() as db:
-        db.add(ProviderTrace(run_id=run_id, provider=provider, model=model, task=task, prompt_hash=phash,
+        db.add(ProviderTrace(run_id=run_id, provider=provider, model=model,
+                             slot_id=comp.slot_id if comp else None,
+                             task=task, prompt_hash=phash,
                              status=status, latency_ms=latency, attempt=attempt,
                              input_tokens=comp.input_tokens if comp else None,
                              output_tokens=comp.output_tokens if comp else None,
