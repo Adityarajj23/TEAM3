@@ -87,8 +87,12 @@ def create_project(body: ProjectIn, p: Principal = Depends(require("project.admi
     db.add(proj)
     db.flush()
     db.add(ProjectMember(project_id=proj.id, user_id=p.id, project_role="owner"))
-    db.add(Environment(project_id=proj.id, name="QA — Reference HCM 1.0", hcm_version="1.0", is_default=True))
-    db.add(Environment(project_id=proj.id, name="Fix candidate — Reference HCM 1.1", hcm_version="1.1"))
+    # Only Dayforce HCM projects get Reference HCM environments
+    if key.startswith("DF") or "dayforce" in body.name.lower():
+        db.add(Environment(project_id=proj.id, name="QA — Reference HCM 1.0", kind="reference_hcm", hcm_version="1.0", is_default=True))
+        db.add(Environment(project_id=proj.id, name="Fix candidate — Reference HCM 1.1", kind="reference_hcm", hcm_version="1.1"))
+    else:
+        db.add(Environment(project_id=proj.id, name=f"{body.name} Local Sandbox", kind="simulation", is_default=True))
     audit.record(db, p.id, "project.created", "project", proj.id, proj.key, proj.id)
     db.commit()
     return _with_stats(db, proj)
@@ -210,7 +214,8 @@ def import_repository(body: RepoImportIn, p: Principal = Depends(require("projec
     return {
         "ok": True,
         "project": _with_stats(db, proj),
-        "analysis": analysis.__dict__
+        "analysis": analysis.__dict__,
+        "import_summary": getattr(proj, "_import_summary", None)
     }
 
 
@@ -350,7 +355,7 @@ def add_module(project_id: int, body: ModuleIn, p: Principal = Depends(require("
 
 class EnvIn(BaseModel):
     name: str = Field(min_length=2, max_length=80)
-    kind: str = Field("reference_hcm", pattern="^(reference_hcm|web|real_code|python_lib|simulation|static_only)$")
+    kind: str = Field("simulation", pattern="^(reference_hcm|web|real_code|python_lib|simulation|static_only)$")
     hcm_version: str | None = Field(None, pattern=r"^1\.[01]$")
     base_url: str | None = Field(None, max_length=500)
 

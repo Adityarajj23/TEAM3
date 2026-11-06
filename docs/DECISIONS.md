@@ -597,3 +597,28 @@ TraceTest AI requires enterprise AI resilience with Google Gemini as the primary
 
 
 
+
+
+---
+
+## ADR-033: Real Repository Ingestion and Architectural Multi-Project Isolation
+
+### Status
+Accepted
+
+### Context
+TraceTest AI previously suffered from ingestion inaccuracies where imported repositories were assigned generic mobile platform build wrapper modules (`ANDROID`, `IOS`, `LINUX`, `MACOS`), spurious documentation requirements (such as table of contents, architecture diagrams, and equation headers), and hardcoded `Reference HCM` enterprise environments. Multi-project data isolation was also compromised by default seeding.
+
+### Decision
+1. In `backend/app/services/repo_ingest/ast_analyzer.py`, implement architecture-aware module discovery for dual-tier applications (`backend/` API routes, agents, models, services; `lib/` screens, services, providers, models). Ignore platform wrapper folders (`android`, `ios`, `linux`, `macos`, `windows`, `web`).
+2. Implement Python AST prefix resolution for `APIRouter(prefix=...)` with exact node line ranges (`lineno`, `end_lineno`), docstring extraction, and HTTP method parsing.
+3. In `backend/app/services/repo_ingest/generic_derivation.py`, filter out documentation meta-headers (`BANNED_DOC_HEADERS`) and parse structured feature comparison tables and bullet points. Segregate requirements into `documented` (0.95 confidence, approved), `inferred_from_code` (0.85 confidence, needs_confirmation), `inferred_technical` (0.80 confidence, needs_confirmation), and `operational` (0.90 confidence, approved).
+4. In `backend/app/api/routers/projects.py`, restrict `Reference HCM` environments exclusively to Dayforce projects (`DF-*`), assign `{project.name} Sandbox` and `{project.name} Simulation` to generic imported repositories, and update `EnvIn.kind` default to `"simulation"`.
+5. Require newly imported projects to begin with zero test cases, zero executions, and zero defects.
+6. Verify and preserve existing EchoBox verification data (project 5) and Dayforce data.
+7. Author comprehensive acceptance tests in `backend/tests/test_cureonix_real_ingest.py` and document findings in `docs/PHASE_1_REPOSITORY_INGESTION.md`.
+
+### Consequences
+- Generic repositories import with true architectural modules and grounded requirements.
+- Zero cross-project leakage or spurious environment injection.
+- Complete data integrity preserved across all existing and imported projects.

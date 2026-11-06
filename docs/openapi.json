@@ -392,7 +392,7 @@
       "title": "Hcm Version"
      },
      "kind": {
-      "default": "reference_hcm",
+      "default": "simulation",
       "pattern": "^(reference_hcm|web|real_code|python_lib|simulation|static_only)$",
       "title": "Kind",
       "type": "string"

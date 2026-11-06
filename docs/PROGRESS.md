@@ -589,3 +589,15 @@ Secret & Leak Scan:       0 leaked keys/tokens in repo, screenshots, or git hist
 
 
 
+
+
+- **Phase 1: Real Repository Ingestion & Multi-Project Isolation**:
+  - Investigated and resolved root causes of generic platform module discovery, spurious markdown requirement extraction, and hardcoded `Reference HCM` environment leakage.
+  - Upgraded `backend/app/services/repo_ingest/ast_analyzer.py` with multi-language/framework detection (Flutter/Dart + FastAPI/Python), dual-tier architectural module discovery, AST route prefixing (`APIRouter`), and precise line ranges (`line_start`, `line_end`).
+  - Upgraded `backend/app/services/repo_ingest/generic_derivation.py` with `BANNED_DOC_HEADERS` filtering, capability table and bullet-point parsing, four-tier requirement categorization (`documented`, `inferred_from_code`, `inferred_technical`, `operational`), confidence scoring, human confirmation status tracking, and multi-stage lifecycle reporting (`_import_summary`).
+  - Updated `backend/app/api/routers/projects.py` to scope `Reference HCM` environments exclusively to Dayforce projects and provision generic projects with isolated application sandboxes and simulations.
+  - Successfully imported real repository `https://github.com/sohan10012/Cureonix.git` at commit `f5f2c9c826409bc8e00d3618d7df80c6252c0715`: 194 files, 11 architectural modules, 23 grounded requirements, zero tests/executions/defects.
+  - Verified 100% data preservation and isolation for EchoBox (project 5: 21 requirements, 21 tests, 9 executions, 7 defects intact).
+  - Authored acceptance suite `backend/tests/test_cureonix_real_ingest.py` (4/4 passed).
+  - Authored comprehensive deliverable `docs/PHASE_1_REPOSITORY_INGESTION.md`.
+  - 159 backend tests passed, 13 frontend tests passed, 0 ruff errors, 0 mypy errors, 8/8 `scripts/verify_docs.py` checks passed.
