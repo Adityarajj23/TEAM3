@@ -2,19 +2,23 @@ import * as Dropdown from "@radix-ui/react-dropdown-menu";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Activity,
+  ArrowLeftRight,
   Bell,
   Bug,
   ClipboardCheck,
   FileText,
   LayoutDashboard,
+  Menu,
   PanelLeftClose,
   PanelLeftOpen,
   PlayCircle,
   Search,
   Settings,
+  X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { CustomSelect } from "@/components/ui/CustomSelect";
 import { useProjects } from "@/hooks/useProjects";
 import { api } from "@/services/api";
 import { cn, fmtDate } from "@/utils/format";
@@ -244,15 +248,112 @@ function Notifications() {
 export function AppShell() {
   const { projects, projectId, setProjectId, current } = useProjects();
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const [switching, setSwitching] = useState(false);
+  const qc = useQueryClient();
+
   const cfg = useQuery({ queryKey: ["config"], queryFn: () => api.get<any>("/config"), staleTime: 60_000 });
+  const meQuery = useQuery({ queryKey: ["auth_me"], queryFn: () => api.get<any>("/auth/me") });
   const llmReady = cfg.data?.llm?.any_configured;
 
+  const isReviewer = meQuery.data?.persona === "reviewer" || meQuery.data?.role === "reviewer";
+
+  const handleTogglePersona = async () => {
+    try {
+      setSwitching(true);
+      const target = isReviewer ? "operator" : "reviewer";
+      await api.post("/auth/switch-operator", { persona: target });
+      await qc.invalidateQueries();
+    } finally {
+      setSwitching(false);
+    }
+  };
+
+  const projectOptions = [
+    { value: "ALL", label: "All Project Workspaces" },
+    ...projects.map((p) => ({ value: String(p.id), label: `${p.key} — ${p.name}` })),
+  ];
+
   return (
-    <div className="flex h-[100dvh] min-h-[100dvh] bg-slate-50 text-slate-900">
-      <aside className={cn("flex shrink-0 flex-col border-r border-slate-200 bg-white transition-[width] duration-200",
-        collapsed ? "w-14" : "w-60")} aria-label="Primary">
+    <div className="flex h-[100dvh] min-h-[100dvh] bg-slate-50 text-slate-900 overflow-x-clip">
+      {/* Mobile Slide-Over Drawer */}
+      {mobileDrawerOpen && (
+        <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true">
+          <div
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity duration-200"
+            onClick={() => setMobileDrawerOpen(false)}
+            aria-hidden="true"
+          />
+          <div className="fixed inset-y-0 left-0 z-50 flex w-72 max-w-[calc(100vw-3rem)] flex-col bg-white shadow-xl animate-in slide-in-from-left duration-200">
+            <div className="flex h-14 items-center justify-between border-b border-slate-200 px-4">
+              <Link to="/" onClick={() => setMobileDrawerOpen(false)} aria-label="TraceTest AI overview">
+                <Wordmark projectName={current?.name} />
+              </Link>
+              <button
+                onClick={() => setMobileDrawerOpen(false)}
+                className="rounded p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+                aria-label="Close menu"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-4">
+              {NAV_SECTIONS.map((section) => (
+                <div key={section.title}>
+                  <div className="px-2.5 pb-1 text-[10px] font-semibold tracking-wider text-slate-400">
+                    {section.title}
+                  </div>
+                  <div className="space-y-1">
+                    {section.items.map((n) => (
+                      <NavLink
+                        key={n.to}
+                        to={n.to}
+                        end={n.end}
+                        onClick={() => setMobileDrawerOpen(false)}
+                        className={({ isActive }) =>
+                          cn(
+                            "flex items-center gap-3 rounded-md px-3 py-2 text-xs font-medium transition-colors",
+                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3067DB]",
+                            isActive
+                              ? "bg-blue-50 text-[#3067DB] font-semibold"
+                              : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                          )
+                        }
+                      >
+                        <n.icon className="h-4 w-4 shrink-0 text-slate-500" aria-hidden />
+                        <span className="truncate">{n.label}</span>
+                      </NavLink>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </nav>
+
+            <div className="p-3 border-t border-slate-200 bg-slate-50/50">
+              <div className="flex items-center justify-between text-[11px] text-slate-600">
+                <span className="font-semibold text-slate-700">TraceTest AI</span>
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-800 border border-amber-200">
+                  Local beta
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Desktop Persistent Sidebar */}
+      <aside
+        className={cn(
+          "hidden md:flex shrink-0 flex-col border-r border-slate-200 bg-white transition-[width] duration-200",
+          collapsed ? "w-14" : "w-60"
+        )}
+        aria-label="Primary"
+      >
         <div className="flex h-14 items-center justify-between border-b border-slate-200 px-3.5">
-          <Link to="/" aria-label="TraceTest AI overview"><Wordmark compact={collapsed} projectName={current?.name} /></Link>
+          <Link to="/" aria-label="TraceTest AI overview">
+            <Wordmark compact={collapsed} projectName={current?.name} />
+          </Link>
         </div>
         <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-4">
           {NAV_SECTIONS.map((section) => (
@@ -264,12 +365,19 @@ export function AppShell() {
               )}
               <div className="space-y-0.5">
                 {section.items.map((n) => (
-                  <NavLink key={n.to} to={n.to} end={n.end} title={collapsed ? n.label : undefined}
-                    className={({ isActive }) => cn(
-                      "flex items-center gap-2.5 rounded px-2.5 py-1.5 text-xs font-medium transition-colors",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3067DB]",
-                      isActive ? "bg-blue-50 text-[#3067DB]" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                    )}>
+                  <NavLink
+                    key={n.to}
+                    to={n.to}
+                    end={n.end}
+                    title={collapsed ? n.label : undefined}
+                    className={({ isActive }) =>
+                      cn(
+                        "flex items-center gap-2.5 rounded px-2.5 py-1.5 text-xs font-medium transition-colors",
+                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3067DB]",
+                        isActive ? "bg-blue-50 text-[#3067DB]" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                      )
+                    }
+                  >
                     <n.icon className={cn("h-4 w-4 shrink-0", "text-slate-500")} aria-hidden />
                     {!collapsed && <span className="truncate">{n.label}</span>}
                   </NavLink>
@@ -289,26 +397,72 @@ export function AppShell() {
           </div>
         )}
 
-        <button onClick={() => setCollapsed(!collapsed)} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          className="flex items-center gap-2 border-t border-slate-200 px-3.5 py-2.5 text-xs text-slate-500 hover:bg-slate-50 hover:text-slate-900">
-          {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <><PanelLeftClose className="h-4 w-4" /><span className="text-xs">Collapse</span></>}
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          className="flex items-center gap-2 border-t border-slate-200 px-3.5 py-2.5 text-xs text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+        >
+          {collapsed ? (
+            <PanelLeftOpen className="h-4 w-4" />
+          ) : (
+            <>
+              <PanelLeftClose className="h-4 w-4" />
+              <span className="text-xs">Collapse</span>
+            </>
+          )}
         </button>
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-6">
-          <div className="flex items-center gap-2">
-            <select aria-label="Project Workspace" value={projectId ?? ""} onChange={(e) => setProjectId(e.target.value ? Number(e.target.value) : null)}
-              className="h-9 w-60 rounded border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-800 focus:border-[#3067DB] focus:outline-none focus:ring-1 focus:ring-[#3067DB] truncate">
-              <option value="">All Project Workspaces</option>
-              {projects.map((p) => <option key={p.id} value={p.id}>{p.key} — {p.name}</option>)}
-            </select>
+      {/* Main Layout Area */}
+      <div className="flex min-w-0 flex-1 flex-col overflow-x-clip">
+        <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-slate-200 bg-white px-3 sm:px-6">
+          <div className="flex items-center gap-2 min-w-0">
+            {/* Hamburger button for mobile */}
+            <button
+              onClick={() => setMobileDrawerOpen(true)}
+              className="md:hidden rounded p-1.5 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+              aria-label="Open navigation menu"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+
+            {/* Radix UI Project Workspace Switcher */}
+            <CustomSelect
+              value={projectId ? String(projectId) : "ALL"}
+              onValueChange={(val) => setProjectId(val === "ALL" ? null : Number(val))}
+              options={projectOptions}
+              placeholder="All Project Workspaces"
+              ariaLabel="Project Workspace"
+              triggerClassName="w-40 sm:w-56 truncate"
+            />
           </div>
 
-          <GlobalSearch />
+          <div className="hidden sm:block flex-1 max-w-sm mx-2">
+            <GlobalSearch />
+          </div>
 
-          <div className="ml-auto flex items-center gap-2.5">
-            <div className="hidden md:inline-flex items-center gap-1.5 rounded border border-slate-200 bg-slate-50 px-2.5 py-1 text-2xs text-slate-700">
+          <div className="ml-auto flex items-center gap-2 shrink-0">
+            {/* Dual-Control Persona Switcher */}
+            {meQuery.data?.role && (
+              <div className="hidden lg:flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 pl-2.5 pr-1 py-0.5 text-2xs text-slate-700">
+                <span className={cn("h-2 w-2 rounded-full", isReviewer ? "bg-purple-600" : "bg-blue-600")} />
+                <span className="font-medium text-slate-500">Persona:</span>
+                <span className="font-semibold text-slate-800">
+                  {isReviewer ? "Riley Chen (Reviewer)" : "Alex Kowalski (Operator)"}
+                </span>
+                <button
+                  onClick={handleTogglePersona}
+                  disabled={switching}
+                  className="ml-1 inline-flex items-center gap-1 rounded-full bg-white px-2 py-0.5 text-2xs font-medium text-slate-700 border border-slate-200 hover:bg-slate-100 hover:text-slate-900 transition-colors shadow-2xs disabled:opacity-50"
+                  title="Switch identity persona between Operator and Reviewer"
+                >
+                  <ArrowLeftRight className={cn("h-3 w-3 text-slate-500", switching && "animate-spin")} />
+                  <span>Switch</span>
+                </button>
+              </div>
+            )}
+
+            <div className="hidden xl:inline-flex items-center gap-1.5 rounded border border-slate-200 bg-slate-50 px-2.5 py-1 text-2xs text-slate-700">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
               <span className="font-medium text-slate-500">Env:</span>
               <span className="font-semibold text-slate-800 uppercase">{cfg.data?.environment || "local"}</span>
@@ -319,18 +473,20 @@ export function AppShell() {
 
             <Link
               to="/settings"
-              className="hidden items-center gap-1.5 rounded border border-slate-200 bg-slate-50 px-2.5 py-1 text-2xs text-slate-700 hover:border-slate-300 hover:bg-slate-100 transition-colors xl:inline-flex"
+              className="hidden sm:inline-flex items-center gap-1.5 rounded border border-slate-200 bg-slate-50 px-2.5 py-1 text-2xs text-slate-700 hover:border-slate-300 hover:bg-slate-100 transition-colors"
               title={llmReady ? "AI Provider Active — Click to manage in Settings" : "No Provider Configured — Click to configure"}
             >
               <Activity className={cn("h-3 w-3", llmReady ? "text-emerald-600" : "text-amber-500")} aria-hidden />
-              <span className="font-medium">{llmReady ? `AI ${cfg.data?.llm?.mode === "mock" ? "fixture" : "ready"}` : "AI not configured"}</span>
+              <span className="font-medium">
+                {llmReady ? `AI ${cfg.data?.llm?.mode === "mock" ? "fixture" : "live"}` : "AI not configured"}
+              </span>
             </Link>
 
             <Notifications />
 
             <Link
               to="/settings"
-              className="rounded p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3067DB]"
+              className="rounded p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3067DB] transition-colors"
               aria-label="Platform Settings"
               title="Platform Settings"
             >
@@ -339,11 +495,11 @@ export function AppShell() {
           </div>
         </header>
 
-        <div className="flex h-9 shrink-0 items-center border-b border-slate-200 bg-slate-50/80 px-6">
+        <div className="flex h-9 shrink-0 items-center border-b border-slate-200 bg-slate-50/80 px-4 sm:px-6">
           <Breadcrumbs />
         </div>
 
-        <main className="min-w-0 flex-1 overflow-y-auto px-6 py-6" id="main">
+        <main className="min-w-0 flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6" id="main">
           <Outlet />
         </main>
       </div>

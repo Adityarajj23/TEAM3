@@ -51,9 +51,73 @@ export function RequirementsPage() {
           <Select className="w-36" value={st.filters.category} onChange={(e) => st.setFilter("category", e.target.value)} aria-label="Category">
             <option value="">Any category</option>{["functional", "compliance", "security", "integration", "data", "reporting"].map((s) => <option key={s} value={s}>{label(s)}</option>)}</Select></>}
         columns={[
-          { id: "key", header: "ID", sortKey: "key", cell: (r) => <Key>{r.key}</Key>, className: "w-32" },
+          { id: "key", header: "ID", sortKey: "key", cell: (r) => <Key>{r.key}</Key>, className: "w-28" },
           { id: "title", header: "Title", sortKey: "title", cell: (r) => <><p className="font-medium text-ink">{r.title}</p>
             <p className="text-xs text-slate-500">{r.module?.name}</p></> },
+          {
+            id: "origin",
+            header: "Origin",
+            cell: (r) => {
+              const orig = (r as any).origin || "documented";
+              const conf = (r as any).confidence;
+              if (orig === "inferred") {
+                return (
+                  <span className="inline-flex items-center gap-1 rounded bg-indigo-50 px-1.5 py-0.5 text-2xs font-medium text-indigo-700 border border-indigo-200">
+                    Inferred · {conf ? `${Math.round(conf * 100)}%` : "AI"}
+                  </span>
+                );
+              }
+              return (
+                <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-1.5 py-0.5 text-2xs font-medium text-slate-700 border border-slate-200">
+                  Documented
+                </span>
+              );
+            },
+          },
+          {
+            id: "commit",
+            header: "Commit",
+            cell: (r) => {
+              const sha = (r as any).source_commit_sha;
+              return sha ? (
+                <span className="font-mono text-2xs bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded border border-slate-200" title={sha}>
+                  {sha.slice(0, 7)}
+                </span>
+              ) : (
+                <span className="text-slate-400 text-2xs font-mono">—</span>
+              );
+            },
+          },
+          {
+            id: "clauses",
+            header: "Clauses",
+            cell: (r) => (
+              <span className="tabular-nums font-mono text-xs text-slate-700">
+                {(r as any).clauses_count ?? 0}
+              </span>
+            ),
+            className: "text-center",
+          },
+          {
+            id: "coverage",
+            header: "Coverage",
+            cell: (r) => {
+              const pct = (r as any).coverage_pct ?? 0;
+              return (
+                <div className="flex items-center gap-1.5">
+                  <div className="w-10 h-1.5 overflow-hidden rounded-full bg-slate-200">
+                    <div
+                      className={cn("h-full transition-all duration-300", pct >= 80 ? "bg-emerald-500" : pct >= 50 ? "bg-amber-500" : "bg-slate-400")}
+                      style={{ width: `${Math.min(100, pct)}%` }}
+                    />
+                  </div>
+                  <span className="tabular-nums font-mono text-2xs font-medium text-slate-700">
+                    {pct}%
+                  </span>
+                </div>
+              );
+            },
+          },
           { id: "priority", header: "Priority", sortKey: "priority", cell: (r) => <Badge value={r.priority} /> },
           { id: "status", header: "Status", sortKey: "status", cell: (r) => <Badge value={r.status} /> },
           { id: "category", header: "Category", cell: (r) => label(r.category) },

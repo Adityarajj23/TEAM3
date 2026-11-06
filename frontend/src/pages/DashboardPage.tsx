@@ -31,6 +31,7 @@ import {
   YAxis,
 } from "recharts";
 import { EmptyState, ErrorState, LoadingBlock, PageHeader, Panel, Skeleton, Stat } from "@/components/ui";
+import { CountUp } from "@/components/common/CountUp";
 import { useProjects } from "@/hooks/useProjects";
 import { ConnectRepoDialog } from "@/pages/ProjectsPage";
 import { api } from "@/services/api";
@@ -551,43 +552,43 @@ export default function DashboardPage() {
               <>
                 <Stat
                   label="Requirements"
-                  value={k.total_requirements}
+                  value={<CountUp value={k.total_requirements} />}
                   hint={`${k.analysed_requirements} analysed`}
                   onClick={() => nav(`/requirements?${scope}`)}
                 />
                 <Stat
                   label="Requirement coverage"
-                  value={pct(k.requirement_coverage)}
+                  value={<CountUp value={k.requirement_coverage} decimals={1} suffix="%" />}
                   hint="Clauses with active tests"
                   onClick={() => nav("/traceability")}
                 />
                 <Stat
                   label="Test cases"
-                  value={k.total_test_cases}
+                  value={<CountUp value={k.total_test_cases} />}
                   hint={`${k.approved_test_cases} approved`}
                   onClick={() => nav(`/tests?${scope}`)}
                 />
                 <Stat
                   label="Pending reviews"
-                  value={k.pending_reviews}
+                  value={<CountUp value={k.pending_reviews} />}
                   hint="Awaiting dual-control"
                   onClick={() => nav(`/tests/review?${scope}`)}
                 />
                 <Stat
                   label="Test pass rate"
-                  value={pct(k.pass_rate)}
+                  value={<CountUp value={k.pass_rate} decimals={1} suffix="%" />}
                   hint={`${k.total_executions} executions`}
                   onClick={() => nav(`/executions?${scope}`)}
                 />
                 <Stat
                   label="Open defects"
-                  value={k.open_defects}
+                  value={<CountUp value={k.open_defects} />}
                   hint={`${k.failed_executions} failed executions`}
                   onClick={() => nav(`/defects?${scope}open_only=true`)}
                 />
                 <Stat
                   label="Critical defects"
-                  value={k.critical_defects}
+                  value={<CountUp value={k.critical_defects} />}
                   intent={k.critical_defects ? "bad" : "good"}
                   onClick={() => nav(`/defects?${scope}severity=critical&open_only=true`)}
                 />

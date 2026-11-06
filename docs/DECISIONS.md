@@ -478,6 +478,27 @@ External generative model providers enforce strict rate limits (per-minute reque
 - Multi-tier fallback hierarchy maximizes completion rates prior to provider failover.
 - Complete operational observability with zero secret exposure.
 
+---
+
+## ADR-028: Responsive Enterprise App Shell, Dual-Control Persona Switching, and Paced Motion Counters
+
+### Context
+On narrow viewports (< 768px and 390px mobile viewports), persistent sidebars crushed main content into narrow unreadable vertical slivers. Furthermore, testing and validating the four-eyes approval rule (requiring test authors to be distinct from reviewers) was cumbersome in single-operator development environments without a rapid identity switching mechanism in the application chrome. In addition, raw browser form `<select>` tags lacked visual consistency, while static numeric KPIs lacked initial feedback.
+
+### Decision
+1. In `AppShell.tsx`, make the desktop sidebar responsive (`hidden md:flex`). On viewports below `md` (such as 390px mobile screens), collapse the navigation into a slide-over drawer triggered by a header hamburger button (`Menu`), with backdrop overlay and close controls, ensuring main content takes 100% width with zero horizontal overflow (`overflow-x-clip`).
+2. Integrate a direct **Dual-Control Persona Switcher** in the header chrome (`Alex Kowalski · Operator (QA Lead)` ⇄ `Riley Chen · Reviewer (Staff QA Architect)`) calling `/api/v1/auth/switch-operator` to update session identity and invalidate React Query caches.
+3. Build `CustomSelect` providing custom styling, custom chevron icons, focus rings, hover states, and WCAG AA contrast.
+4. In `RequirementsPages.tsx`, add computed provenance columns: Origin badge (`Documented` vs `Inferred · X%`), 7-character source commit SHA, atomic clause count, and linked test coverage percentage.
+5. Create `CountUp` component providing a 400ms cubic-ease count-up for KPI cards on initial load, strictly respecting `prefers-reduced-motion` and test environments.
+6. Create `PipelineStepper` component displaying live multi-step LangGraph progress (Clone -> Ingest -> Clause extraction -> Grounding -> Complete) with per-step timers and status indicators.
+
+### Consequences
+- Fluid responsive layout from 390px mobile to 1440px+ enterprise workstations with zero layout distortion.
+- Seamless dual-control approval testing and demonstration in the header.
+- Rich requirements-to-test provenance with clear visual indicators.
+
+
 
 
 

@@ -489,6 +489,33 @@ Secret & Leak Scan:       0 leaked keys/tokens in repo, screenshots, or git hist
   - Created `backend/tests/test_key_rotation.py` with 9 tests covering LRU rotation, 429 burst vs quota, 401 invalidation, 500 backoff, mock transport fallback, concurrency limits, secret masking, provider status endpoint, and opt-in live test (`TRACETEST_LIVE_KEY_TEST=1`).
   - Executed 3-run live evaluation benchmark via `backend/app/services/run_ai_eval.py` and recorded results in `docs/ai_eval_benchmark.json` and `docs/eval-report.md`.
 
+---
+
+## 18. Final Build (v2): Tasks 2 & 3 Implementation (Design System, Provenance & Motion)
+
+- **Responsive Mobile Drawer (390px Viewport Stability)**:
+  - Eliminated squished layout where persistent 240px sidebar crushed main content on mobile.
+  - Implemented responsive `AppShell`: persistent sidebar on `md:` and up; slide-over drawer triggered by header hamburger (`Menu`) on mobile.
+  - Set `overflow-x-clip` across the root layout, eliminating horizontal page shifts.
+- **Dual-Control Persona Switcher**:
+  - Added interactive persona switcher in the header chrome (`Alex Kowalski · Operator (QA Lead)` ⇄ `Riley Chen · Reviewer (Staff QA Architect)`).
+  - Toggles identity via `POST /api/v1/auth/switch-operator` and invalidates React Query caches without requiring page reload.
+- **Accessible Form Controls**:
+  - Created `CustomSelect` component with custom styling, custom chevron icon (`ChevronDown`), focus-visible ring, hover state, and WCAG AA contrast.
+  - Updated header project workspace selector and requirements table filters.
+- **Computed Provenance Columns in Requirements**:
+  - Updated `backend/app/api/serializers.py` to serialize `origin`, `source_commit_sha`, `confidence`, `clauses_count`, and `coverage_pct`.
+  - In `RequirementsPages.tsx`, replaced `N/A` with computed Origin badge (`Documented` vs `Inferred · X%`), 7-character commit SHA, atomic clauses count, and linked test coverage progress bar.
+- **Purposeful Motion & Interaction**:
+  - Created `CountUp` component for KPI cards on initial load (400ms ease-out cubic), strictly respecting `@media (prefers-reduced-motion: reduce)`.
+  - Created `PipelineStepper` for live multi-step LangGraph node tracking (Clone -> Ingest -> Clause extraction -> Grounding -> Complete) with per-step timers and status indicators.
+- **Quality Verification**:
+  - Playwright E2E: 3 passed in 7.84s with 0 axe-core accessibility violations.
+  - Vitest Unit Suite: 12/12 passed in 2.01s.
+  - Frontend Build & ESLint: 100% clean (0 errors, 0 warnings).
+  - Backend Pytest Suite: 140 passed, 1 skipped, 1 xfailed in 17.96s.
+
+
 
 
 

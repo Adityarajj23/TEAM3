@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db import models as m
@@ -42,11 +43,41 @@ def environment(e: m.Environment) -> dict:
 def requirement(db: Session, r: m.Requirement) -> dict:
     mod = db.get(m.Module, r.module_id) if r.module_id else None
     proj = db.get(m.Project, r.project_id)
-    return {"id": r.id, "key": r.key, "project_id": r.project_id, "project_key": proj.key if proj else None,
-            "module": module(mod) if mod else None, "title": r.title, "category": r.category,
-            "priority": r.priority, "status": r.status, "version": r.current_version, "source_type": r.source_type,
-            "author": user_ref(db, r.author_id), "analysed_at": iso(r.analysed_at), "created_at": iso(r.created_at),
-            "updated_at": iso(r.updated_at)}
+    clauses_count = db.scalar(select(func.count(m.Clause.id)).where(m.Clause.requirement_id == r.id)) or 0
+    approved_tests = db.scalar(
+        select(func.count(m.TestCase.id)).where(
+            m.TestCase.requirement_id == r.id,
+            m.TestCase.status.in_(["approved", "verified"]),
+        )
+    ) or 0
+    coverage_pct = (
+        min(100.0, round((approved_tests / max(1, clauses_count)) * 100.0, 1))
+        if clauses_count > 0
+        else 0.0
+    )
+
+    return {
+        "id": r.id,
+        "key": r.key,
+        "project_id": r.project_id,
+        "project_key": proj.key if proj else None,
+        "module": module(mod) if mod else None,
+        "title": r.title,
+        "category": r.category,
+        "priority": r.priority,
+        "status": r.status,
+        "version": r.current_version,
+        "source_type": r.source_type,
+        "origin": getattr(r, "origin", "documented") or "documented",
+        "source_commit_sha": getattr(r, "source_commit_sha", None),
+        "confidence": getattr(r, "confidence", None),
+        "clauses_count": clauses_count,
+        "coverage_pct": coverage_pct,
+        "author": user_ref(db, r.author_id),
+        "analysed_at": iso(r.analysed_at),
+        "created_at": iso(r.created_at),
+        "updated_at": iso(r.updated_at),
+    }
 
 
 def version(db: Session, v: m.RequirementVersion) -> dict:
