@@ -3413,6 +3413,86 @@
     ]
    }
   },
+  "/api/v1/executions/{ex_id}/report.html": {
+   "get": {
+    "operationId": "view_html_report_api_v1_executions__ex_id__report_html_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "ex_id",
+      "required": true,
+      "schema": {
+       "title": "Ex Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "View Html Report",
+    "tags": [
+     "test suites & executions"
+    ]
+   }
+  },
+  "/api/v1/executions/{ex_id}/report.junit": {
+   "get": {
+    "operationId": "download_junit_report_api_v1_executions__ex_id__report_junit_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "ex_id",
+      "required": true,
+      "schema": {
+       "title": "Ex Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Download Junit Report",
+    "tags": [
+     "test suites & executions"
+    ]
+   }
+  },
   "/api/v1/executions/{ex_id}/retry": {
    "post": {
     "operationId": "retry_api_v1_executions__ex_id__retry_post",
@@ -4096,6 +4176,95 @@
      }
     },
     "summary": "Update Project",
+    "tags": [
+     "projects"
+    ]
+   }
+  },
+  "/api/v1/projects/{project_id}/dashboard": {
+   "get": {
+    "description": "Returns aggregated, production-ready telemetry for the project dashboard.",
+    "operationId": "get_project_dashboard_api_v1_projects__project_id__dashboard_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "title": "Project Id",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "query",
+      "name": "date_from",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Date From"
+      }
+     },
+     {
+      "in": "query",
+      "name": "date_to",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Date To"
+      }
+     },
+     {
+      "in": "query",
+      "name": "execution_id",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Execution Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get Project Dashboard",
     "tags": [
      "projects"
     ]

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from datetime import datetime
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
@@ -281,6 +282,36 @@ def get_project(project_id: int, p: Principal = Depends(current_principal), db: 
                          .where(ProjectMember.project_id == proj.id)).all()
     out["members"] = [{"user": S.user(u), "project_role": pm.project_role} for pm, u in members]
     return out
+
+
+def _parse_iso_date(v: str | None) -> datetime | None:
+    if not v:
+        return None
+    try:
+        return datetime.fromisoformat(v.replace("Z", ""))
+    except ValueError as exc:
+        raise BadRequest("Dates must be ISO-8601") from exc
+
+
+@router.get("/{project_id}/dashboard")
+def get_project_dashboard(
+    project_id: int,
+    date_from: str | None = None,
+    date_to: str | None = None,
+    execution_id: int | None = None,
+    p: Principal = Depends(current_principal),
+    db: Session = Depends(get_db),
+):
+    """Returns aggregated, production-ready telemetry for the project dashboard."""
+    proj = get_project_checked(db, p, project_id)
+    from app.services.project_dashboard import get_project_dashboard_data
+    return get_project_dashboard_data(
+        db=db,
+        project_id=proj.id,
+        date_from=_parse_iso_date(date_from),
+        date_to=_parse_iso_date(date_to),
+        selected_execution_id=execution_id,
+    )
 
 
 class ProjectPatch(BaseModel):

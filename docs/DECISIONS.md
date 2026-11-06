@@ -648,3 +648,29 @@ TraceTest AI retained unwanted demo/sample projects (`DF-PAY`, `DF-WFM`, `DF-LVE
 - Normal application contains solely `ECHO` and `CUREON` project workspaces.
 - Starting, refreshing, or reinitialising the backend leaves the database strictly populated with real projects.
 - Project workspace selector dropdown presents exactly one "All Project Workspaces" option followed by real projects.
+
+
+---
+
+## ADR-035: Production Project Dashboard & Telemetry Backend
+
+### Status
+Accepted
+
+### Context
+TraceTest AI required an enterprise SaaS project dashboard matching the visual references and telemetry specifications in Phase 2. The dashboard needed to support any ingested repository, presenting live metrics for requirements, atomic clauses, test cases, pass/fail rates, open defect severity, execution duration, and historical runs without synthetic mock values or fake animations. Newly imported projects (such as Cureonix) required clean zero-state display (0 tests, 0 runs, 0 defects, unavailable duration `—`, pass rate `—`).
+
+### Decision
+1. In `backend/app/services/project_dashboard.py`, implement `get_project_dashboard_data()` to query project-scoped repository integration details, requirements count, atomic clause counts, test case ratios, execution durations, pass rates, defect breakdowns, recent runs, requirements status, and recent activity from `AuditLog`.
+2. Implement `generate_junit_xml_for_execution()` and `generate_html_report_for_execution()` in `backend/app/services/project_dashboard.py` and register routes `GET /api/v1/executions/{ex_id}/report.junit` and `GET /api/v1/executions/{ex_id}/report.html` in `backend/app/api/routers/execution.py`.
+3. Register endpoint `GET /api/v1/projects/{project_id}/dashboard` in `backend/app/api/routers/projects.py`.
+4. In `frontend/src/components/dashboard/ProductionProjectDashboard.tsx`, implement the production project dashboard matching Screenshot 1 & 2: 5-column metadata card, 6 test summary cards, 4 functional tabs (`Recent Runs`, `Requirements`, `Defects`, `Configuration`), Execution Details card, Quality & Coverage progress bars, Open Defects table with severity pills, Requirements Status breakdown, and Recent Activity feed.
+5. In `frontend/src/pages/ProjectsPage.tsx`, update `ProjectDetailPage` to render `<ProductionProjectDashboard projectId={projectId} isDetailView={true} />`.
+6. In `frontend/src/layouts/AppShell.tsx`, update sidebar navigation sections to include `Projects`, `Monitoring`, and `Reports`, matching Screenshot 1's sidebar hierarchy.
+7. Author comprehensive backend tests in `backend/tests/test_project_dashboard.py` and frontend tests in `frontend/tests/dashboard.test.tsx`.
+8. Document the complete Phase 2 implementation in `docs/PHASE_2_PROJECT_DASHBOARD.md`.
+
+### Consequences
+- Production dashboard accurately reflects genuine database state for both EchoBox (healthy, 21 reqs, 62 clauses, 21 tests, 6 defects, 9 runs) and Cureonix (not tested, 23 reqs, 32 clauses, 0 tests, 0 defects, 0 runs).
+- Single-click JUnit XML and standalone HTML report downloads for all test executions.
+- Zero fake metrics or hardcoded counters. Fully covered by automated tests.

@@ -58,3 +58,164 @@ export interface Run { id: number; kind: string; status: string; progress: numbe
 export interface AuditEntry { id: number; actor: UserRef | null; action: string; entity_type: string; entity_id: number | null;
   entity_key: string | null; project_id: number | null; source: string; details: Record<string, any>; trace_id: string | null;
   created_at: string }
+
+export interface ProjectDashboardData {
+  project: {
+    id: number;
+    key: string;
+    name: string;
+    description: string;
+    status: string;
+    health_status: "healthy" | "warning" | "degraded" | "not_tested";
+    health_label: string;
+    repository: {
+      url: string | null;
+      repo_name: string | null;
+      branch: string;
+      latest_commit_sha: string | null;
+      latest_commit_short: string | null;
+      last_tested_commit_sha: string | null;
+      last_tested_commit_short: string | null;
+      last_tested_at: string | null;
+      connected: boolean;
+      status: string;
+    };
+    current_environment: {
+      id: number | null;
+      name: string | null;
+      kind: string | null;
+    };
+  };
+  summary: {
+    total_requirements: number;
+    total_clauses: number;
+    total_test_cases: number;
+    tests_per_requirement: number;
+    passed_tests: number;
+    passed_pct: number;
+    failed_tests: number;
+    failed_pct: number;
+    skipped_tests: number;
+    error_tests: number;
+    open_defects: number;
+    critical_defects: number;
+    high_defects: number;
+    medium_defects: number;
+    low_defects: number;
+    latest_duration_seconds: number | null;
+    latest_run_id: number | null;
+    latest_run_key: string | null;
+  };
+  quality_coverage: {
+    requirement_coverage_pct: number;
+    requirement_covered_count: number;
+    requirement_total_count: number;
+    clause_coverage_pct: number;
+    clause_covered_count: number;
+    clause_total_count: number;
+    test_pass_rate_pct: number | null;
+    pass_rate_passed: number;
+    pass_rate_total: number;
+  };
+  latest_execution: {
+    id: number;
+    key: string;
+    status: string;
+    environment_name: string;
+    environment_kind: string;
+    started_at: string;
+    completed_at: string;
+    duration_seconds: number;
+    total_tests: number;
+    passed: number;
+    failed: number;
+    skipped: number;
+    errored: number;
+    runner: string;
+    isolation_level: string;
+    junit_url: string;
+    html_url: string;
+  } | null;
+  recent_runs: {
+    id: number;
+    run_id: string;
+    commit_sha: string;
+    commit_short: string;
+    environment_name: string;
+    environment_kind: string;
+    result: string;
+    tests_passed: number;
+    tests_total: number;
+    duration_seconds: number;
+    triggered_at: string | null;
+  }[];
+  requirements_tab: {
+    total: number;
+    atomic_clauses: number;
+    documented: number;
+    inferred: number;
+    awaiting_confirmation: number;
+    approved: number;
+    unmapped: number;
+    items: {
+      id: number;
+      key: string;
+      title: string;
+      status: string;
+      category: string;
+      confidence: number;
+      origin: string;
+      module_code: string;
+      clauses_count: number;
+      test_cases_count: number;
+    }[];
+  };
+  defects_tab: {
+    total_open: number;
+    critical: number;
+    high: number;
+    medium: number;
+    low: number;
+    items: {
+      id: number;
+      key: string;
+      title: string;
+      severity: string;
+      status: string;
+      linked_requirement_key: string;
+      detection_run_key: string;
+      source_commit: string;
+      reproduction_evidence: string;
+      created_at: string | null;
+    }[];
+  };
+  requirements_status: {
+    status: string;
+    count: number;
+    coverage_pct: number;
+  }[];
+  recent_activity: {
+    id: number;
+    action: string;
+    title: string;
+    subtitle: string;
+    timestamp: string | null;
+    relative_time: string;
+    icon: string;
+  }[];
+  configuration: {
+    repository_url: string | null;
+    branch: string;
+    commit_sha: string | null;
+    environments: {
+      id: number;
+      name: string;
+      kind: string;
+      hcm_version: string | null;
+      base_url: string | null;
+      is_default: boolean;
+    }[];
+    execution_mode: string;
+    test_on_commit: boolean;
+  };
+}

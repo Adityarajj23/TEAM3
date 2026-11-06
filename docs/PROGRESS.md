@@ -611,3 +611,19 @@ Secret & Leak Scan:       0 leaked keys/tokens in repo, screenshots, or git hist
   - Removed obsolete Dayforce UI cards from `DashboardPage.tsx` and updated application title in `index.html`.
   - Added test coverage in `test_multi_project_isolation.py` and `components.test.tsx` verifying zero demo project creation, exact 2-project database state, and dropdown option deduplication.
   - All tests passing: 162 passed backend tests, 14 passed frontend tests, 0 ruff errors, 0 mypy errors, 8/8 `scripts/verify_docs.py` checks.
+
+- **Phase 2: Production Project Dashboard & Telemetry Backend**:
+  - Implemented high-performance, database-backed telemetry service in `backend/app/services/project_dashboard.py` calculating repository metadata, requirements, atomic clauses, test ratios, execution metrics, defect breakdowns, quality coverage, and audit feeds in a single optimized pass.
+  - Added execution report download endpoints: `GET /api/v1/executions/{ex_id}/report.junit` (standard JUnit XML) and `GET /api/v1/executions/{ex_id}/report.html` (standalone interactive HTML report).
+  - Registered `GET /api/v1/projects/{project_id}/dashboard` in `backend/app/api/routers/projects.py`.
+  - Created pixel-accurate frontend component `frontend/src/components/dashboard/ProductionProjectDashboard.tsx` matching Screenshots 1 & 2:
+    - 5-column metadata card (Repository, Branch, Latest Commit SHA with copy action, Last Tested timestamp, Environment).
+    - 6 Test Summary cards (Requirements with atomic clauses, Test Cases with per-req ratio, Passed tests with green tint, Failed tests with red tint, Open Defects with Critical badge and breakdown, Execution Time).
+    - 4 functional tabs (`Recent Runs` table with View button, `Requirements` breakdown, `Defects` table with severity pills, `Configuration`).
+    - Lower dashboard section: Execution Details with JUnit/HTML report links, Quality & Coverage progress bars (Requirement, Clause, Pass Rate), Open Defects table with severity pills, Requirements Status breakdown, and Recent Activity feed.
+  - Updated `ProjectDetailPage` in `frontend/src/pages/ProjectsPage.tsx` to render `ProductionProjectDashboard` with detail view back navigation.
+  - Updated sidebar navigation in `frontend/src/layouts/AppShell.tsx` to include `Projects`, `Monitoring`, and `Reports`.
+  - Verified zero fake data fallbacks: Cureonix cleanly shows 23 requirements, 32 clauses, 0 test cases, 0 executions, 0 defects, duration `—`, pass rate `—`, and `Not Tested` badge.
+  - Authored comprehensive test suites: `backend/tests/test_project_dashboard.py` (4/4 passed) and `frontend/tests/dashboard.test.tsx` (2/2 passed).
+  - 166 passed backend tests, 16 passed frontend tests, 0 ruff errors, 0 mypy errors, 8/8 `scripts/verify_docs.py` checks passed.
+  - Documented deliverable in `docs/PHASE_2_PROJECT_DASHBOARD.md` and ADR-035 in `docs/DECISIONS.md`.
