@@ -515,6 +515,43 @@ Secret & Leak Scan:       0 leaked keys/tokens in repo, screenshots, or git hist
   - Frontend Build & ESLint: 100% clean (0 errors, 0 warnings).
   - Backend Pytest Suite: 140 passed, 1 skipped, 1 xfailed in 17.96s.
 
+---
+
+## 19. Final Build (v2): Tasks 4, 5, 6, 7 & 8 Implementation & Freeze
+
+- **Task 4: Guided GitHub Connect & Import (End-to-End)**:
+  - Enhanced `POST /api/v1/projects/import-repo` with rich dry-run architecture preview (`body.dry_run=True`), validating owner/repo, pinned commit SHA, disk size bytes, file count, languages, framework detection, target architecture (`real_code`, `python_lib`, `web`, `static_only`), runtime execution tier (`bwrap+rlimits` vs `Static analysis only`), secret scan clean check, and candidate files preview list.
+  - Enhanced `ConnectRepoDialog` with guided 3-phase workflow: Input -> Dry-Run Preview Card -> Live 6-Stage Pipeline Stepper with per-step timers and error trace ID capture.
+  - Verified personal access token security: transferred exclusively via ephemeral 0700 `GIT_ASKPASS` script and cleaned up immediately; proven zero credential leakage into `.git/config` or API payloads.
+  - Verified multi-project data isolation between EchoBox (`ECHO`) and generic Python modules (`SAMP`), with complete database partitioning across requirements, test cases, executions, and environments.
+  - Enforced human confirmation gate on inferred requirements: derived requirements receive `origin="inferred_from_code"` and `status="needs_confirmation"`. Test generation fails closed with HTTP 409 Conflict until confirmed via `POST /confirm`.
+  - Implemented diff-aware repository refresh (`POST /projects/{id}/refresh-repo`), generating new requirement versions and flagging impacted tests for re-approval while keeping past executions immutable.
+
+- **Task 5: Sandbox Import and Execution**:
+  - Validated Bubblewrap containerization (`bwrap+rlimits`) with in-memory `tmpfs` mounts, user PID namespace, network unsharing, and POSIX `rlimits`.
+  - Enforced fail-closed execution on `static_only` targets: attempting test execution on non-executable targets immediately returns HTTP 400 `BadRequest: Static analysis only: no executable harness configured for target type 'static_only'`.
+  - Verified real EchoBox execution under `moto` AWS mocks, surfacing expected cryptographic JWT signature verification failure (DEF-ECHO-006) and separating deterministic facts from AI hypotheses.
+  - Enabled execution tier transparency: `bwrap+rlimits` badge for sandboxed backend runs and `playwright:host_browser` badge for browser probing.
+
+- **Task 6: Comprehensive Test Suites and Verification Gates**:
+  - Created `backend/tests/test_github_import_e2e.py` (7 tests, all passing in 6.15s) covering dry-run preview, askpass token isolation, multi-project data isolation, inferred requirement confirmation gates, diff-aware refresh, and fail-closed static execution.
+  - Extended `backend/tests/test_playwright_e2e.py` (4 tests, all passing in 13.35s) with full QA journey test, dual-control persona switch, mobile 390px drawer navigation, and automated axe-core accessibility audits with 0 critical violations.
+  - Enhanced frontend unit tests (`frontend/tests/components.test.tsx` and `pages.test.tsx`, 13 tests passing in 2.04s).
+  - Maintained 100% clean ESLint (`npm run lint`), TypeScript (`tsc -b`), and Vite production builds.
+  - Verified all documentation and ground-truth counts with `python3 scripts/verify_docs.py` (8/8 checks passed).
+
+- **Task 7: Demo Readiness & Doctor Diagnostic Tooling**:
+  - Implemented `scripts/doctor.py` and `make doctor` pre-flight diagnostic check verifying Python runtime (>=3.10), Node.js, Git client, Bubblewrap namespaces, Playwright Chromium, SQLite database connectivity, and environment variable configuration (names only).
+  - Maintained pre-generated real baseline runs and stored run views for resilient live demonstrations.
+  - Rehearsed `docs/demo-script.md` across the real user interface.
+
+- **Task 8: Final Assets, Multi-Viewport Verification & Freeze**:
+  - Regenerated 30 high-resolution screenshots across 1440px laptop, 1024px tablet, and 390px mobile viewports using `scripts/capture_screenshots.py`.
+  - Verified responsive mobile view: persistent sidebar collapses into slide-over drawer on 390px viewports, eliminating layout squishing.
+  - Ran axe-core accessibility audits across all 10 core screens: 0 critical violations.
+  - Confirmed zero credentials, tokens, or personal identifiers in screenshots or git history.
+
+
 
 
 

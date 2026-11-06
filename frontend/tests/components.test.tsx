@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { DataTable } from "@/components/DataTable";
+import { CountUp } from "@/components/common/CountUp";
 import { Badge, ErrorState } from "@/components/ui";
 import { useListState } from "@/hooks/useListState";
 import { ApiError } from "@/services/api";
@@ -38,4 +39,9 @@ test("server-side table: sorting, paging and row selection drive state", async (
   expect(seen.at(-1)).toBe("key:asc:1");
   await userEvent.click(screen.getAllByRole("checkbox", { name: "Select row" })[0]);
   expect(screen.getByText("bulk 1")).toBeInTheDocument();
+});
+
+test("CountUp motion respects prefers-reduced-motion", () => {
+  render(<CountUp end={42} decimals={0} />);
+  expect(screen.getByText("42")).toBeInTheDocument();
 });

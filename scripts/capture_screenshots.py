@@ -23,8 +23,9 @@ SCREENS = [
 ]
 
 VIEWPORTS = [
-    (1440, 900, "laptop-1440"),
-    (1280, 800, "laptop-1280"),
+    (1440, 900, "1440"),
+    (1024, 768, "1024"),
+    (390, 844, "390"),
 ]
 
 
@@ -47,8 +48,8 @@ def main() -> None:
             ctx = browser.new_context(viewport={"width": width, "height": height})
             try:
                 ctx.request.post(
-                    a.base + "/api/v1/auth/login",
-                    data={"email": "admin@northwind-hcm.example", "password": "NorthwindAdmin2026!Secure"},
+                    a.base + "/api/v1/auth/switch-operator",
+                    data={"persona": "operator"},
                 )
             except Exception:
                 pass

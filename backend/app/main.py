@@ -96,7 +96,9 @@ async def platform_middleware(request: Request, call_next):
                 clean_origin = origin.strip().rstrip("/").lower()
                 s = get_settings()
                 allowed_origins = {o.strip().rstrip("/").lower() for o in s.cors_origins.split(",") if o.strip()}
+                server_origin = f"{request.url.scheme}://{request.url.netloc}".rstrip("/").lower()
                 allowed_origins |= {
+                    server_origin,
                     "http://localhost:5173", "http://127.0.0.1:5173",
                     "http://localhost:8000", "http://127.0.0.1:8000",
                     "http://testserver", "https://testserver"

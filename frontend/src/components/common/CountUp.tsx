@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 
 interface CountUpProps {
-  value: number;
+  value?: number;
+  end?: number;
   decimals?: number;
   duration?: number;
   className?: string;
@@ -11,19 +12,24 @@ interface CountUpProps {
 
 export function CountUp({
   value,
+  end,
   decimals,
   duration = 400,
   className,
   prefix = "",
   suffix = "",
 }: CountUpProps) {
+  const target = value ?? end ?? 0;
   const isTest = typeof process !== "undefined" && process.env?.NODE_ENV === "test";
   const formatVal = useCallback(
-    (v: number) => (decimals !== undefined ? v.toFixed(decimals) : Math.round(v).toLocaleString()),
+    (v: number | undefined) => {
+      const num = typeof v === "number" && !isNaN(v) ? v : 0;
+      return decimals !== undefined ? num.toFixed(decimals) : Math.round(num).toLocaleString();
+    },
     [decimals]
   );
 
-  const [displayValue, setDisplayValue] = useState(() => (isTest ? formatVal(value) : formatVal(0)));
+  const [displayValue, setDisplayValue] = useState(() => (isTest ? formatVal(target) : formatVal(0)));
 
   useEffect(() => {
     const prefersReducedMotion =
@@ -31,8 +37,8 @@ export function CountUp({
         ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
         : false;
 
-    if (isTest || prefersReducedMotion || duration <= 0 || value <= 0) {
-      setDisplayValue(formatVal(value));
+    if (isTest || prefersReducedMotion || duration <= 0 || target <= 0) {
+      setDisplayValue(formatVal(target));
       return;
     }
 
@@ -44,19 +50,19 @@ export function CountUp({
       const progress = Math.min((timestamp - startTimestamp) / duration, 1);
       // Ease-out cubic
       const easeProgress = 1 - Math.pow(1 - progress, 3);
-      const current = easeProgress * value;
+      const current = easeProgress * target;
       setDisplayValue(formatVal(current));
 
       if (progress < 1) {
         animationFrameId = requestAnimationFrame(step);
       } else {
-        setDisplayValue(formatVal(value));
+        setDisplayValue(formatVal(target));
       }
     };
 
     animationFrameId = requestAnimationFrame(step);
     return () => cancelAnimationFrame(animationFrameId);
-  }, [value, duration, formatVal, isTest]);
+  }, [target, duration, formatVal, isTest]);
 
   return (
     <span className={className}>

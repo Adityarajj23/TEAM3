@@ -498,6 +498,72 @@ On narrow viewports (< 768px and 390px mobile viewports), persistent sidebars cr
 - Seamless dual-control approval testing and demonstration in the header.
 - Rich requirements-to-test provenance with clear visual indicators.
 
+---
+
+## ADR-029: Guided GitHub Connect Flow with Dry-Run Architecture Preview
+
+### Status
+Accepted
+
+### Context
+Connecting external GitHub repositories required immediate ingestion without insight into detected architectural frameworks, execution feasibility, file counts, or potential credentials leaked in the source. Operators needed an interactive dry-run preview and a visible, event-driven pipeline stepper during clone and AST derivation.
+
+### Decision
+1. Enhance `POST /api/v1/projects/import-repo` with `dry_run=True`:
+   - Validates owner/repo and ref names.
+   - Pinned DNS resolution via `http.curloptResolve` to prevent DNS rebinding.
+   - Analyzes target repository structure, detecting framework (`real_code`, `python_lib`, `web`, `static_only`).
+   - Evaluates runtime execution feasibility: `bwrap+rlimits` for executable targets vs `Static analysis only` for unsupported stacks.
+   - Summarizes secret findings (counts and file names only, never secrets).
+   - Generates candidate file preview list without persisting project records.
+2. Upgrade `ConnectRepoDialog` in frontend with three distinct phases:
+   - **Input**: GitHub URL, branch, pinned commit SHA, personal access token (routed via ephemeral 0700 `GIT_ASKPASS` helper), project key/name.
+   - **Dry-Run Preview**: Cards displaying validated repo, pinned commit, disk size, language breakdown, target architecture badge, isolation tier, secret scan clean check, and candidate files.
+   - **Live Pipeline Stepper**: Visual execution tracking across 6 distinct stages (Validate -> DNS Pin -> Hardened Clone -> Secret Scan -> Clause Extraction -> Sandbox Configuration).
+
+### Consequences
+- Operators inspect repository properties and execution capabilities before committing ingestion.
+- Secure, token-isolated cloning with zero credentials saved to `.git/config` or API logs.
+
+---
+
+## ADR-030: Multi-Project Data Partitioning, Fail-Closed Sandbox Execution, and Diff-Aware Refresh
+
+### Status
+Accepted
+
+### Context
+TraceTest AI must support multiple simultaneous GitHub repositories without data leakage across projects. Furthermore, unsupported targets must fail closed without generating synthetic passing test runs, and repository updates must be diff-aware without mutating past execution records.
+
+### Decision
+1. Enforce strict database scoping across all entity tables (`projects`, `modules`, `requirements`, `test_suites`, `test_cases`, `executions`, `defects`) using foreign key project constraints and query filtering.
+2. In `executions.py`, enforce strict fail-closed rejection on `static_only` or unsupported environments: attempting execution immediately returns HTTP 400 `BadRequest: Static analysis only: no executable harness configured for target type 'static_only'`.
+3. In `projects.py` (`POST /projects/{id}/refresh-repo`), compute AST diffs, version modified requirements, flag impacted tests as `needs_reapproval`, while keeping historical `Execution` and `ExecutionResult` records completely immutable.
+4. Mark AST-derived requirements as `origin="inferred_from_code"` and `status="needs_confirmation"`. Enforce human confirmation gate before automated test generation is permitted.
+
+### Consequences
+- Proven complete isolation between distinct repositories (e.g. EchoBox vs generic Python modules).
+- Invariant integrity: zero fake runs, fail-closed security for non-executable targets.
+
+---
+
+## ADR-031: System Health Diagnostic Tooling ('make doctor') and Multi-Viewport Accessibility Verification
+
+### Status
+Accepted
+
+### Context
+Production deployments and demo setups require rapid pre-flight validation of local toolchains, containerization sandboxes, Playwright headless browsers, and database readiness. In addition, user interfaces must be verified across 1440px desktop, 1024px tablet, and 390px mobile viewports without layout clipping or WCAG accessibility regressions.
+
+### Decision
+1. Implement `scripts/doctor.py` and `make doctor` checking 7 key system dimensions: Python runtime (>=3.10), Node.js, Git client, Bubblewrap user namespaces, Playwright Chromium, SQLite database connectivity, and environment variable configuration with detected Groq/Gemini key slot counts (names and counts only, never values).
+2. Upgrade `scripts/capture_screenshots.py` to capture screenshots across 1440px laptop, 1024px tablet, and 390px mobile viewports, automated by axe-core accessibility auditing.
+
+### Consequences
+- One-command diagnostic verification for operators and CI pipelines.
+- Pristine visual assets and verified zero-critical-violation accessibility across desktop and mobile.
+
+
 
 
 

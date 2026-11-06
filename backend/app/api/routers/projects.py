@@ -136,10 +136,70 @@ def import_repository(body: RepoImportIn, p: Principal = Depends(require("projec
     )
 
     analysis = analyze_repository(target_dir)
-    if body.dry_run:
-        return {"dry_run": True, "analysis": analysis.__dict__}
 
     is_echo = repo_name.lower() == "echobox" or (body.project_key and body.project_key.upper() == "ECHO")
+
+    # Target architecture matrix determination per docs/SUPPORTED_TARGET_MATRIX.md
+    if is_echo:
+        target_type = "real_code"
+        execution_supported = True
+        isolation_tier = "bwrap+rlimits"
+    elif ("Python" in analysis.frameworks or (target_dir / "pyproject.toml").exists() or (target_dir / "setup.py").exists()) and not any(
+        f in analysis.frameworks for f in ("React", "Express", "Next.js", "Vite")
+    ):
+        target_type = "python_lib"
+        execution_supported = True
+        isolation_tier = "bwrap+rlimits"
+    elif any(f in analysis.frameworks for f in ("React", "Express", "Next.js", "Vite", "FastAPI")):
+        target_type = "web"
+        execution_supported = True
+        isolation_tier = "playwright:host_browser"
+    else:
+        target_type = "static_only"
+        execution_supported = False
+        isolation_tier = "Static analysis only"
+
+    total_bytes = 0
+    candidate_files: list[str] = []
+    if target_dir.exists():
+        for p_file in target_dir.rglob("*"):
+            if ".git" in p_file.parts:
+                continue
+            if p_file.is_file():
+                try:
+                    total_bytes += p_file.stat().st_size
+                except OSError:
+                    pass
+                rel_parts = p_file.relative_to(target_dir).parts
+                if not any(part in (".venv", "node_modules", "__pycache__", "dist", ".git", ".pytest_cache") for part in rel_parts):
+                    if len(candidate_files) < 30:
+                        candidate_files.append(str(p_file.relative_to(target_dir)))
+
+    secret_findings_count = len(analysis.secret_findings)
+    secret_files = sorted(list(set(f.get("file", "unknown") for f in analysis.secret_findings)))
+
+    if body.dry_run:
+        return {
+            "dry_run": True,
+            "owner": owner,
+            "repo_name": repo_name,
+            "default_branch": branch,
+            "commit_sha": pinned_commit or analysis.commit_sha,
+            "repo_size_bytes": total_bytes,
+            "file_count": analysis.file_count,
+            "languages": analysis.languages,
+            "frameworks": analysis.frameworks,
+            "target_type": target_type,
+            "execution_supported": execution_supported,
+            "isolation_tier": isolation_tier,
+            "secret_scan": {
+                "count": secret_findings_count,
+                "files": secret_files,
+            },
+            "candidate_files": candidate_files,
+            "analysis": analysis.__dict__,
+        }
+
     if is_echo:
         proj = ingest_echobox_project(db, p.id, target_dir)
     else:
@@ -290,7 +350,7 @@ def add_module(project_id: int, body: ModuleIn, p: Principal = Depends(require("
 
 class EnvIn(BaseModel):
     name: str = Field(min_length=2, max_length=80)
-    kind: str = Field("reference_hcm", pattern="^(reference_hcm|web)$")
+    kind: str = Field("reference_hcm", pattern="^(reference_hcm|web|real_code|python_lib|simulation|static_only)$")
     hcm_version: str | None = Field(None, pattern=r"^1\.[01]$")
     base_url: str | None = Field(None, max_length=500)
 

@@ -31,6 +31,8 @@ def live_server_url() -> Generator[str, None, None]:
     port = _find_free_port()
     env = os.environ.copy()
     env["PYTHONPATH"] = "backend"
+    env["TRACETEST_ENV"] = "development"
+    env["TRACETEST_SINGLE_OPERATOR"] = "true"
     uvicorn_bin = str(Path(__file__).resolve().parents[2] / ".venv" / "bin" / "uvicorn")
     if not os.path.exists(uvicorn_bin):
         uvicorn_bin = shutil.which("uvicorn") or "uvicorn"
@@ -146,3 +148,74 @@ def test_playwright_e2e_review_workspace_and_guardrails(page: Page, live_server_
     results = axe.run(page)
     crit = [v for v in results.get("violations", []) if v.get("impact") == "critical"]
     assert len(crit) == 0, f"Critical a11y violations on review page: {crit}"
+
+
+def test_playwright_e2e_full_qa_journey(page: Page, live_server_url: str) -> None:
+    """Executes full end-to-end user journey:
+    1. Connect repo preview & dry run
+    2. Dual-control reviewer identity switch in header
+    3. Mobile viewport navigation drawer test (390px)
+    4. Complete accessibility verification across viewports
+    """
+    # 1. Projects page and Connect Repo dialog
+    page.goto(live_server_url + "/projects")
+    page.wait_for_selector("#root", timeout=5000)
+
+    connect_btn = page.get_by_role("button", name="Connect GitHub Repository")
+    assert connect_btn.is_visible()
+    connect_btn.click()
+
+    page.wait_for_selector("input#r_url", timeout=3000)
+    page.fill("input#r_url", "https://github.com/pypa/samplemod.git")
+
+    # Track responses
+    responses = []
+    page.on("response", lambda r: responses.append(f"{r.status} {r.url} {r.text()[:200] if 'api' in r.url else ''}"))
+
+    preview_btn = page.get_by_role("button", name="Preview Ingestion")
+    assert preview_btn.is_visible()
+    preview_btn.click()
+
+    # Wait for dry-run preview card
+    page.wait_for_selector("text=Repository Dry-Run Preview", timeout=10000)
+    content = page.content()
+    assert "pypa/samplemod" in content
+    assert "Runtime Execution Tier" in content
+
+    # Cancel modal to clean up
+    back_btn = page.get_by_role("button", name="Back to Edit")
+    back_btn.click()
+    page.get_by_role("button", name="Cancel").click()
+
+    # 2. Dual-control persona switch
+    # Check current persona chip in header
+    persona_btn = page.locator("button[title*='Switch Operator Persona']")
+    if persona_btn.is_visible():
+        persona_btn.click()
+        page.wait_for_timeout(1000)
+
+    # 3. Mobile viewport (390x844) drawer test
+    page.set_viewport_size({"width": 390, "height": 844})
+    page.goto(live_server_url + "/requirements")
+    page.wait_for_selector("#root", timeout=5000)
+
+    # Mobile menu button should be visible
+    menu_btn = page.locator("button[aria-label='Open navigation menu']")
+    assert menu_btn.is_visible()
+    menu_btn.click()
+
+    # Drawer slide-over opens
+    page.wait_for_selector("text=WORKSPACE", timeout=3000)
+    assert page.get_by_role("link", name="Requirements").first.is_visible()
+
+    # Close drawer
+    close_btn = page.locator("button[aria-label='Close menu']")
+    assert close_btn.is_visible()
+    close_btn.click()
+
+    # 4. Mobile axe-core audit
+    axe = Axe()
+    results = axe.run(page)
+    crit = [v for v in results.get("violations", []) if v.get("impact") == "critical"]
+    assert len(crit) == 0, f"Critical accessibility violations on mobile viewport: {crit}"
+

@@ -1348,6 +1348,9 @@ def test_claim_legacy_room():
             current_version=1,
             author_id=actor_id,
             source_type="import",
+            origin="documented",
+            source_commit_sha="7d036b3",
+            confidence=0.98,
             analysed_at=utcnow(),
             created_at=utcnow(),
             updated_at=utcnow()
