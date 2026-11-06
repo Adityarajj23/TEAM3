@@ -504,16 +504,25 @@ class RealLambdaBackend:
     def __init__(self, repo_dir: Any = None):
         import os
         from pathlib import Path
+        os.environ["AWS_SHARED_CREDENTIALS_FILE"] = "/dev/null"
+        os.environ["AWS_CONFIG_FILE"] = "/dev/null"
         os.environ["AWS_DEFAULT_REGION"] = "ap-south-1"
         os.environ["AWS_ACCESS_KEY_ID"] = "mock_key"
         os.environ["AWS_SECRET_ACCESS_KEY"] = "mock_secret"
+        os.environ.pop("AWS_SESSION_TOKEN", None)
+        os.environ.pop("AWS_SECURITY_TOKEN", None)
         import boto3
         from moto import mock_aws
 
         self._mock = mock_aws()
         self._mock.start()
 
-        self.dynamodb = boto3.resource("dynamodb", region_name="ap-south-1")
+        self.session = boto3.Session(
+            aws_access_key_id="mock_key",
+            aws_secret_access_key="mock_secret",
+            region_name="ap-south-1"
+        )
+        self.dynamodb = self.session.resource("dynamodb")
         self.table = self.dynamodb.create_table(
             TableName="EchoBox",
             KeySchema=[{"AttributeName": "PK", "KeyType": "HASH"}, {"AttributeName": "SK", "KeyType": "RANGE"}],
@@ -544,6 +553,7 @@ class RealLambdaBackend:
         if str(real_backend_dir) not in sys.path:
             sys.path.insert(0, str(real_backend_dir))
 
+        self._is_stopped = False
         import lambda_function
         self.lambda_mod = lambda_function
         self.lambda_mod.table = self.table
@@ -552,6 +562,9 @@ class RealLambdaBackend:
         return self.lambda_mod.lambda_handler(event, None)
 
     def stop(self):
+        if getattr(self, "_is_stopped", False):
+            return
+        self._is_stopped = True
         try:
             self._mock.stop()
         except Exception:

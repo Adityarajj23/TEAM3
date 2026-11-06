@@ -45,26 +45,28 @@ def test_real_echobox_lambda_runs_under_moto():
 )
 def test_real_echobox_authenticator_rejects_forged_signature():
     """Verify that EchoBox's real authenticate_request in lambda_function.py fails to reject forged signatures."""
-    import sys
-    sys.path.insert(0, str(REPO_ROOT / "var" / "repos" / "sohan10012_EchoBox" / "backend"))
-    import lambda_function
+    from echobox_harness.backend import RealLambdaBackend
     from test_echobox_jwt_security import create_mock_jwt
 
-    forged_token = create_mock_jwt(
-        payload={
-            "sub": "victim-user-uuid-9999",
-            "iss": "https://cognito-idp.ap-south-1.amazonaws.com/ap-south-1_NfCww8cVp",
-            "exp": int(time.time()) + 3600,
-            "cognito:username": "victim_admin",
-        },
-        signature="FORGED_INVALID_SIGNATURE_ATTACK"
-    )
-    headers = {"Authorization": f"Bearer {forged_token}"}
-    caller = lambda_function.authenticate_request(headers, {})
+    backend = RealLambdaBackend(repo_dir=REPO_ROOT / "var" / "repos" / "sohan10012_EchoBox")
+    try:
+        forged_token = create_mock_jwt(
+            payload={
+                "sub": "victim-user-uuid-9999",
+                "iss": "https://cognito-idp.ap-south-1.amazonaws.com/ap-south-1_NfCww8cVp",
+                "exp": int(time.time()) + 3600,
+                "cognito:username": "victim_admin",
+            },
+            signature="FORGED_INVALID_SIGNATURE_ATTACK"
+        )
+        headers = {"Authorization": f"Bearer {forged_token}"}
+        caller = backend.lambda_mod.authenticate_request(headers, {})
 
-    # A secure implementation MUST return None for a forged signature.
-    # In EchoBox, this assertion FAILS because the real lambda_function.py decodes without verifying signature!
-    assert caller is None, "Vulnerability DEF-ECHO-006 confirmed: authenticate_request accepted forged signature!"
+        # A secure implementation MUST return None for a forged signature.
+        # In EchoBox, this assertion FAILS because the real lambda_function.py decodes without verifying signature!
+        assert caller is None, "Vulnerability DEF-ECHO-006 confirmed: authenticate_request accepted forged signature!"
+    finally:
+        backend.stop()
 
 
 def test_defect_creation_tracks_evidence_type_and_artifact(app):

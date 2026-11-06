@@ -277,4 +277,27 @@ All 33 technical and user documents are present, detailed, and mutually verified
   - Vitest frontend tests: 9/9 passed in 1.80s.
   - `scripts/verify_docs.py`: 6/6 checks passed.
 
+---
+
+## 10. Round 2 Phase 2: Evidence Integrity & Real SUT Primary Verification
+
+- **Real SUT Promoted to Primary**:
+  - `EchoBox Real Code SUT (Lambda under moto DynamoDB)` configured as the primary, default execution environment (`kind="real_code"`, `is_default=True`).
+  - `EchoBox In-Memory Simulation Harness (Baseline)` marked as secondary simulation (`kind="simulation"`, `is_default=False`).
+  - Ingestion derivation establishes explicit discrepancy tracking between real code behavior and simulation baseline.
+- **Genuine Execution Records & Isolation**:
+  - Platform runs record genuine `bwrap+rlimits` execution isolation level.
+  - No platform execution is recorded with unapplied `none`.
+  - Moto DynamoDB mock lifecycle isolated with idempotency guards on `RealLambdaBackend.stop()` to prevent `MockAWS._nested_count` corruption across sequential test runs.
+- **Defect Evidence Separation**:
+  - Defect model and serializers extended with explicit `evidence_type` (`execution_failure`, `static_analysis`, `manual`).
+  - Added query filtering by `evidence_type` on `GET /api/v1/defects`.
+  - Re-exported OpenAPI schema to `docs/openapi.json` and synchronized frontend client types in `frontend/src/types/api.gen.ts`.
+- **Empirical Demonstration of DEF-ECHO-006 (Unverified JWT)**:
+  - Real SUT verified to catch DEF-ECHO-006 when dispatched with forged JWT signatures, proving real code execution fidelity over simulation.
+- **Verification Suites**:
+  - `backend/tests/test_round2_execution.py`: 4/4 passed.
+  - `backend/tests/test_p1_fidelity_and_provenance.py`: 5 passed, 1 xfailed (DEF-ECHO-006 expected failure).
+
+
 

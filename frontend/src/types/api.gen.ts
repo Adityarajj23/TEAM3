@@ -2181,6 +2181,7 @@ export interface operations {
                 severity?: string | null;
                 approval_status?: string | null;
                 owner_id?: number | null;
+                evidence_type?: string | null;
                 open_only?: boolean;
                 page?: number;
                 page_size?: number;

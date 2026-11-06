@@ -18,7 +18,14 @@ os.environ.update({
     "GEMINI_API_KEY": "", "GEMINI_API_KEY2": "", "GEMINI_API_KEY3": "",
     "GEMINI_KEY": "", "GEMINI_KEY2": "", "GEMINI_KEY3": "",
     "GITHUB_TOKEN": "",
+    "AWS_SHARED_CREDENTIALS_FILE": "/dev/null",
+    "AWS_CONFIG_FILE": "/dev/null",
+    "AWS_ACCESS_KEY_ID": "mock_key",
+    "AWS_SECRET_ACCESS_KEY": "mock_secret",
+    "AWS_DEFAULT_REGION": "ap-south-1",
 })
+os.environ.pop("AWS_SECURITY_TOKEN", None)
+os.environ.pop("AWS_SESSION_TOKEN", None)
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402

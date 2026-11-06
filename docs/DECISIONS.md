@@ -342,4 +342,23 @@ Repository ingestion accepts a GitHub repository URL. A classic Time-of-Check to
 - Prevents SSRF attacks against internal networks or cloud metadata services.
 - Deterministic connection routing for all git clone and fetch operations.
 
+---
+
+## ADR-020: Promotion of Real SUT under Moto as Primary Environment and Defect Evidence Separation
+
+### Context
+Initial validation of EchoBox used an in-memory simulation (`EchoBoxMemoryBackend`) as the default environment, which could mask implementation differences in the target application (such as JWT signature verification flaws). Furthermore, defect records did not distinguish between runtime execution failures and static analysis findings, risking confusion during triage. Finally, sequential test runs executing `RealLambdaBackend` under `moto` encountered mock lifecycle state corruption when `b.stop()` and garbage collection `__del__` interacted with `MockAWS._nested_count`.
+
+### Decision
+1. Promote `RealLambdaBackend` (executing real `lambda_function.py` entrypoint under `moto` DynamoDB mock) to the primary, default environment (`kind="real_code"`, `is_default=True`).
+2. Retain the in-memory simulation harness as a secondary environment (`kind="simulation"`, `is_default=False`) explicitly designated for discrepancy baseline tracking.
+3. Classify and serialize defects with explicit `evidence_type` metadata (`execution_failure`, `static_analysis`, `manual`) and enable query filtering via `GET /api/v1/defects?evidence_type=...`.
+4. Add idempotency guards to `RealLambdaBackend.stop()` (`self._is_stopped = True`) to prevent multiple decrements of `MockAWS._nested_count`, ensuring clean isolation across sequential test executions.
+
+### Consequences
+- Execution tests exercise the actual target source code against AWS SDK contracts by default.
+- Complete clarity in defect records distinguishing verified runtime test failures from static analysis notices.
+- Robust, leak-free test suite execution across sequential invocations.
+
+
 

@@ -348,6 +348,7 @@ def seed_defects(db: Session, project: Project, ex_local: Execution, ex_live: Ex
             continue
         req = db.execute(select(Requirement).filter_by(key=ddata["req_key"])).scalar_one_or_none()
         tc = db.execute(select(TestCase).filter_by(key=ddata["tc_key"])).scalar_one_or_none()
+        ev_type = "execution_failure" if ddata["key"] in ("DEF-ECHO-005", "DEF-ECHO-006") else "static_analysis"
         d = Defect(
             key=ddata["key"],
             project_id=project.id,
@@ -357,6 +358,7 @@ def seed_defects(db: Session, project: Project, ex_local: Execution, ex_live: Ex
             priority=ddata["priority"],
             status=ddata["status"],
             approval_status="approved",
+            evidence_type=ev_type,
             requirement_id=req.id if req else None,
             test_case_id=tc.id if tc else None,
             execution_id=ddata["exec_id"],

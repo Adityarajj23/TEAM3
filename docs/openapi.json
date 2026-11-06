@@ -2142,6 +2142,22 @@
      },
      {
       "in": "query",
+      "name": "evidence_type",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Evidence Type"
+      }
+     },
+     {
+      "in": "query",
       "name": "open_only",
       "required": false,
       "schema": {

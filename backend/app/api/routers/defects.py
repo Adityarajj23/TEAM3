@@ -46,9 +46,11 @@ router = APIRouter(prefix="/defects", tags=["defects"])
 @router.get("")
 def list_defects(pp: PageParams = Depends(page_params), project_id: int | None = None, status: str | None = None,
                  severity: str | None = None, approval_status: str | None = "approved", owner_id: int | None = None,
-                 open_only: bool = False, p: Principal = Depends(current_principal), db: Session = Depends(get_db)):
+                 evidence_type: str | None = None, open_only: bool = False,
+                 p: Principal = Depends(current_principal), db: Session = Depends(get_db)):
     stmt = select(Defect).where(Defect.project_id.in_(scoped_project_ids(db, p, project_id) or [-1]))
     for col, val in ((Defect.status, status), (Defect.severity, severity), (Defect.owner_id, owner_id),
+                     (Defect.evidence_type, evidence_type),
                      (Defect.approval_status, approval_status if approval_status != "all" else None)):
         if val is not None:
             stmt = stmt.where(col == val)

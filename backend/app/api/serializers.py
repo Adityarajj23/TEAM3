@@ -120,6 +120,7 @@ def result(db: Session, r: m.ExecutionResult) -> dict:
 def defect(db: Session, d: m.Defect, full: bool = False) -> dict:
     out = {"id": d.id, "key": d.key, "project_id": d.project_id, "title": d.title, "severity": d.severity,
            "priority": d.priority, "status": d.status, "approval_status": d.approval_status,
+           "evidence_type": getattr(d, "evidence_type", "manual") or "manual",
            "owner": user_ref(db, d.owner_id), "test_case_id": d.test_case_id, "requirement_id": d.requirement_id,
            "execution_id": d.execution_id, "github_issue_url": d.github_issue_url,
            "github_issue_state": d.github_issue_state, "created_at": iso(d.created_at),
