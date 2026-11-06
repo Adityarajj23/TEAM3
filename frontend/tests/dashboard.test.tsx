@@ -1,5 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { screen } from "@testing-library/react";
 import { ProductionProjectDashboard } from "@/components/dashboard/ProductionProjectDashboard";
 import { ME, mockFetch, renderApp } from "./helpers";
 
