@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     bind_host: str = Field("127.0.0.1", alias="TRACETEST_HOST")
     bind_port: int = Field(8000, alias="TRACETEST_PORT")
     allowed_hosts: str = Field("localhost,127.0.0.1,[::1],testserver", alias="TRACETEST_ALLOWED_HOSTS")
+    require_network_isolation: bool = Field(True, alias="TRACETEST_REQUIRE_NETWORK_ISOLATION")
+    allow_weak_sandbox: bool = Field(False, alias="TRACETEST_ALLOW_WEAK_SANDBOX")
     seed_on_startup: bool = Field(False, alias="TRACETEST_SEED_ON_STARTUP")
     rate_limit_per_minute: int = Field(600, alias="TRACETEST_RATE_LIMIT_PER_MINUTE")
     single_operator: bool = Field(True, alias="TRACETEST_SINGLE_OPERATOR")

@@ -146,6 +146,9 @@ class Requirement(Base):
     current_version: Mapped[int] = mapped_column(Integer, default=1)
     author_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     source_type: Mapped[str] = mapped_column(String(20), default="manual")  # manual|pdf|txt|md|import
+    origin: Mapped[str] = mapped_column(String(30), default="manual")  # documented|inferred_from_code|manual
+    source_commit_sha: Mapped[str | None] = mapped_column(String(64))
+    confidence: Mapped[float | None] = mapped_column(Float)
     analysed_at: Mapped[datetime | None] = mapped_column(DateTime)
     created_at: Mapped[datetime] = _ts()
     updated_at: Mapped[datetime] = _ts()
@@ -181,6 +184,9 @@ class Clause(Base):
     position: Mapped[int] = mapped_column(Integer)
     text: Mapped[str] = mapped_column(Text)
     normalized_hash: Mapped[str] = mapped_column(String(64))
+    source_paths: Mapped[str | None] = mapped_column(String(500))
+    line_start: Mapped[int | None] = mapped_column(Integer)
+    line_end: Mapped[int | None] = mapped_column(Integer)
     ambiguity_flags: Mapped[list[Any]] = mapped_column(JSON, default=list)
     analysis: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)  # rules, missing info, conflicts, questions
     version: Mapped[RequirementVersion] = relationship(back_populates="clauses")
@@ -349,6 +355,7 @@ class Execution(Base):
     retry_of_id: Mapped[int | None] = mapped_column(ForeignKey("executions.id", ondelete="SET NULL"))
     source: Mapped[str] = mapped_column(String(30), index=True)  # historical_import | platform_run | ci
     runner: Mapped[str] = mapped_column(String(20), default="pytest")
+    isolation_level: Mapped[str] = mapped_column(String(30), default="none")  # netns+rlimits|rlimits_only|none
     status: Mapped[str] = mapped_column(String(20), default="queued", index=True)
     # queued|running|passed|failed|error|cancelled|timed_out
     hcm_version: Mapped[str | None] = mapped_column(String(10))
@@ -411,6 +418,8 @@ class Defect(Base):
     severity: Mapped[str] = mapped_column(String(10), index=True)  # critical|high|medium|low
     priority: Mapped[str] = mapped_column(String(10))  # p1..p4
     status: Mapped[str] = mapped_column(String(20), index=True)
+    evidence_type: Mapped[str] = mapped_column(String(30), default="manual")  # execution_failure|static_analysis|manual
+    source_commit_sha: Mapped[str | None] = mapped_column(String(64))
     approval_status: Mapped[str] = mapped_column(String(20), default="approved")  # recommended|approved|dismissed
     requirement_id: Mapped[int | None] = mapped_column(ForeignKey("requirements.id", ondelete="SET NULL"))
     test_case_id: Mapped[int | None] = mapped_column(ForeignKey("test_cases.id", ondelete="SET NULL"))

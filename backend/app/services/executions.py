@@ -103,6 +103,7 @@ def persist_results(db: Session, ex: Execution, tests: list[TestCase], res: Sand
     ex.errored = counts["error"] + counts["timed_out"]
     ex.duration_ms = res.duration_ms
     ex.started_at, ex.finished_at = started, finished
+    ex.isolation_level = getattr(res, "isolation_level", "none")
     ex.log_excerpt = res.log[-6000:]
     if res.status == "timed_out":
         ex.status = "timed_out"

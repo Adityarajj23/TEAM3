@@ -12,7 +12,7 @@ ALLOWED_IMPORTS = {
 }
 PLAYWRIGHT_IMPORTS = {"playwright", "playwright.sync_api"}
 FORBIDDEN_NAMES = {
-    "open", "eval", "exec", "compile", "__import__", "globals", "locals", "vars", "getattr", "setattr",
+    "open", "eval", "exec", "compile", "__import__", "__builtins__", "globals", "locals", "vars", "getattr", "setattr",
     "delattr", "input", "breakpoint", "exit", "quit", "memoryview", "help",
 }
 FORBIDDEN_ATTRS = {"__class__", "__bases__", "__subclasses__", "__globals__", "__builtins__", "__dict__",
@@ -52,7 +52,7 @@ def validate_script(source: str, allow_playwright: bool = False) -> ValidationRe
             for alias in node.names:
                 if alias.name == "*":
                     errors.append(f"Wildcard import is not allowed (line {node.lineno})")
-        elif isinstance(node, ast.Name) and node.id in FORBIDDEN_NAMES:
+        elif isinstance(node, ast.Name) and (node.id in FORBIDDEN_NAMES or (node.id.startswith("__") and node.id.endswith("__"))):
             errors.append(f"Use of '{node.id}' is not allowed (line {node.lineno})")
         elif isinstance(node, ast.Attribute):
             if node.attr in FORBIDDEN_ATTRS or (node.attr.startswith("__") and node.attr.endswith("__")):

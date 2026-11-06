@@ -100,7 +100,8 @@ def execution(db: Session, e: m.Execution) -> dict:
     s = db.get(m.TestSuite, e.suite_id) if e.suite_id else None
     return {"id": e.id, "key": e.key, "project_id": e.project_id, "suite": {"id": s.id, "key": s.key, "name": s.name}
             if s else None, "environment": environment(env) if env else None, "source": e.source, "runner": e.runner,
-            "status": e.status, "hcm_version": e.hcm_version, "total": e.total, "passed": e.passed,
+            "status": e.status, "isolation_level": getattr(e, "isolation_level", "none") or "none",
+            "hcm_version": e.hcm_version, "total": e.total, "passed": e.passed,
             "failed": e.failed, "errored": e.errored, "skipped": e.skipped, "duration_ms": e.duration_ms,
             "commit_sha": e.commit_sha, "branch": e.branch, "retry_of_id": e.retry_of_id, "run_id": e.run_id,
             "triggered_by": user_ref(db, e.triggered_by), "started_at": iso(e.started_at),

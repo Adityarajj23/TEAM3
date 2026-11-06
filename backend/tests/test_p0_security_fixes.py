@@ -203,5 +203,82 @@ def test_git_client_token_never_in_argv_or_config(tmp_path, monkeypatch):
         assert env.get("GIT_TERMINAL_PROMPT") == "0"
 
 
+def test_ast_validator_rejects_known_escape_attempts():
+    from app.guardrails.ast_validator import validate_script
+
+    escape_attempts = [
+        # 1. getattr-free reflection via dunder traversal
+        "def test_escape():\n    sub = ().__class__.__bases__[0].__subclasses__()\n",
+        # 2. __import__ direct
+        "def test_escape():\n    m = __import__('os')\n",
+        # 3. __builtins__ reachability
+        "def test_escape():\n    b = __builtins__['open']('/etc/passwd')\n",
+        # 4. globals/locals tampering
+        "def test_escape():\n    g = globals()\n",
+        # 5. file read via open()
+        "def test_escape():\n    f = open('/etc/shadow')\n",
+        # 6. infinite while loop / fork bomb
+        "def test_escape():\n    while True:\n        pass\n",
+        # 7. Disallowed import (os, sys, subprocess, socket)
+        "import os\ndef test_escape():\n    pass\n",
+        "import socket\ndef test_escape():\n    pass\n",
+        "import subprocess\ndef test_escape():\n    pass\n",
+    ]
+    for script in escape_attempts:
+        rep = validate_script(script)
+        assert not rep.valid, f"Expected AST validator to reject exploit:\n{script}"
+        assert len(rep.errors) > 0
+
+
+def test_sandbox_environment_redacts_host_secrets(monkeypatch):
+    from app.execution.sandbox import run_pytest, ScriptSpec
+
+    # Inject simulated secrets into the host environment
+    monkeypatch.setenv("GROQ_API_KEY", "gsk_live_secret_key_12345")
+    monkeypatch.setenv("GEMINI_API_KEY", "AIzaSySecretGeminiKey67890")
+    monkeypatch.setenv("TRACETEST_SECRET_KEY", "super-secret-host-key")
+    monkeypatch.setenv("GITHUB_TOKEN", "ghp_PersonalAccessTokenHost")
+
+    # Run a simple valid script
+    script = "def test_ok():\n    assert 1 == 1\n"
+    spec = ScriptSpec("TC-OK-01", script)
+    res = run_pytest([spec], hcm_version=None)
+
+    assert res.status == "completed"
+    # Verify execution outcome
+    assert "TC-OK-01" in res.outcomes
+    assert res.outcomes["TC-OK-01"].status == "passed"
+    # Ensure neither logs nor stdout contain any host secrets
+    for secret in ("gsk_live_secret_key_12345", "AIzaSySecretGeminiKey67890", "super-secret-host-key", "ghp_PersonalAccessTokenHost"):
+        assert secret not in res.log, f"Host secret leaked in sandbox logs: {secret}"
+
+
+def test_sandbox_isolation_level_detection_and_fail_closed(monkeypatch):
+    import app.execution.sandbox as sb
+
+    # Test detection
+    iso = sb.detect_isolation_level()
+    assert iso in ("netns+rlimits", "rlimits_only", "none")
+
+    # Simulate unshare unavailable on linux without override -> must fail closed
+    monkeypatch.setattr(sb, "_unshare_available", lambda: False)
+    monkeypatch.setenv("TRACETEST_ALLOW_WEAK_SANDBOX", "0")
+    from app.core.config import get_settings
+    s = get_settings()
+    monkeypatch.setattr(s, "allow_weak_sandbox", False)
+
+    spec = sb.ScriptSpec("TC-FAIL-01", "def test_sample():\n    assert True\n")
+    with pytest.raises(RuntimeError) as exc:
+        sb.run_pytest([spec], hcm_version=None)
+    assert "isolation" in str(exc.value).lower() or "unshare" in str(exc.value).lower()
+
+    # Simulate with override allowed -> executes with weak isolation marker
+    monkeypatch.setenv("TRACETEST_ALLOW_WEAK_SANDBOX", "1")
+    monkeypatch.setattr(s, "allow_weak_sandbox", True)
+    res = sb.run_pytest([spec], hcm_version=None)
+    assert "weak:" in res.isolation_level or res.isolation_level == "rlimits_only"
+
+
+
 
 

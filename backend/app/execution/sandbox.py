@@ -106,6 +106,7 @@ class SandboxResult:
     returncode: int | None = None
     network_namespace: bool = False
     artifact_files: list[Path] = field(default_factory=list)
+    isolation_level: str = "none"
 
 
 def _limits(memory_mb: int | None, cpu_seconds: int):
@@ -114,6 +115,9 @@ def _limits(memory_mb: int | None, cpu_seconds: int):
         os.setsid()
         limits = [(resource.RLIMIT_CPU, cpu_seconds), (resource.RLIMIT_FSIZE, 50 * 1024 * 1024),
                   (resource.RLIMIT_CORE, 0)]
+        if hasattr(resource, "RLIMIT_NPROC"):
+            # Block fork bombs by capping max concurrent processes per user
+            limits.append((resource.RLIMIT_NPROC, 64))
         if memory_mb:  # browsers reserve large virtual address spaces, so Playwright runs skip RLIMIT_AS
             limits += [(resource.RLIMIT_AS, memory_mb * 1024 * 1024), (resource.RLIMIT_NOFILE, 256)]
         for lim, val in limits:
@@ -140,6 +144,16 @@ def _unshare_available() -> bool:
             except Exception:
                 _UNSHARE_OK = False
     return _UNSHARE_OK
+
+
+def detect_isolation_level() -> str:
+    """Detects available execution isolation level."""
+    if sys.platform.startswith("linux") and _unshare_available():
+        return "netns+rlimits"
+    if os.name == "posix":
+        return "rlimits_only"
+    return "none"
+
 
 
 def _parse_junit(xml_text: str, file_to_key: dict[str, str]) -> dict[str, TestOutcome]:
@@ -229,9 +243,23 @@ def run_pytest(specs: list[ScriptSpec], hcm_version: str | None, runner: str = "
             env["SYSTEMROOT"] = os.environ.get("SYSTEMROOT", "")
         cmd = [sys.executable, "-I", "-B", "-m", "pytest", "-q", "-p", "no:cacheprovider", "-o",
                "console_output_style=classic", f"--junitxml={junit}", "--rootdir", str(work), str(work)]
-        use_netns = runner == "pytest" and _unshare_available()
-        if use_netns:
-            cmd = [shutil.which("unshare") or "unshare", "-rn", *cmd]
+        iso_level = detect_isolation_level()
+        use_netns = False
+        if runner == "pytest":
+            if iso_level == "netns+rlimits":
+                use_netns = True
+                cmd = [shutil.which("unshare") or "unshare", "-rn", *cmd]
+            else:
+                allow_weak = settings.allow_weak_sandbox or os.environ.get("TRACETEST_ALLOW_WEAK_SANDBOX", "0") in ("1", "true", "True")
+                if not allow_weak:
+                    raise RuntimeError(
+                        f"Sandbox execution refused: network namespace isolation ('unshare -rn') is unavailable "
+                        f"(detected level: '{iso_level}'). TraceTest AI fails closed to prevent network exfiltration. "
+                        "Set TRACETEST_ALLOW_WEAK_SANDBOX=1 to override."
+                    )
+                iso_level = f"weak:{iso_level}"
+        else:
+            iso_level = "playwright:host_browser"
         start = time.monotonic()
         popen_kw: dict = {"cwd": str(work), "env": env, "stdout": subprocess.PIPE, "stderr": subprocess.STDOUT}
         if os.name == "posix":
@@ -269,6 +297,6 @@ def run_pytest(specs: list[ScriptSpec], hcm_version: str | None, runner: str = "
         outcomes.update(pre_rejected)
         files = [p for p in art.glob("*") if p.is_file()] if artifact_dir else []
         status = "timed_out" if timed_out else ("completed" if junit_text else "error")
-        return SandboxResult(status, outcomes, duration, text, junit_text, proc.returncode, use_netns, files)
+        return SandboxResult(status, outcomes, duration, text, junit_text, proc.returncode, use_netns, files, iso_level)
     finally:
         shutil.rmtree(work, ignore_errors=True)

@@ -239,5 +239,26 @@ Repository import operations previously cloned repositories by embedding tokens 
 - Protects against malicious repository structures exploiting git submodules, symlink traversal, or custom hooks.
 - Ensures identical, auditable ingestion behavior across all target repositories.
 
+---
+
+## ADR-014: Fail-Closed Sandbox Execution, Honest Isolation Level Auditing, and Process Limits
+
+### Context
+Previous test executions applied process resource limits and conditionally wrapped pytest in `unshare -rn` only when unshare was detected. If network isolation failed, execution silently proceeded without network containment. In addition, execution records did not persist the exact isolation level achieved, and process counts were not bounded against fork bombs.
+
+### Decision
+1. Explicitly detect the isolation level at runtime (`detect_isolation_level()`): `netns+rlimits` (Linux with network namespace unshare), `rlimits_only` (POSIX resource limits), or `none`.
+2. Persist `isolation_level` on every `Execution` database record and return it in API payloads and UI execution badges.
+3. Enforce a fail-closed execution policy by default (`TRACETEST_REQUIRE_NETWORK_ISOLATION=true`): if network namespace isolation cannot be established, pytest execution is refused with a clear diagnostic error. A development override flag (`TRACETEST_ALLOW_WEAK_SANDBOX=1`) permits execution only if explicitly acknowledged, marking the result with `weak:rlimits_only`.
+4. Add `RLIMIT_NPROC` (capped at 64 processes) to the POSIX child preexec limit set to prevent fork bombs.
+5. In the AST allowlist, treat AST validation as defense-in-depth, explicitly rejecting dunder identifier access (e.g. `__builtins__`, `__import__`, `__class__`, `__bases__`, `__subclasses__`), reflection tricks, `while` loops, and forbidden imports.
+6. Verify that sandbox execution environments scrub all host API keys and application secrets from the child process.
+
+### Consequences
+- Eliminates silent degradation of execution isolation.
+- Provides transparent, auditable proof of containment for all execution artifacts.
+- Protects the host system against network socket exfiltration and process table exhaustion attacks.
+
+
 
 

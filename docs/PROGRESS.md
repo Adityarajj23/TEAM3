@@ -179,6 +179,17 @@ Ran comparative evaluation with `backend/evals/echobox_scenarios.json`:
     4. Eliminated EchoBox shortcut from `projects.py`; all imported repositories follow the uniform `{owner}_{repo_name}` layout.
     5. Implemented `fetch_and_snapshot` in `git_client.py` for immutable, diff-aware commit tracking.
     6. Added regression tests covering malicious URLs, command injection refs, and token protection.
+- **P0-4: Fail-Closed Sandbox Execution & Isolation Level Auditing**:
+  - **Status**: FIXED (`backend/app/execution/sandbox.py`, `backend/app/guardrails/ast_validator.py`, `backend/app/services/executions.py`, `backend/migrations/versions/0002_security_and_provenance.py`).
+  - **Actions**:
+    1. Implemented `detect_isolation_level()` returning `netns+rlimits`, `rlimits_only`, or `none`.
+    2. Added Alembic migration `0002_security_and_provenance.py` adding `isolation_level` column to `executions` table.
+    3. Enforced fail-closed sandbox execution: refuses to run without network namespace isolation unless `TRACETEST_ALLOW_WEAK_SANDBOX=1` is explicitly set.
+    4. Added `RLIMIT_NPROC` (64 processes) to process limit configuration in POSIX child preexec.
+    5. Hardened AST validator against dunder reflection tricks (`__builtins__`, `__import__`, `__class__`, etc.), `while` loops, and dangerous builtins.
+    6. Verified host secret scrubbing from sandbox environment.
+    7. Added automated regression tests for isolation detection, fail-closed refusal, and AST escape prevention.
+
 
 
 
