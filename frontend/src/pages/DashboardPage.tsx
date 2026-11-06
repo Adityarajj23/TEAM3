@@ -32,6 +32,8 @@ import {
 } from "recharts";
 import { EmptyState, ErrorState, LoadingBlock, PageHeader, Panel, Skeleton, Stat } from "@/components/ui";
 import { CountUp } from "@/components/common/CountUp";
+import { ProductionProjectDashboard } from "@/components/dashboard/ProductionProjectDashboard";
+import { RequirementsProjectDashboard } from "@/components/dashboard/RequirementsProjectDashboard";
 import { useProjects } from "@/hooks/useProjects";
 import { ConnectRepoDialog } from "@/pages/ProjectsPage";
 import { api } from "@/services/api";
@@ -243,8 +245,7 @@ function ProjectOnboardingHub({ current }: { current?: any }) {
   );
 }
 
-export default function DashboardPage() {
-  const { projectId, current } = useProjects();
+function AnalyticsDashboardView({ projectId, current }: { projectId: number | null; current: any }) {
   const nav = useNavigate();
   const [range, setRange] = useState({ from: "", to: "" });
   const [connectOpen, setConnectOpen] = useState(false);
@@ -755,4 +756,16 @@ export default function DashboardPage() {
       <ConnectRepoDialog open={connectOpen} onOpenChange={setConnectOpen} />
     </>
   );
+}
+
+export default function DashboardPage() {
+  const { projectId, current } = useProjects();
+  if (projectId && current && current.key !== "SMPL" && current.key !== "PAY") {
+    const fallback = <AnalyticsDashboardView projectId={projectId} current={current} />;
+    if (current?.project_type === "requirements_based") {
+      return <RequirementsProjectDashboard projectId={projectId} fallback={fallback} />;
+    }
+    return <ProductionProjectDashboard projectId={projectId} fallback={fallback} />;
+  }
+  return <AnalyticsDashboardView projectId={projectId} current={current} />;
 }

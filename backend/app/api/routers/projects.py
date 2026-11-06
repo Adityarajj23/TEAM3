@@ -74,6 +74,16 @@ class ProjectIn(BaseModel):
     key: str = Field(min_length=2, max_length=10)
     name: str = Field(min_length=3, max_length=200)
     description: str = ""
+    project_type: str = Field(default="requirements_based")
+    business_domain: str = ""
+    product_type: str = ""
+    target_users_and_roles: list[str] = Field(default_factory=list)
+    objectives: list[str] = Field(default_factory=list)
+    business_scenarios: list[str] = Field(default_factory=list)
+    functional_expectations: list[str] = Field(default_factory=list)
+    non_functional_expectations: list[str] = Field(default_factory=list)
+    constraints_and_assumptions: list[str] = Field(default_factory=list)
+    explicit_exclusions: list[str] = Field(default_factory=list)
 
 
 @router.post("", status_code=201)
@@ -84,7 +94,23 @@ def create_project(body: ProjectIn, p: Principal = Depends(require("project.admi
     if db.execute(select(Project).where(Project.key == key)).scalar_one_or_none():
         raise Conflict("Project key already in use")
     org = db.execute(select(Organisation)).scalars().first()
-    proj = Project(key=key, name=body.name, description=body.description, organisation_id=org.id, owner_id=p.id)
+    proj = Project(
+        key=key,
+        name=body.name,
+        description=body.description,
+        project_type=body.project_type,
+        business_domain=body.business_domain,
+        product_type=body.product_type,
+        target_users_and_roles=body.target_users_and_roles,
+        objectives=body.objectives,
+        business_scenarios=body.business_scenarios,
+        functional_expectations=body.functional_expectations,
+        non_functional_expectations=body.non_functional_expectations,
+        constraints_and_assumptions=body.constraints_and_assumptions,
+        explicit_exclusions=body.explicit_exclusions,
+        organisation_id=org.id,
+        owner_id=p.id,
+    )
     db.add(proj)
     db.flush()
     db.add(ProjectMember(project_id=proj.id, user_id=p.id, project_role="owner"))
@@ -92,6 +118,8 @@ def create_project(body: ProjectIn, p: Principal = Depends(require("project.admi
     if key.startswith("DF") or "dayforce" in body.name.lower():
         db.add(Environment(project_id=proj.id, name="QA — Reference HCM 1.0", kind="reference_hcm", hcm_version="1.0", is_default=True))
         db.add(Environment(project_id=proj.id, name="Fix candidate — Reference HCM 1.1", kind="reference_hcm", hcm_version="1.1"))
+    elif body.project_type == "requirements_based":
+        db.add(Environment(project_id=proj.id, name=f"{body.name} Simulation Engine", kind="simulation", is_default=True))
     else:
         db.add(Environment(project_id=proj.id, name=f"{body.name} Local Sandbox", kind="simulation", is_default=True))
     audit.record(db, p.id, "project.created", "project", proj.id, proj.key, proj.id)
@@ -314,6 +342,52 @@ def get_project_dashboard(
     )
 
 
+@router.get("/{project_id}/requirements-dashboard")
+def get_requirements_dashboard(
+    project_id: int,
+    p: Principal = Depends(current_principal),
+    db: Session = Depends(get_db),
+):
+    proj = get_project_checked(db, p, project_id)
+    from app.services.requirements_dashboard import get_requirements_project_dashboard_data
+    return get_requirements_project_dashboard_data(db=db, project_id=proj.id)
+
+
+@router.get("/{project_id}/traceability")
+def get_project_traceability(
+    project_id: int,
+    p: Principal = Depends(current_principal),
+    db: Session = Depends(get_db),
+):
+    proj = get_project_checked(db, p, project_id)
+    from app.services.requirements_dashboard import get_project_traceability_matrix
+    return get_project_traceability_matrix(db=db, project_id=proj.id)
+
+
+@router.get("/{project_id}/quality-report")
+def get_project_quality_report(
+    project_id: int,
+    p: Principal = Depends(current_principal),
+    db: Session = Depends(get_db),
+):
+    proj = get_project_checked(db, p, project_id)
+    from app.services.requirements_dashboard import generate_comprehensive_quality_report
+    return generate_comprehensive_quality_report(db=db, project_id=proj.id)
+
+
+@router.get("/{project_id}/quality-report.html")
+def get_project_quality_report_html(
+    project_id: int,
+    p: Principal = Depends(current_principal),
+    db: Session = Depends(get_db),
+):
+    from fastapi.responses import Response
+    proj = get_project_checked(db, p, project_id)
+    from app.services.requirements_dashboard import generate_quality_report_html
+    content = generate_quality_report_html(db=db, project_id=proj.id)
+    return Response(content=content, media_type="text/html")
+
+
 class ProjectPatch(BaseModel):
     name: str | None = Field(None, min_length=3, max_length=200)
     description: str | None = None
@@ -404,3 +478,79 @@ def add_environment(project_id: int, body: EnvIn, p: Principal = Depends(require
     audit.record(db, p.id, "environment.created", "environment", None, body.name, proj.id)
     db.commit()
     return S.environment(e)
+
+
+@router.post("/{project_id}/generate-acceptance-criteria")
+def trigger_generate_criteria(
+    project_id: int,
+    p: Principal = Depends(require("requirement.write")),
+    db: Session = Depends(get_db),
+):
+    proj = get_project_checked(db, p, project_id)
+    from app.services.test_design import generate_acceptance_criteria_for_project
+    return generate_acceptance_criteria_for_project(db, proj.id, author_id=p.id)
+
+
+@router.get("/{project_id}/acceptance-criteria")
+def list_project_criteria(
+    project_id: int,
+    requirement_id: int | None = None,
+    p: Principal = Depends(current_principal),
+    db: Session = Depends(get_db),
+):
+    proj = get_project_checked(db, p, project_id)
+    from app.db.models import AcceptanceCriterion
+    stmt = select(AcceptanceCriterion).join(Requirement).where(Requirement.project_id == proj.id)
+    if requirement_id:
+        stmt = stmt.where(AcceptanceCriterion.requirement_id == requirement_id)
+    rows = db.execute(stmt.order_by(AcceptanceCriterion.id)).scalars().all()
+    return [S.criterion(a) for a in rows]
+
+
+@router.post("/{project_id}/generate-tests")
+def trigger_generate_tests(
+    project_id: int,
+    p: Principal = Depends(require("test.write")),
+    db: Session = Depends(get_db),
+):
+    proj = get_project_checked(db, p, project_id)
+    from app.services.test_design import generate_test_scenarios_for_project
+    return generate_test_scenarios_for_project(db, proj.id, author_id=p.id)
+
+
+@router.post("/{project_id}/validate-specifications", status_code=201)
+def trigger_specification_validation(
+    project_id: int,
+    p: Principal = Depends(require("suite.execute")),
+    db: Session = Depends(get_db),
+):
+    proj = get_project_checked(db, p, project_id)
+    from app.services.simulation_engine import run_specification_validation
+    exec_run = run_specification_validation(db, proj.id, user_id=p.id)
+    return S.execution(db, exec_run)
+
+
+@router.post("/{project_id}/run-simulation", status_code=201)
+def trigger_behaviour_simulation(
+    project_id: int,
+    p: Principal = Depends(require("suite.execute")),
+    db: Session = Depends(get_db),
+):
+    proj = get_project_checked(db, p, project_id)
+    from app.services.simulation_engine import run_behaviour_simulation
+    exec_run = run_behaviour_simulation(db, proj.id, user_id=p.id)
+    return S.execution(db, exec_run)
+
+
+@router.get("/{project_id}/simulation-models")
+def list_project_simulation_models(
+    project_id: int,
+    p: Principal = Depends(current_principal),
+    db: Session = Depends(get_db),
+):
+    proj = get_project_checked(db, p, project_id)
+    from app.db.models import SimulationModel
+    models = db.execute(
+        select(SimulationModel).where(SimulationModel.project_id == proj.id)
+    ).scalars().all()
+    return [S.simulation_model(m) for m in models]

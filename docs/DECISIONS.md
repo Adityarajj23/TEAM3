@@ -674,3 +674,40 @@ TraceTest AI required an enterprise SaaS project dashboard matching the visual r
 - Production dashboard accurately reflects genuine database state for both EchoBox (healthy, 21 reqs, 62 clauses, 21 tests, 6 defects, 9 runs) and Cureonix (not tested, 23 reqs, 32 clauses, 0 tests, 0 defects, 0 runs).
 - Single-click JUnit XML and standalone HTML report downloads for all test executions.
 - Zero fake metrics or hardcoded counters. Fully covered by automated tests.
+
+---
+
+## ADR-036: Requirements-Based AI Quality Engineering Platform & Dual-Architecture Support
+
+### Status
+Accepted
+
+### Context
+Enterprise software quality engineering faces its greatest defect injection and friction at the requirements phase, prior to code authoring. Ambiguities, conflicting expectations, missing edge-case boundaries, and untracked requirement modifications are responsible for substantial downstream rework. TraceTest AI required a strategic pivot to position Requirements-Based AI Quality Engineering (Product Requirements-to-Test Assistant) as the primary product direction, while preserving existing Code-Based projects (`ECHO` and `CUREON`) and workflows without disruption.
+
+### Decision
+1. **Primary Direction & Project Classification**:
+   - Establish `requirements_based` as the default project type (`project_type="requirements_based"`), supporting metadata including business domain, product type, compliance standards, and user expectations.
+   - Retain `code_based` projects with existing code repository ingestion and execution workflows intact.
+2. **Multi-Format Document Parsing Engine**:
+   - Implement `backend/app/services/document_processor.py` supporting `.pdf` (`pypdf`), `.docx` (`python-docx`), `.xlsx` (`openpyxl`), `.csv`, `.txt`, and `.md` with section and page/sheet provenance and SHA-256 integrity hashing.
+3. **Requirement Intelligence & Clarification Lifecycle**:
+   - Implement `backend/app/services/requirement_intelligence.py` for grounded requirement extraction, categorization (`functional`, `non_functional`, `security`, `performance`, `compliance`, `integration`), and heuristic detection of ambiguities and contradictions.
+   - Manage ambiguities through a dedicated `RequirementClarification` lifecycle (`open` -> `in_review` -> `resolved`).
+4. **Test Design & 10-Category Scenarios**:
+   - Implement `backend/app/services/test_design.py` generating structured Given/When/Then acceptance criteria and authoring 10 scenario categories: positive, negative, boundary, edge case, input validation, business rule, permission/role, security, error handling, and integration.
+5. **Deterministic Specification Validation & Simulation**:
+   - Segregate execution semantics: specification validation produces `VAL-XXXXXX` runs, behavioral state machine simulation produces `SIM-XXXXXX` runs, and code-based runs retain `EX-XXXXXX`. Never misrepresent static validations or simulations as live application testing.
+6. **Telemetry, Traceability Matrix & 19-Section Quality Reports**:
+   - Implement `backend/app/services/requirements_dashboard.py` calculating requirement maturity, clarification counts, test scenario ratios, and validation outcomes.
+   - Compile bidirectional traceability matrices (`Document <-> Requirement <-> Acceptance Criteria <-> Test Case <-> Outcome`) and generate authoritative 19-section enterprise quality reports in JSON and standalone HTML.
+7. **Frontend Dual-Dashboard Routing**:
+   - In `frontend/src/pages/DashboardPage.tsx` and `ProjectsPage.tsx`, route dynamically to `RequirementsProjectDashboard` for requirements-based projects and `ProductionProjectDashboard` for code-based projects.
+8. **Testing & Verification**:
+   - Author comprehensive test coverage in `backend/tests/test_requirements_based_platform.py` (7 tests, 100% passing) and frontend vitest suite.
+
+### Consequences
+- TraceTest AI operates as a premier Requirements-Based Quality Engineering platform while seamlessly preserving code-based projects.
+- Clear semantic segregation ensures static validations (`VAL-*`) and simulations (`SIM-*`) are never conflated with live code tests.
+- Full provenance and audit readiness across all ingested documents, requirements, tests, and generated quality reports.
+

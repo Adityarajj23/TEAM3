@@ -34,9 +34,10 @@ import { cn } from "@/utils/format";
 interface Props {
   projectId: number;
   isDetailView?: boolean;
+  fallback?: React.ReactNode;
 }
 
-export function ProductionProjectDashboard({ projectId, isDetailView = false }: Props) {
+export function ProductionProjectDashboard({ projectId, isDetailView = false, fallback }: Props) {
   const nav = useNavigate();
   const qc = useQueryClient();
   const [activeTab, setActiveTab] = useState<"runs" | "requirements" | "defects" | "config">("runs");
@@ -81,7 +82,10 @@ export function ProductionProjectDashboard({ projectId, isDetailView = false }: 
     );
   }
 
-  if (query.isError || !query.data) {
+  if (!query.data) {
+    if (fallback) {
+      return <>{fallback}</>;
+    }
     return (
       <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center space-y-3 max-w-lg mx-auto my-12">
         <XCircle className="h-8 w-8 text-red-500 mx-auto" />
@@ -333,7 +337,7 @@ export function ProductionProjectDashboard({ projectId, isDetailView = false }: 
               {s.passed_tests}
             </div>
             <div className="text-[11px] text-emerald-700 font-medium">
-              ({s.passed_pct.toFixed(1)}%)
+              ({(s.passed_pct ?? 0).toFixed(1)}%)
             </div>
           </div>
 
@@ -347,7 +351,7 @@ export function ProductionProjectDashboard({ projectId, isDetailView = false }: 
               {s.failed_tests}
             </div>
             <div className="text-[11px] text-red-700 font-medium">
-              ({s.failed_pct.toFixed(1)}%)
+              ({(s.failed_pct ?? 0).toFixed(1)}%)
             </div>
           </div>
 
@@ -402,7 +406,7 @@ export function ProductionProjectDashboard({ projectId, isDetailView = false }: 
             )}
           >
             <span>Recent Runs</span>
-            {data.recent_runs.length > 0 && (
+            {data.recent_runs && data.recent_runs.length > 0 && (
               <span className="rounded-full bg-slate-100 px-1.5 py-0.2 text-[10px] text-slate-600">
                 {data.recent_runs.length}
               </span>
@@ -420,7 +424,7 @@ export function ProductionProjectDashboard({ projectId, isDetailView = false }: 
           >
             <span>Requirements</span>
             <span className="rounded-full bg-slate-100 px-1.5 py-0.2 text-[10px] text-slate-600">
-              {data.requirements_tab.total}
+              {data.requirements_tab?.total ?? 0}
             </span>
           </button>
 
@@ -435,7 +439,7 @@ export function ProductionProjectDashboard({ projectId, isDetailView = false }: 
           >
             <span>Defects</span>
             <span className="rounded-full bg-slate-100 px-1.5 py-0.2 text-[10px] text-slate-600">
-              {data.defects_tab.total_open}
+              {data.defects_tab?.total_open ?? 0}
             </span>
           </button>
 
@@ -455,7 +459,7 @@ export function ProductionProjectDashboard({ projectId, isDetailView = false }: 
         {/* Tab 1: Recent Runs */}
         {activeTab === "runs" && (
           <div>
-            {data.recent_runs.length === 0 ? (
+            {!data.recent_runs || data.recent_runs.length === 0 ? (
               <div className="py-12 text-center space-y-2">
                 <PlayCircle className="h-8 w-8 text-slate-300 mx-auto" />
                 <p className="text-sm font-semibold text-slate-700">No test runs executed yet</p>
@@ -479,7 +483,7 @@ export function ProductionProjectDashboard({ projectId, isDetailView = false }: 
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-medium">
-                    {data.recent_runs.map((r) => (
+                    {(data.recent_runs || []).map((r) => (
                       <tr
                         key={r.id}
                         className={cn(
@@ -547,23 +551,23 @@ export function ProductionProjectDashboard({ projectId, isDetailView = false }: 
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-xs bg-slate-50 p-3 rounded-md border border-slate-100">
               <div>
                 <span className="text-[10px] uppercase font-semibold text-slate-400 block">Total</span>
-                <span className="font-bold text-slate-900 text-sm">{data.requirements_tab.total}</span>
+                <span className="font-bold text-slate-900 text-sm">{data.requirements_tab?.total ?? 0}</span>
               </div>
               <div>
                 <span className="text-[10px] uppercase font-semibold text-slate-400 block">Documented</span>
-                <span className="font-bold text-emerald-600 text-sm">{data.requirements_tab.documented}</span>
+                <span className="font-bold text-emerald-600 text-sm">{data.requirements_tab?.documented ?? 0}</span>
               </div>
               <div>
                 <span className="text-[10px] uppercase font-semibold text-slate-400 block">Inferred</span>
-                <span className="font-bold text-blue-600 text-sm">{data.requirements_tab.inferred}</span>
+                <span className="font-bold text-blue-600 text-sm">{data.requirements_tab?.inferred ?? 0}</span>
               </div>
               <div>
                 <span className="text-[10px] uppercase font-semibold text-slate-400 block">Awaiting Confirmation</span>
-                <span className="font-bold text-amber-600 text-sm">{data.requirements_tab.awaiting_confirmation}</span>
+                <span className="font-bold text-amber-600 text-sm">{data.requirements_tab?.awaiting_confirmation ?? 0}</span>
               </div>
               <div>
                 <span className="text-[10px] uppercase font-semibold text-slate-400 block">Unmapped (0 Tests)</span>
-                <span className="font-bold text-slate-600 text-sm">{data.requirements_tab.unmapped}</span>
+                <span className="font-bold text-slate-600 text-sm">{data.requirements_tab?.unmapped ?? 0}</span>
               </div>
             </div>
 
@@ -580,7 +584,7 @@ export function ProductionProjectDashboard({ projectId, isDetailView = false }: 
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {data.requirements_tab.items.map((req) => (
+                  {(data.requirements_tab?.items || []).map((req) => (
                     <tr key={req.id} className="hover:bg-slate-50/60">
                       <td className="py-2 px-3 font-mono font-semibold text-[#3067DB]">
                         <Link to={`/requirements/${req.id}`} className="hover:underline">
@@ -618,7 +622,7 @@ export function ProductionProjectDashboard({ projectId, isDetailView = false }: 
         {/* Tab 3: Defects */}
         {activeTab === "defects" && (
           <div className="p-4 space-y-4">
-            {data.defects_tab.items.length === 0 ? (
+            {!data.defects_tab?.items || data.defects_tab.items.length === 0 ? (
               <div className="py-12 text-center space-y-2">
                 <CheckCircle2 className="h-8 w-8 text-emerald-500 mx-auto" />
                 <p className="text-sm font-semibold text-slate-800">Zero Open Defects</p>
@@ -638,7 +642,7 @@ export function ProductionProjectDashboard({ projectId, isDetailView = false }: 
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {data.defects_tab.items.map((d) => (
+                    {(data.defects_tab?.items || []).map((d) => (
                       <tr key={d.id} className="hover:bg-slate-50/60">
                         <td className="py-2 px-3 font-mono font-semibold text-red-600">
                           <Link to={`/defects/${d.id}`} className="hover:underline">
@@ -677,15 +681,15 @@ export function ProductionProjectDashboard({ projectId, isDetailView = false }: 
                 <div className="space-y-2 text-slate-600">
                   <div>
                     <span className="font-medium text-slate-500 block">Repository URL</span>
-                    <span className="font-mono">{data.configuration.repository_url || "Not configured"}</span>
+                    <span className="font-mono">{data.configuration?.repository_url || "Not configured"}</span>
                   </div>
                   <div>
                     <span className="font-medium text-slate-500 block">Target Branch</span>
-                    <span className="font-mono">{data.configuration.branch}</span>
+                    <span className="font-mono">{data.configuration?.branch || "main"}</span>
                   </div>
                   <div>
                     <span className="font-medium text-slate-500 block">Pinned Commit</span>
-                    <span className="font-mono">{data.configuration.commit_sha || "HEAD"}</span>
+                    <span className="font-mono">{data.configuration?.commit_sha || "HEAD"}</span>
                   </div>
                 </div>
               </div>
@@ -703,7 +707,7 @@ export function ProductionProjectDashboard({ projectId, isDetailView = false }: 
                   </div>
                   <div>
                     <span className="font-medium text-slate-500 block">Available Environments</span>
-                    <span>{data.configuration.environments.length} environments configured</span>
+                    <span>{data.configuration?.environments?.length ?? 0} environments configured</span>
                   </div>
                 </div>
               </div>
@@ -722,7 +726,7 @@ export function ProductionProjectDashboard({ projectId, isDetailView = false }: 
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {data.configuration.environments.map((e) => (
+                    {(data.configuration?.environments || []).map((e) => (
                       <tr key={e.id}>
                         <td className="py-2 px-3 font-medium text-slate-900">{e.name}</td>
                         <td className="py-2 px-3 font-mono text-slate-600">{e.kind}</td>
@@ -849,7 +853,7 @@ export function ProductionProjectDashboard({ projectId, isDetailView = false }: 
               <div className="flex items-center justify-between">
                 <span className="font-medium text-slate-600">Requirement Coverage</span>
                 <div className="flex items-center gap-2">
-                  <span className="font-bold text-slate-900">{q.requirement_coverage_pct.toFixed(1)}%</span>
+                  <span className="font-bold text-slate-900">{(q.requirement_coverage_pct ?? 0).toFixed(1)}%</span>
                   <span className="text-slate-400 text-[11px]">
                     {q.requirement_covered_count} / {q.requirement_total_count}
                   </span>
@@ -858,7 +862,7 @@ export function ProductionProjectDashboard({ projectId, isDetailView = false }: 
               <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
                 <div
                   className="h-full rounded-full bg-emerald-500 transition-all duration-300"
-                  style={{ width: `${Math.min(100, q.requirement_coverage_pct)}%` }}
+                  style={{ width: `${Math.min(100, q.requirement_coverage_pct ?? 0)}%` }}
                 />
               </div>
             </div>
@@ -868,7 +872,7 @@ export function ProductionProjectDashboard({ projectId, isDetailView = false }: 
               <div className="flex items-center justify-between">
                 <span className="font-medium text-slate-600">Clause Coverage</span>
                 <div className="flex items-center gap-2">
-                  <span className="font-bold text-slate-900">{q.clause_coverage_pct.toFixed(1)}%</span>
+                  <span className="font-bold text-slate-900">{(q.clause_coverage_pct ?? 0).toFixed(1)}%</span>
                   <span className="text-slate-400 text-[11px]">
                     {q.clause_covered_count} / {q.clause_total_count}
                   </span>
@@ -877,7 +881,7 @@ export function ProductionProjectDashboard({ projectId, isDetailView = false }: 
               <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
                 <div
                   className="h-full rounded-full bg-emerald-500 transition-all duration-300"
-                  style={{ width: `${Math.min(100, q.clause_coverage_pct)}%` }}
+                  style={{ width: `${Math.min(100, q.clause_coverage_pct ?? 0)}%` }}
                 />
               </div>
             </div>
@@ -888,7 +892,7 @@ export function ProductionProjectDashboard({ projectId, isDetailView = false }: 
                 <span className="font-medium text-slate-600">Test Pass Rate</span>
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-slate-900">
-                    {q.test_pass_rate_pct !== null ? `${q.test_pass_rate_pct.toFixed(1)}%` : "—"}
+                    {q.test_pass_rate_pct !== null && q.test_pass_rate_pct !== undefined ? `${q.test_pass_rate_pct.toFixed(1)}%` : "—"}
                   </span>
                   <span className="text-slate-400 text-[11px]">
                     {q.test_pass_rate_pct !== null ? `${q.pass_rate_passed} / ${q.pass_rate_total}` : "No runs"}
@@ -910,7 +914,7 @@ export function ProductionProjectDashboard({ projectId, isDetailView = false }: 
       <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-2xs space-y-3">
         <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
           <h3 className="text-sm font-bold text-slate-900">
-            Open Defects ({data.defects_tab.total_open})
+            Open Defects ({data.defects_tab?.total_open ?? 0})
           </h3>
           <Link
             to={`/defects?project_id=${projectId}`}
@@ -921,7 +925,7 @@ export function ProductionProjectDashboard({ projectId, isDetailView = false }: 
           </Link>
         </div>
 
-        {data.defects_tab.items.length === 0 ? (
+        {!data.defects_tab?.items || data.defects_tab.items.length === 0 ? (
           <div className="py-6 text-center space-y-1 text-slate-400">
             <Check className="h-5 w-5 mx-auto text-emerald-500" />
             <p className="text-xs font-medium text-slate-600">Zero active defects reported</p>
@@ -940,7 +944,7 @@ export function ProductionProjectDashboard({ projectId, isDetailView = false }: 
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium">
-                {data.defects_tab.items.slice(0, 5).map((def) => (
+                {(data.defects_tab?.items || []).slice(0, 5).map((def) => (
                   <tr key={def.id} className="hover:bg-slate-50/60">
                     <td className="py-2 px-3 font-mono font-semibold text-[#3067DB]">
                       <Link to={`/defects/${def.id}`} className="hover:underline">
@@ -1011,7 +1015,7 @@ export function ProductionProjectDashboard({ projectId, isDetailView = false }: 
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium">
-              {data.requirements_status.map((item) => (
+              {(data.requirements_status || []).map((item) => (
                 <tr key={item.status} className="hover:bg-slate-50/60">
                   <td className="py-2 px-3 flex items-center gap-2">
                     {item.status === "Verified" && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />}
@@ -1021,7 +1025,7 @@ export function ProductionProjectDashboard({ projectId, isDetailView = false }: 
                   </td>
                   <td className="py-2 px-3 font-semibold text-slate-900">{item.count}</td>
                   <td className="py-2 px-3 text-right font-mono text-slate-600">
-                    {item.coverage_pct.toFixed(1)}%
+                    {(item.coverage_pct ?? 0).toFixed(1)}%
                   </td>
                 </tr>
               ))}
@@ -1035,7 +1039,7 @@ export function ProductionProjectDashboard({ projectId, isDetailView = false }: 
             Recent Activity
           </h3>
           <div className="space-y-3">
-            {data.recent_activity.map((act) => (
+            {(data.recent_activity || []).map((act) => (
               <div key={act.id} className="flex items-start gap-3 text-xs">
                 <div className="mt-0.5 rounded-full p-1.5 bg-blue-50 text-[#1D63ED] shrink-0">
                   {act.icon === "play" && <PlayCircle className="h-3.5 w-3.5" />}
@@ -1089,7 +1093,7 @@ export function ProductionProjectDashboard({ projectId, isDetailView = false }: 
           <div className="space-y-2">
             <label className="font-semibold text-slate-700 block">Select Environment</label>
             <div className="space-y-2">
-              {data.configuration.environments.map((e) => (
+              {(data.configuration?.environments || []).map((e) => (
                 <label
                   key={e.id}
                   className={cn(
