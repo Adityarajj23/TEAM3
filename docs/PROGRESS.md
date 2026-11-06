@@ -377,6 +377,26 @@ All 33 technical and user documents are present, detailed, and mutually verified
   - Removed all distorted narrow mobile viewports (`360px`, `390px`, `768px`, `1024px`) from canonical deliverables.
   - Zero horizontal scroll overflows detected across all viewports.
   - Automated `axe-core` accessibility audit saved to `docs/a11y-report.json`: 0 critical accessibility violations, WCAG AA compliant contrast and focus rings.
+
+---
+
+## 16. Final Build (v2): Visual Inspection & UI Defect List (1440px & 390px)
+
+Prior to modifying frontend code, every view across `docs/screenshots/` and live browser rendering was audited at both desktop/laptop (1440px) and mobile (390px) viewports.
+
+### 16.1 Mobile (390px) UI Defects
+1. **Sidebar Collision & Lack of Responsive Drawer**: On 390px viewports, `<aside className="w-60">` consumes 240px of the 390px viewport width, leaving only 150px for the right content container. This compresses headers into 1-to-2 word column wraps and clips tables. The sidebar must become an overlay/drawer on mobile (`hidden md:flex`, with a header hamburger trigger).
+2. **Top Header Overflow**: The top navbar houses the Project Workspace select, global search input, environment badge, AI status chip, notification bell, and settings icon. On 390px, these elements collide and cause horizontal stretching. Sub-badges (environment, isolation, AI chip) must hide on small screens, leaving the mobile nav drawer button, project select, and search toggle.
+3. **Table Column Squishing & Viewport Overflow**: On mobile, data tables in `/requirements`, `/tests`, `/executions`, and `/defects` contain 7–8 columns. Without container-level `overflow-x-auto` with sticky headers, tables either squash to illegibility or force page-level horizontal overflow. Tables must be wrapped in self-scrolling containers (`overflow-x: auto`) with sticky header rows.
+4. **Action Bar Stacking**: PageHeader action bars (e.g. date filter pill and "Connect GitHub Repository" button) wrap into awkward multi-line stacks without consistent vertical spacing. They must stack cleanly (`flex-col sm:flex-row`) with full-width buttons on mobile.
+5. **Radix Popover & Dropdown Anchoring**: Search suggestions and notifications popovers open with fixed 320px widths, spilling off-screen when triggered on mobile. They must anchor with responsive max-width (`w-[calc(100vw-2rem)] sm:w-80`).
+
+### 16.2 Desktop/Laptop (1440px) UI Defects
+1. **Native HTML `<select>` Controls**: Project switchers, filter dropdowns (Status, Type, Priority, Automation), and pagination row selectors use browser-native `<select>` tags that do not honor custom design tokens, have platform-specific arrow glyphs, and clip long project names. They must be replaced with accessible Radix/shadcn styled Select/Combobox components with clear focus rings.
+2. **Requirement Table Provenance Columns**: The requirement table displays uniform status pills and static categories, but lacks explicit computed provenance: origin (`documented` vs `inferred_from_code`), source commit short SHA, confidence score, atomic clause counts, and linked test coverage %.
+3. **Empty State Guidance**: Empty states in Review Workspace (`/tests/review`), Test Runs (`/executions`), and Defects (`/defects`) show generic placeholder text instead of purposeful enterprise guidance (e.g., "No tests awaiting review. Generate tests from a confirmed requirement" with a direct CTA).
+4. **Header Wordmark & Badge Spacing**: When long repository titles are loaded (e.g., `ECHO — EchoBox — Anonymous Conversation Platform`), the wordmark badge can truncate abruptly. The project switcher needs responsive width with tooltip disclosure on hover.
+5. **Dayforce Residual Terminology**: A small number of seed titles and default helper messages still contain references to Dayforce roles rather than deriving copy dynamically from the active project workspace.
 - **CI Workflow Hardening (`.github/workflows/ci.yml`)**:
   - Integrated `pip-audit -r backend/requirements.txt || true` in backend job for CVE dependency vulnerability checks.
   - Integrated `npm audit --audit-level=high || true` in frontend job for package vulnerability audit.

@@ -7,6 +7,7 @@ execution record reuses the real outcome for the exact script hash it lists).
 from __future__ import annotations
 
 import logging
+import os
 import random
 import re
 import time
@@ -154,9 +155,46 @@ def ensure_identity() -> None:
         dev_user.is_active = True
         dev_user.can_login = True
 
-        accounts = [(s.admin_email, "Morgan Ellis", "Platform Administrator", "admin", s.admin_password),
-                    (s.qa_email, "Jordan Patel", "Senior QA Engineer", "qa_engineer", s.qa_password),
-                    (s.reviewer_email, "Riley Chen", "QA Lead", "reviewer", s.reviewer_password)]
+        # In test mode, use deterministic test credentials so test fixtures connect cleanly;
+        # in development/production, generate per-install random credentials on first run.
+        creds_file = s.data_dir / "initial_credentials.txt"
+        generated_creds: dict[str, str] = {}
+        if s.app_env == "test":
+            generated_creds = {
+                "admin": "test-admin-password-1",
+                "qa": "test-qa-password-12",
+                "reviewer": "test-reviewer-password",
+            }
+        elif not creds_file.exists():
+            import secrets
+            for role_name in ("admin", "qa", "reviewer"):
+                generated_creds[role_name] = secrets.token_urlsafe(16)
+            flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
+            fd = os.open(str(creds_file), flags, 0o600)
+            with os.fdopen(fd, "w") as f:
+                f.write("# TraceTest AI Per-Install Initial Credentials\n")
+                f.write("# File mode: 0600. Keep outside git.\n\n")
+                f.write(f"admin={s.admin_email}:{generated_creds['admin']}\n")
+                f.write(f"qa={s.qa_email}:{generated_creds['qa']}\n")
+                f.write(f"reviewer={s.reviewer_email}:{generated_creds['reviewer']}\n")
+            print(f"[TraceTest AI] Initial operator credentials generated at {creds_file} (mode 0600).")
+        else:
+            try:
+                for line in creds_file.read_text().splitlines():
+                    line = line.strip()
+                    if line and not line.startswith("#") and "=" in line:
+                        r_name, cred = line.split("=", 1)
+                        if ":" in cred:
+                            _, p_val = cred.split(":", 1)
+                            generated_creds[r_name.strip()] = p_val.strip()
+            except Exception:
+                pass
+
+        accounts = [
+            (s.admin_email, "Morgan Ellis", "Platform Administrator", "admin", generated_creds.get("admin")),
+            (s.qa_email, "Jordan Patel", "Senior QA Engineer", "qa_engineer", generated_creds.get("qa")),
+            (s.reviewer_email, "Riley Chen", "QA Lead", "reviewer", generated_creds.get("reviewer")),
+        ]
         for email, name, title, role, pwd in accounts:
             u = db.execute(select(User).where(User.email == email.lower())).scalar_one_or_none()
             if u is None:

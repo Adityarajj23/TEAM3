@@ -435,6 +435,26 @@ Running frontend and backend on distinct origins during local development introd
 - Honest, transparent security boundaries distinguishing browser automation from containerized execution.
 - Strictly gated continuous integration with automated accessibility enforcement.
 
+---
+
+## ADR-026: Environment Secrets Hygiene, Per-Install Credential Generation, and Absolute Dual-Control Identity Switching
+
+### Context
+Static passwords committed or defaulted in `.env` files (e.g. `TRACETEST_ADMIN_PASSWORD`) create critical security risks. In addition, single-operator development environments often bypass the dual-control four-eyes principle (author cannot review their own test case), leading to self-approval during testing and demonstrations without authentic role boundaries. Furthermore, Pydantic's default `ValidationError` strings include raw invalid input values, risking secret credential exposure in application logs.
+
+### Decision
+1. Eliminate all static passwords (`TRACETEST_ADMIN_PASSWORD`, etc.) from `.env` and `Settings`. Establish `docs/ENVIRONMENT.md` as the authoritative 43-variable specification.
+2. In `backend/app/seed/seed.py`, dynamically generate cryptographically random credentials for initial operator (`operator`) and reviewer (`reviewer`) accounts in `var/initial_credentials.txt` (chmod `0600`) upon first database initialization, storing Argon2id hashes in SQLite. In test environments (`TRACETEST_ENV=test`), use deterministic test fixtures.
+3. Add `POST /api/v1/auth/switch-operator` to allow authorized local operators to alternate between operator persona (Alex Kowalski, QA Lead) and reviewer persona (Riley Chen, Staff QA Architect) with refreshed signed session cookies and CSRF tokens.
+4. Enforce an absolute four-eyes requirement in `backend/app/services/tests.py`: `if t.created_by == reviewer.id: raise Forbidden("Authors cannot approve their own tests")`, removing any role-based exemption for administrators.
+5. Configure `hide_input_in_errors=True` in `SettingsConfigDict` and add shape/security validators (`check_unknown_env`, `validate_security_invariants`) to prevent secret leakage in exceptions and enforce loopback-only single-operator bindings.
+
+### Consequences
+- No default or static passwords in codebase or environment files.
+- Demonstrable, cryptographically enforced dual-control four-eyes approval workflow.
+- Secure exception handling preventing accidental credential reflection in logs or responses.
+
+
 
 
 

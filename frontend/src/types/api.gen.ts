@@ -140,6 +140,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/switch-operator": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Switch Operator */
+        post: operations["switch_operator_api_v1_auth_switch_operator_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ci/results": {
         parameters: {
             query?: never;
@@ -1772,6 +1789,11 @@ export interface components {
             /** Remove Test Ids */
             remove_test_ids?: number[];
         };
+        /** SwitchOperatorIn */
+        SwitchOperatorIn: {
+            /** Persona */
+            persona: string;
+        };
         /** TestConnectionIn */
         TestConnectionIn: {
             /** Provider */
@@ -2131,6 +2153,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+        };
+    };
+    switch_operator_api_v1_auth_switch_operator_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SwitchOperatorIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

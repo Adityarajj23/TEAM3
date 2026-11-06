@@ -139,7 +139,7 @@ def review_test(db: Session, t: TestCase, decision: str, comment: str, reviewer:
         if t.validation_status != "valid":
             raise Conflict("Test failed deterministic validation and cannot be approved",
                            {"validation_errors": t.validation_errors})
-        if t.created_by == reviewer.id and not is_admin:
+        if t.created_by == reviewer.id:
             raise Forbidden("Authors cannot approve their own tests")
         if t.confidence < LOW_CONFIDENCE and not (comment or "").strip():
             raise BadRequest("Low-confidence tests require a reviewer comment to approve")

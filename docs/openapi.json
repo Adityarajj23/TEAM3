@@ -1118,6 +1118,20 @@
     "title": "SuitePatch",
     "type": "object"
    },
+   "SwitchOperatorIn": {
+    "properties": {
+     "persona": {
+      "pattern": "^(operator|reviewer)$",
+      "title": "Persona",
+      "type": "string"
+     }
+    },
+    "required": [
+     "persona"
+    ],
+    "title": "SwitchOperatorIn",
+    "type": "object"
+   },
    "TestConnectionIn": {
     "properties": {
      "provider": {
@@ -1979,6 +1993,45 @@
      }
     },
     "summary": "Me",
+    "tags": [
+     "authentication"
+    ]
+   }
+  },
+  "/api/v1/auth/switch-operator": {
+   "post": {
+    "operationId": "switch_operator_api_v1_auth_switch_operator_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SwitchOperatorIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Switch Operator",
     "tags": [
      "authentication"
     ]

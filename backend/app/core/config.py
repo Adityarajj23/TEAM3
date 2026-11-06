@@ -12,7 +12,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=str(REPO_ROOT / ".env"), env_prefix="", extra="ignore")
+    model_config = SettingsConfigDict(env_file=str(REPO_ROOT / ".env"), env_prefix="", extra="ignore", hide_input_in_errors=True)
 
     app_env: str = Field("development", alias="TRACETEST_ENV")
     data_dir: Path = Field(REPO_ROOT / "var", alias="TRACETEST_DATA_DIR")
@@ -30,11 +30,8 @@ class Settings(BaseSettings):
     single_operator: bool = Field(True, alias="TRACETEST_SINGLE_OPERATOR")
 
     admin_email: str = Field("admin@dayforce-qa.local", alias="TRACETEST_ADMIN_EMAIL")
-    admin_password: str | None = Field(None, alias="TRACETEST_ADMIN_PASSWORD")
     qa_email: str = Field("qa.engineer@dayforce-qa.local", alias="TRACETEST_QA_EMAIL")
-    qa_password: str | None = Field(None, alias="TRACETEST_QA_PASSWORD")
     reviewer_email: str = Field("reviewer@dayforce-qa.local", alias="TRACETEST_REVIEWER_EMAIL")
-    reviewer_password: str | None = Field(None, alias="TRACETEST_REVIEWER_PASSWORD")
     dev_email: str = Field("dev@dayforce-qa.local", alias="TRACETEST_DEV_EMAIL")
 
     # LLM providers
@@ -46,6 +43,7 @@ class Settings(BaseSettings):
     groq_key2: str | None = Field(None, alias="GROQ_KEY2")
     groq_key3: str | None = Field(None, alias="GROQ_KEY3")
     groq_model: str = Field("openai/gpt-oss-120b", alias="GROQ_MODEL")
+    groq_fallback_model: str = Field("openai/gpt-oss-20b", alias="GROQ_FALLBACK_MODEL")
     groq_base_url: str = Field("https://api.groq.com/openai/v1", alias="GROQ_BASE_URL")
 
     gemini_api_key: str | None = Field(None, alias="GEMINI_API_KEY")
@@ -55,6 +53,7 @@ class Settings(BaseSettings):
     gemini_key2: str | None = Field(None, alias="GEMINI_KEY2")
     gemini_key3: str | None = Field(None, alias="GEMINI_KEY3")
     gemini_model: str = Field("gemini-2.5-flash", alias="GEMINI_MODEL")
+    gemini_fallback_model: str = Field("gemini-2.5-flash-lite", alias="GEMINI_FALLBACK_MODEL")
 
     ollama_base_url: str | None = Field(None, alias="OLLAMA_BASE_URL")
     ollama_model: str = Field("llama3.1", alias="OLLAMA_MODEL")
@@ -88,6 +87,40 @@ class Settings(BaseSettings):
     github_token: str | None = Field(None, alias="GITHUB_TOKEN")
     github_api_url: str = Field("https://api.github.com", alias="GITHUB_API_URL")
 
+    @field_validator(
+        "groq_api_key", "groq_api_key2", "groq_api_key3",
+        "gemini_api_key", "gemini_api_key2", "gemini_api_key3",
+        "github_token",
+        mode="after"
+    )
+    @classmethod
+    def _validate_key_shape(cls, v: str | None, info) -> str | None:
+        if v is None:
+            return None
+        stripped = v.strip()
+        if not stripped:
+            return None
+        if any(c.isspace() for c in stripped):
+            name = info.field_name or "credential"
+            raise ValueError(f"Invalid shape for {name}: credential cannot contain internal whitespace")
+        return stripped
+
+    @classmethod
+    def check_unknown_env(cls) -> list[str]:
+        known_aliases = {
+            field.alias for field in cls.model_fields.values() if field.alias
+        }
+        known_names = set(cls.model_fields.keys()) | known_aliases | {"TRACETEST_CI_TOKEN", "TRACETEST_URL"}
+        unknown = []
+        for k in os.environ:
+            if k.startswith("TRACETEST_") and k not in known_names:
+                unknown.append(k)
+        if unknown:
+            import sys
+            for u in unknown:
+                print(f"[TraceTest AI Config Warning] Unknown environment variable: {u}", file=sys.stderr)
+        return unknown
+
     @field_validator("data_dir", mode="after")
     @classmethod
     def _absolute(cls, v: Path) -> Path:
@@ -119,10 +152,15 @@ class Settings(BaseSettings):
 
     def validate_security_invariants(self) -> None:
         """Enforce strict environment and security boundaries."""
-        if self.app_env == "production" and self.secret_key in ("change-me-in-env", "test-secret", ""):
-            raise ValueError(
-                "Production mode requires an explicit TRACETEST_SECRET_KEY. Cannot run with default or empty key."
-            )
+        if self.app_env == "production":
+            if self.secret_key in ("change-me-in-env", "test-secret", ""):
+                raise ValueError(
+                    "Production mode requires an explicit TRACETEST_SECRET_KEY. Cannot run with default or empty key."
+                )
+            if self.single_operator:
+                raise ValueError(
+                    "Production mode refuses TRACETEST_SINGLE_OPERATOR=true. Operator authentication is mandatory in production."
+                )
         if self.single_operator:
             loopback = {"127.0.0.1", "::1", "localhost", "testserver"}
             host = self.bind_host.strip().lower()
@@ -136,6 +174,7 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
+    Settings.check_unknown_env()
     s = Settings()
     for d in (s.data_dir, s.artifacts_dir, s.uploads_dir, s.backups_dir):
         d.mkdir(parents=True, exist_ok=True)

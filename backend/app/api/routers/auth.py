@@ -13,7 +13,7 @@ from app.core.config import get_settings
 from app.core.errors import AppError
 from app.core.security import CSRF_COOKIE, SESSION_COOKIE, hash_token, new_token, verify_password
 from app.db.base import get_db, utcnow
-from app.db.models import LoginAttempt, Project, User, UserSession
+from app.db.models import LoginAttempt, Project, Role, User, UserSession
 from app.domain.enums import PERMISSIONS
 from app.services import audit
 
@@ -27,10 +27,66 @@ class LoginIn(BaseModel):
 
 
 def _me(db: Session, p_user: User, roles: set[str], csrf: str) -> dict:
+    s = get_settings()
     perms = set()
     for r in roles:
         perms |= PERMISSIONS.get(r, set())
-    return {"user": S.user(p_user), "roles": sorted(roles), "permissions": sorted(perms), "csrf_token": csrf}
+    is_rev = p_user.email.lower() == s.reviewer_email.lower()
+    persona = "reviewer" if is_rev else "operator"
+    return {
+        "user": S.user(p_user),
+        "roles": sorted(roles),
+        "permissions": sorted(perms),
+        "csrf_token": csrf,
+        "persona": persona,
+    }
+
+
+class SwitchOperatorIn(BaseModel):
+    persona: str = Field(pattern="^(operator|reviewer)$")
+
+
+@router.post("/switch-operator")
+def switch_operator(body: SwitchOperatorIn, request: Request, response: Response, db: Session = Depends(get_db)):
+    s = get_settings()
+    if not s.single_operator and s.app_env == "production":
+        raise AppError(403, "forbidden", "Operator persona switching is only available in single-operator mode")
+
+    target_email = s.dev_email.lower() if body.persona == "operator" else s.reviewer_email.lower()
+    target_user = db.execute(select(User).where(func.lower(User.email) == target_email)).scalar_one_or_none()
+    if not target_user:
+        if body.persona == "reviewer":
+            target_user = db.execute(select(User).join(User.roles).where(Role.name == "reviewer")).scalars().first()
+        if not target_user:
+            raise AppError(404, "not_found", f"User persona for '{body.persona}' not found")
+
+    token = request.cookies.get(SESSION_COOKIE)
+    if token:
+        sess = db.execute(select(UserSession).where(UserSession.token_hash == hash_token(token))).scalar_one_or_none()
+        if sess:
+            sess.revoked = True
+
+    new_sess_token, csrf = new_token(), new_token()
+    host = request.client.host if request.client else "127.0.0.1"
+    db.add(UserSession(token_hash=hash_token(new_sess_token), csrf_token=csrf, user_id=target_user.id, ip=host,
+                       expires_at=utcnow() + timedelta(hours=s.session_hours)))
+    audit.record(db, target_user.id, f"auth.switch_persona.{body.persona}", "user", target_user.id, target_user.email)
+    db.commit()
+
+    max_age = s.session_hours * 3600
+    response.set_cookie(SESSION_COOKIE, new_sess_token, httponly=True, samesite="strict", secure=s.cookie_secure,
+                        max_age=max_age, path="/")
+    response.set_cookie(CSRF_COOKIE, csrf, httponly=False, samesite="strict", secure=s.cookie_secure,
+                        max_age=max_age, path="/")
+
+    roles = {ur.role.name for ur in target_user.roles}
+    if body.persona == "reviewer":
+        roles = roles | {"reviewer"}
+    else:
+        roles = roles | {"admin", "qa_engineer", "reviewer"}
+    out = _me(db, target_user, roles, csrf)
+    out["project_ids"] = list(db.execute(select(Project.id)).scalars())
+    return out
 
 
 @router.post("/login")
