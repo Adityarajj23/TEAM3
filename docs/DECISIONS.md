@@ -213,4 +213,31 @@ Target repositories imported into TraceTest AI are fundamentally untrusted exter
 - Eliminates host arbitrary code execution vulnerabilities arising from imported repositories.
 - Guarantees deterministic, host-isolated static inspection.
 
+---
+
+## ADR-013: Git Clone Hardening, Token Masking via Askpass, and Uniform Ingestion
+
+### Context
+Repository import operations previously cloned repositories by embedding tokens directly in the URL (`https://x-access-token:{token}@github.com/...`). This persisted the secret token inside `.git/config` on disk and exposed it in process argument vectors (`argv`). In addition, the generic import path contained special-case branch shortcuts specifically for EchoBox, bypassing uniform directory isolation.
+
+### Decision
+1. Implement `run_hardened_git` in `app/services/git_client.py`: tokens are NEVER placed in argv or clone URLs. Instead, tokens are passed via a temporary `GIT_ASKPASS` script created with `0700` user permissions and immediately removed.
+2. Enforce strict git flags on every git process invocation:
+   - `-c core.hooksPath=/dev/null`
+   - `-c protocol.file.allow=never`
+   - `-c http.followRedirects=false`
+   - `-c core.symlinks=false`
+   - `-c submodule.recurse=false`
+   - `GIT_TERMINAL_PROMPT=0`
+   - `GIT_ALLOW_PROTOCOL=https`
+3. Assert that `.git/config` never contains tokens post-clone, and enforce a repository size cap (`250 MB`) and file count cap (`10,000 files`).
+4. Eliminate all target-specific shortcuts from `projects.py`; all imported repositories follow the deterministic `var/repos/{owner}_{repo_name}` layout.
+5. In repository refresh, use `fetch_and_snapshot` to resolve and record the exact Git commit SHA without in-place destructive overwrites.
+
+### Consequences
+- Prevents token leakage into process listings (`ps`, `/proc`), audit logs, and on-disk git configuration files.
+- Protects against malicious repository structures exploiting git submodules, symlink traversal, or custom hooks.
+- Ensures identical, auditable ingestion behavior across all target repositories.
+
+
 

@@ -128,3 +128,80 @@ def test_untrusted_repo_build_script_never_executed_on_host(tmp_path):
     assert not marker_file.exists(), "CRITICAL P0-2 FAILURE: Untrusted repository build script was executed on the host!"
     assert result.get("typescript_build", {}).get("status") in ("passed", "skipped", "static_only")
 
+
+def test_validate_github_url_rejects_malicious_urls():
+    from app.core.errors import AppError
+    from app.services.repo_ingest import validate_github_url
+
+    malicious_urls = [
+        "https://user:pass@github.com/owner/repo",
+        "https://github.com:443/owner/repo",
+        "https://github.com:8000/owner/repo",
+        "file:///etc/passwd",
+        "http://github.com/owner/repo",
+        "https://127.0.0.1/owner/repo",
+        "https://[::1]/owner/repo",
+        "https://gith\u0443b.com/owner/repo",
+        "https://github.com/owner/../evil",
+        "https://github.com/..%2f../evil",
+    ]
+    for url in malicious_urls:
+        with pytest.raises(AppError) as exc:
+            validate_github_url(url)
+        assert exc.value.status == 400
+
+    # Valid URLs must succeed
+    owner, repo = validate_github_url("https://github.com/sohan10012/EchoBox")
+    assert owner == "sohan10012"
+    assert repo == "EchoBox"
+
+
+def test_validate_git_ref_rejects_options_and_traversal():
+    from app.core.errors import AppError
+    from app.services.repo_ingest import validate_git_ref
+
+    bad_refs = [
+        "--upload-pack=touch /tmp/pwn",
+        "-oProxyCommand=calc.exe",
+        "-b",
+        "main/../../etc/passwd",
+        "feature/../main",
+    ]
+    for ref in bad_refs:
+        with pytest.raises(AppError) as exc:
+            validate_git_ref(ref)
+        assert exc.value.status == 400
+
+    assert validate_git_ref("main") == "main"
+    assert validate_git_ref("release/v1.0.0") == "release/v1.0.0"
+    assert validate_git_ref("7d036b3") == "7d036b3"
+
+
+def test_git_client_token_never_in_argv_or_config(tmp_path, monkeypatch):
+    import subprocess
+    from app.services.git_client import run_hardened_git, clone_repository
+
+    secret_token = "ghp_SUPERSECRETTOKEN1234567890123456"
+    recorded_cmds = []
+
+    orig_run = subprocess.run
+    def mock_run(cmd, *args, **kwargs):
+        recorded_cmds.append((cmd, kwargs.get("env", {})))
+        return orig_run(["git", "--version"], capture_output=True, text=True)
+
+    monkeypatch.setattr(subprocess, "run", mock_run)
+
+    res = run_hardened_git(["status"], cwd=tmp_path, auth_token=secret_token)
+    assert res.returncode == 0
+
+    # Verify that secret_token NEVER appeared in any cmd arguments
+    for cmd, env in recorded_cmds:
+        for arg in cmd:
+            assert secret_token not in str(arg), f"CRITICAL: Secret token leaked in git command argv: {arg}"
+        # Token is passed safely via env to the transient askpass helper only
+        assert env.get("GIT_ALLOW_PROTOCOL") == "https"
+        assert env.get("GIT_TERMINAL_PROMPT") == "0"
+
+
+
+

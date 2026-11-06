@@ -107,9 +107,8 @@ class RepoImportIn(BaseModel):
 @router.post("/import-repo", status_code=201)
 def import_repository(body: RepoImportIn, p: Principal = Depends(require("project.admin")),
                       db: Session = Depends(get_db)):
-    import subprocess
-
     from app.core.config import REPO_ROOT
+    from app.services.git_client import clone_repository
     from app.services.repo_ingest import (
         analyze_repository,
         ingest_echobox_project,
@@ -123,27 +122,18 @@ def import_repository(body: RepoImportIn, p: Principal = Depends(require("projec
     if body.commit_sha:
         validate_git_ref(body.commit_sha)
 
-    # Locate or clone repository
+    # Locate or clone repository via hardened git client
     target_dir = REPO_ROOT / "var" / "repos" / f"{owner}_{repo_name}"
-    # Special case: check existing EchoBox local clone
-    if repo_name.lower() == "echobox" and (REPO_ROOT / "var" / "repos" / "EchoBox").exists():
-        target_dir = REPO_ROOT / "var" / "repos" / "EchoBox"
-    elif not target_dir.exists():
-        target_dir.parent.mkdir(parents=True, exist_ok=True)
-        clone_cmd = ["git", "clone", "--depth", "50", "-b", branch]
-        clone_url = body.repo_url
-        if body.auth_token:
-            # Pass token safely without leaking in logs
-            clone_url = f"https://x-access-token:{body.auth_token}@github.com/{owner}/{repo_name}.git"
-        clone_cmd.extend([clone_url, str(target_dir)])
-        try:
-            subprocess.run(clone_cmd, check=True, timeout=60, capture_output=True, text=True)
-        except subprocess.CalledProcessError as e:
-            err = (e.stderr or "").replace(body.auth_token or "", "[REDACTED]")
-            raise BadRequest(f"Git clone failed: {err[:200]}") from e
+    if not target_dir.exists() and (REPO_ROOT / "var" / "repos" / repo_name).exists():
+        target_dir = REPO_ROOT / "var" / "repos" / repo_name
 
-    if body.commit_sha:
-        subprocess.run(["git", "-C", str(target_dir), "checkout", body.commit_sha], check=True, timeout=15)
+    pinned_commit = clone_repository(
+        repo_url=body.repo_url,
+        target_dir=target_dir,
+        branch=branch,
+        commit_sha=body.commit_sha,
+        auth_token=body.auth_token,
+    )
 
     analysis = analyze_repository(target_dir)
     if body.dry_run:
@@ -167,10 +157,9 @@ def import_repository(body: RepoImportIn, p: Principal = Depends(require("projec
 @router.post("/{project_id}/refresh-repo")
 def refresh_repository(project_id: int, p: Principal = Depends(require("project.admin")),
                        db: Session = Depends(get_db)):
-    import subprocess
-
     from app.core.config import REPO_ROOT
     from app.db.models import Integration
+    from app.services.git_client import fetch_and_snapshot
     from app.services.repo_ingest import analyze_repository
 
     proj = get_project_checked(db, p, project_id)
@@ -181,14 +170,14 @@ def refresh_repository(project_id: int, p: Principal = Depends(require("project.
     repo_full = ig.config["repo"]
     owner, repo_name = repo_full.split("/")
     target_dir = REPO_ROOT / "var" / "repos" / f"{owner}_{repo_name}"
-    if repo_name.lower() == "echobox" and (REPO_ROOT / "var" / "repos" / "EchoBox").exists():
-        target_dir = REPO_ROOT / "var" / "repos" / "EchoBox"
+    if not target_dir.exists() and (REPO_ROOT / "var" / "repos" / repo_name).exists():
+        target_dir = REPO_ROOT / "var" / "repos" / repo_name
 
     if not target_dir.exists():
         raise BadRequest(f"Local repository directory not found at {target_dir}")
 
-    # Fetch latest commit
-    subprocess.run(["git", "-C", str(target_dir), "fetch", "--depth", "1"], capture_output=True, timeout=30)
+    # Fetch latest commit snapshot securely without in-place overwrite
+    new_sha, has_changed = fetch_and_snapshot(target_dir)
     analysis = analyze_repository(target_dir)
     # Update integration config
     cfg = dict(ig.config)

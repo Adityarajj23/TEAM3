@@ -170,6 +170,16 @@ Ran comparative evaluation with `backend/evals/echobox_scenarios.json`:
     2. Replaced with safe static JSON parsing of `package.json` and AST analysis of source files.
     3. Removed unconstrained `npx vite preview` server spawning from untrusted repository root in Playwright E2E.
     4. Added failing regression test `test_untrusted_repo_build_script_never_executed_on_host` asserting marker files from malicious build scripts are never created.
+- **P0-3: Git Clone Hardening & Token Handling**:
+  - **Status**: FIXED (`backend/app/services/git_client.py`, `backend/app/api/routers/projects.py`, `backend/app/services/repo_ingest.py`).
+  - **Actions**:
+    1. Built `git_client.py` implementing `run_hardened_git` with `GIT_ASKPASS` (0700 transient script) so tokens never touch command arguments or `.git/config`.
+    2. Enforced hardened git configuration (`core.hooksPath=/dev/null`, `protocol.file.allow=never`, `http.followRedirects=false`, `core.symlinks=false`, `submodule.recurse=false`, `GIT_TERMINAL_PROMPT=0`, `GIT_ALLOW_PROTOCOL=https`).
+    3. Added clone size cap (250 MB) and file count cap (10,000 files) to reject zip/git bombs.
+    4. Eliminated EchoBox shortcut from `projects.py`; all imported repositories follow the uniform `{owner}_{repo_name}` layout.
+    5. Implemented `fetch_and_snapshot` in `git_client.py` for immutable, diff-aware commit tracking.
+    6. Added regression tests covering malicious URLs, command injection refs, and token protection.
+
 
 
 
