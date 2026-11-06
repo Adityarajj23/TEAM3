@@ -2,15 +2,16 @@
   "mock": {
     "provider": "mock",
     "model": "fixture-v1",
+    "status": "completed",
     "iterations_completed": 3,
     "iterations_requested": 3,
     "quota_exhausted": false,
     "note": "All iterations completed successfully.",
     "latency_ms": {
-      "mean": 2.7,
-      "stddev": 0.4,
-      "min": 2.2,
-      "max": 3.0
+      "mean": 4.1,
+      "stddev": 0.3,
+      "min": 3.8,
+      "max": 4.3
     },
     "clause_coverage": {
       "mean": 1.0,
@@ -33,23 +34,24 @@
   "groq": {
     "provider": "groq",
     "model": "openai/gpt-oss-120b",
-    "iterations_completed": 3,
+    "status": "not completed",
+    "iterations_completed": 1,
     "iterations_requested": 3,
     "quota_exhausted": true,
-    "note": "Runs 4-3 skipped due to upstream HTTP 429 quota exhaustion.",
+    "note": "not completed (finished 5/10 scenarios before upstream HTTP 429 quota exhaustion). Runs 2-3 skipped.",
     "latency_ms": {
-      "mean": 22318.8,
-      "stddev": 14113.4,
-      "min": 12339.2,
-      "max": 32298.5
+      "mean": 16761.3,
+      "stddev": 0.0,
+      "min": 16761.3,
+      "max": 16761.3
     },
     "clause_coverage": {
-      "mean": 0.583,
-      "stddev": 0.52
+      "mean": 0.5,
+      "stddev": 0.0
     },
     "ungrounded_rate": {
-      "mean": 0.417,
-      "stddev": 0.52
+      "mean": 0.533,
+      "stddev": 0.0
     },
     "schema_pass_rate": {
       "mean": 1.0,
@@ -59,35 +61,45 @@
       "mean": 1.0,
       "stddev": 0.0
     },
-    "hallucinated_quotes": []
+    "hallucinated_quotes": [
+      {
+        "scenario": "GOLD-003",
+        "clause": [
+          "GOLD-003.C3"
+        ],
+        "quote": "Supervisors should be notified promptly of non\u2011compliant shifts.",
+        "why": "Ungrounded: Source quote 'Supervisors should be notified promptly of non\u2011compliant shifts.' was not found verbatim in cited clauses ['GOLD-003.C3'] (after 2 repair attempts)"
+      }
+    ]
   },
   "gemini": {
     "provider": "gemini",
     "model": "gemini-2.5-flash",
+    "status": "not completed",
     "iterations_completed": 1,
     "iterations_requested": 3,
     "quota_exhausted": true,
-    "note": "Runs 2-3 skipped due to upstream HTTP 429 quota exhaustion.",
+    "note": "not completed (finished 8/10 scenarios before upstream HTTP 429 quota exhaustion). Runs 2-3 skipped.",
     "latency_ms": {
-      "mean": 1651.8,
+      "mean": 114826.6,
       "stddev": 0.0,
-      "min": 1651.8,
-      "max": 1651.8
+      "min": 114826.6,
+      "max": 114826.6
     },
     "clause_coverage": {
-      "mean": 0.0,
+      "mean": 0.8,
       "stddev": 0.0
     },
     "ungrounded_rate": {
-      "mean": 1.0,
+      "mean": 0.2,
       "stddev": 0.0
     },
     "schema_pass_rate": {
-      "mean": 0.0,
-      "percentage": "0.0%"
+      "mean": 1.0,
+      "percentage": "100.0%"
     },
     "ambiguity_recall": {
-      "mean": 0.0,
+      "mean": 1.0,
       "stddev": 0.0
     },
     "hallucinated_quotes": []

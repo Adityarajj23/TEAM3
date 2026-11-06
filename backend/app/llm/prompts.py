@@ -50,10 +50,14 @@ def analysis_prompt(req_key: str, title: str, clauses: list[dict], untrusted: st
 
 
 def ac_prompt(req_key: str, clauses: list[dict], untrusted: str) -> str:
+    clause_bullets = "\n".join(f"- {c['key']}: \"{c['text']}\"" for c in clauses)
     return (payload("acceptance_criteria", {"requirement": req_key, "clauses": clauses})
             + "\n\nSource:\n" + untrusted + "\n\n"
-            "Write testable acceptance criteria. Each MUST cite clause_keys from the payload and include a "
-            "source_quote copied VERBATIM from one cited clause (at least 12 characters). "
+            "Exact clauses to cover:\n" + clause_bullets + "\n\n"
+            "Write testable acceptance criteria covering each of the specified clauses. "
+            "CRITICAL: Each item MUST cite clause_keys from the payload and MUST include a `source_quote` "
+            "that is copied EXACTLY VERBATIM (at least 12 characters) directly from the text of one cited clause. "
+            "Do NOT paraphrase or summarize the quote; it must be an exact substring of the clause text. "
             'Schema: {"criteria":[{"clause_keys":[str],"description":str,"preconditions":str,'
             '"expected_behaviour":str,"validation_conditions":[str],"source_quote":str,"confidence":0..1,'
             '"rationale":str,"assumptions":[str]}]}')
@@ -62,12 +66,15 @@ def ac_prompt(req_key: str, clauses: list[dict], untrusted: str) -> str:
 def test_prompt(req_key: str, clauses: list[dict], criteria: list[dict], untrusted: str, edge_cases: bool) -> str:
     focus = ("Focus on boundary values, negative inputs and edge cases not already covered."
              if edge_cases else "Cover functional, positive and negative behaviour.")
+    clause_bullets = "\n".join(f"- {c['key']}: \"{c['text']}\"" for c in clauses)
     return (payload("edge_case_tests" if edge_cases else "test_cases",
                     {"requirement": req_key, "clauses": clauses, "acceptance_criteria": criteria})
             + "\n\nSource:\n" + untrusted + "\n\n" + focus + "\n" + HCM_API_REFERENCE + "\n\n"
-            "Each test MUST cite clause_keys, quote a cited clause verbatim in source_quote, and when automation is "
-            "'pytest' include `script`: a complete pytest module whose test_* functions assert the behaviour stated "
-            "in the clause (expected values come from the requirement, NOT from the implementation). "
+            "Exact clauses to cover:\n" + clause_bullets + "\n\n"
+            "Each test MUST cite clause_keys from the payload and MUST include a `source_quote` copied EXACTLY VERBATIM "
+            "(at least 12 characters) from the text of one cited clause. Do NOT paraphrase or alter words. "
+            "When automation is 'pytest', include `script`: a complete pytest module whose test_* functions assert "
+            "the behaviour stated in the clause (expected values come from the requirement, NOT from the implementation). "
             "Use automation 'manual' when the behaviour cannot be exercised through the public API. "
             'Schema: {"tests":[{"title":str,"description":str,"clause_keys":[str],"ac_refs":[int],'
             '"preconditions":str,"test_data":{},"steps":[{"action":str,"expected":str}],"expected_result":str,'
@@ -85,6 +92,31 @@ def failure_prompt(evidence: dict) -> str:
             'Schema: {"category":str,"observed_facts":[str],"hypotheses":[str],"probable_cause":str,'
             '"suggested_actions":[str],"confidence":0..1,"recommended_severity":"critical|high|medium|low",'
             '"recommended_priority":"p1|p2|p3|p4","defect_title":str,"defect_summary":str}')
+
+
+def quote_repair_prompt(task: str, original_user: str, errors: list[dict], texts: dict[str, str]) -> str:
+    lines = [
+        original_user,
+        "\n\nYour previous response FAILED deterministic quote verification.",
+        "The following item(s) contained ungrounded or non-verbatim quotations:\n"
+    ]
+    for err in errors:
+        ck = err.get("clause_keys", [])
+        desc = err.get("description") or err.get("title") or "Item"
+        q = err.get("source_quote", "")
+        lines.append(f"- Item '{desc}': cited clauses {ck}, quote '{q}'")
+        lines.append(f"  Failure reason: {err.get('_failure_reason', 'Quote not found verbatim in clause')}")
+        for k in ck:
+            if k in texts:
+                lines.append(f"  Exact text of clause {k}: \"{texts[k]}\"")
+    lines.extend([
+        "\nCORRECTION INSTRUCTION:",
+        "For each item above, fix `source_quote` so that it is an EXACT, character-for-character verbatim excerpt",
+        "(at least 12 characters) copied directly from the cited clause text without ANY modification, paraphrase, or summarization.",
+        "If an assertion cannot be quoted verbatim from the clause text, remove that item from the JSON.",
+        "Return the complete corrected JSON object only."
+    ])
+    return "\n".join(lines)
 
 
 def repair_prompt(original_user: str, bad_output: str, errors: str) -> str:

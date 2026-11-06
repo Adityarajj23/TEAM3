@@ -29,7 +29,7 @@ from app.services import audit, tasks
 from app.services.requirements import clauses_for, current_version
 from app.services.tests import create_test
 
-GROUP_SIZE = 4
+GROUP_SIZE = 2
 
 
 class ReqState(TypedDict, total=False):
@@ -148,21 +148,55 @@ def acceptance_criteria_generator(state: ReqState) -> ReqState:
     texts = {c["key"]: c["text"] for c in state["clauses"]}
     for group in _groups(state["clauses"]):
         merged = cast(ReqState, {**state, **out})
-        res, extra = _llm(merged, "acceptance_criteria", prompts.ac_prompt(state["req_key"], group, state["untrusted"]),
-                          AcceptanceCriteriaBatch)
+        prompt_text = prompts.ac_prompt(state["req_key"], group, state["untrusted"])
+        res, extra = _llm(merged, "acceptance_criteria", prompt_text, AcceptanceCriteriaBatch)
         out.update(cast(ReqState, extra))
         if not res:
             continue
-        with session_scope() as db:
-            n = db.query(AcceptanceCriterion).filter_by(requirement_id=state["requirement_id"]).count()
-            for item in res.data.criteria:
+
+        valid_criteria = []
+        pending = []
+        for item in res.data.criteria:
+            unknown = [k for k in item.clause_keys if k not in texts]
+            verified = not unknown and verify_quote(item.source_quote, [texts[k] for k in item.clause_keys])
+            if verified:
+                valid_criteria.append(item)
+            else:
+                reason = f"Unknown clauses {unknown}" if unknown else f"Source quotation '{item.source_quote}' not found verbatim in cited clauses {item.clause_keys}"
+                pending.append({"item": item, "clause_keys": item.clause_keys, "description": item.description,
+                                "source_quote": item.source_quote, "_failure_reason": reason})
+
+        attempt = 0
+        while pending and attempt < 2:
+            attempt += 1
+            repair_msg = prompts.quote_repair_prompt("acceptance_criteria", prompt_text, pending, texts)
+            rep_res, _ = _llm(merged, "acceptance_criteria", repair_msg, AcceptanceCriteriaBatch)
+            if not rep_res:
+                break
+            new_pending = []
+            for item in rep_res.data.criteria:
                 unknown = [k for k in item.clause_keys if k not in texts]
                 verified = not unknown and verify_quote(item.source_quote, [texts[k] for k in item.clause_keys])
-                if unknown or not verified:
-                    out["invalid_items"].append({"task": "acceptance_criteria", "description": item.description,
-                                                 "error": f"Ungrounded: unknown clauses {unknown}" if unknown
-                                                 else "Source quotation not found in cited clauses"})
-                    continue
+                if verified:
+                    valid_criteria.append(item)
+                else:
+                    reason = f"Unknown clauses {unknown}" if unknown else f"Source quotation '{item.source_quote}' not found verbatim in cited clauses {item.clause_keys}"
+                    new_pending.append({"item": item, "clause_keys": item.clause_keys, "description": item.description,
+                                        "source_quote": item.source_quote, "_failure_reason": reason})
+            pending = new_pending
+
+        for p in pending:
+            out["invalid_items"].append({
+                "task": "acceptance_criteria",
+                "description": p["description"],
+                "clause_keys": p["clause_keys"],
+                "quote": p["source_quote"],
+                "error": f"Ungrounded: {p['_failure_reason']} (rejected after {attempt} repair attempts)"
+            })
+
+        with session_scope() as db:
+            n = db.query(AcceptanceCriterion).filter_by(requirement_id=state["requirement_id"]).count()
+            for item in valid_criteria:
                 n += 1
                 ac = AcceptanceCriterion(
                     key=f"{state['req_key']}.AC{n}", requirement_id=state["requirement_id"],
@@ -183,22 +217,64 @@ def _generate_tests(state: ReqState, edge: bool) -> ReqState:
     out: ReqState = {"invalid_items": list(state.get("invalid_items", [])),
                      "generated_tests": list(state.get("generated_tests", []))}
     crit = state.get("criteria", [])
+    texts = {c["key"]: c["text"] for c in state["clauses"]}
     task = "edge_case_tests" if edge else "test_cases"
     for group in _groups(state["clauses"]):
         keys = {c["key"] for c in group}
         group_crit = [c for c in crit if keys & set(c["clause_keys"])]
         merged = cast(ReqState, {**state, **out})
-        res, extra = _llm(merged, task, prompts.test_prompt(state["req_key"], group, group_crit,
-                                                            state["untrusted"], edge), TestCaseBatch)
+        prompt_text = prompts.test_prompt(state["req_key"], group, group_crit, state["untrusted"], edge)
+        res, extra = _llm(merged, task, prompt_text, TestCaseBatch)
         out.update(cast(ReqState, {k: v for k, v in extra.items() if k != "invalid_items"}))
         if "invalid_items" in extra:
             out["invalid_items"] = extra["invalid_items"]
         if not res:
             continue
+
+        valid_tests = []
+        pending = []
+        for item in res.data.tests:
+            unknown = [k for k in item.clause_keys if k not in texts]
+            verified = not unknown and verify_quote(item.source_quote, [texts[k] for k in item.clause_keys])
+            if verified:
+                valid_tests.append(item)
+            else:
+                reason = f"Unknown clauses {unknown}" if unknown else f"Source quotation '{item.source_quote}' not found verbatim in cited clauses {item.clause_keys}"
+                pending.append({"item": item, "clause_keys": item.clause_keys, "title": item.title,
+                                "source_quote": item.source_quote, "_failure_reason": reason})
+
+        attempt = 0
+        while pending and attempt < 2:
+            attempt += 1
+            repair_msg = prompts.quote_repair_prompt(task, prompt_text, pending, texts)
+            rep_res, _ = _llm(merged, task, repair_msg, TestCaseBatch)
+            if not rep_res:
+                break
+            new_pending = []
+            for item in rep_res.data.tests:
+                unknown = [k for k in item.clause_keys if k not in texts]
+                verified = not unknown and verify_quote(item.source_quote, [texts[k] for k in item.clause_keys])
+                if verified:
+                    valid_tests.append(item)
+                else:
+                    reason = f"Unknown clauses {unknown}" if unknown else f"Source quotation '{item.source_quote}' not found verbatim in cited clauses {item.clause_keys}"
+                    new_pending.append({"item": item, "clause_keys": item.clause_keys, "title": item.title,
+                                        "source_quote": item.source_quote, "_failure_reason": reason})
+            pending = new_pending
+
+        for p in pending:
+            out["invalid_items"].append({
+                "task": task,
+                "description": p["title"],
+                "clause_keys": p["clause_keys"],
+                "quote": p["source_quote"],
+                "error": f"Ungrounded: {p['_failure_reason']} (rejected after {attempt} repair attempts)"
+            })
+
         with session_scope() as db:
             req = db.get(Requirement, state["requirement_id"])
             clauses = clauses_for(db, current_version(db, req))
-            for item in res.data.tests:
+            for item in valid_tests:
                 data = item.model_dump()
                 data["ac_keys"] = [group_crit[i - 1]["key"] for i in item.ac_refs if 0 < i <= len(group_crit)]
                 t = create_test(db, req, data, actor_id=state.get("actor_id"), provider=res.provider,

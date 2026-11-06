@@ -17,6 +17,7 @@ from app.db.models import EvalResult, EvalRun
 from app.llm import router
 from app.services.evals import AGG, evaluate_scenario
 
+GOLDEN_SCENARIOS_PATH = Path(__file__).resolve().parents[2] / "evals" / "golden_scenarios.json"
 ECHBOX_SCENARIOS_PATH = Path(__file__).resolve().parents[2] / "evals" / "echobox_scenarios.json"
 
 
@@ -38,7 +39,7 @@ def evaluate_single_iteration(
     iteration: int = 1
 ) -> dict[str, Any]:
     """Runs a single evaluation iteration over scenarios."""
-    scenarios = json.loads(ECHBOX_SCENARIOS_PATH.read_text())
+    scenarios = json.loads(GOLDEN_SCENARIOS_PATH.read_text())
     chain = router.explicit_chain(provider_name)
 
     eval_run_id = None
@@ -67,9 +68,9 @@ def evaluate_single_iteration(
             for q in r["metrics"].get("ungrounded_quotes", []):
                 ungrounded_quotes.append({
                     "scenario": sc["key"],
+                    "clause": q.get("clauses"),
                     "quote": q.get("quote"),
-                    "clauses": q.get("clauses"),
-                    "rationale": q.get("rationale"),
+                    "why": q.get("rationale") or "Quote did not match clause text verbatim",
                 })
         except Exception as exc:
             dur_ms = int((time.time() - t0) * 1000)
@@ -114,6 +115,8 @@ def evaluate_single_iteration(
     agg["avg_latency_ms"] = round(_mean([r["metrics"].get("latency_ms", 0) for _, r in results]), 1)
     agg["ungrounded_quotes"] = ungrounded_quotes
     agg["has_429"] = any(r["metrics"].get("is_429") for _, r in results)
+    finished_count = sum(1 for _, r in results if "error" not in r["metrics"])
+    agg["finished_scenarios"] = f"{finished_count}/{len(scenarios)}"
 
     errored = any("error" in r["metrics"] for _, r in results)
     with session_scope() as db:
@@ -155,7 +158,8 @@ def evaluate_provider_multi_run(
 
         if run_data["metrics"].get("has_429"):
             quota_exhausted = True
-            exhaustion_note = f"Runs {i+1}-{iterations} skipped due to upstream HTTP 429 quota exhaustion."
+            fin = run_data["metrics"].get("finished_scenarios", "0/10")
+            exhaustion_note = f"not completed (finished {fin} scenarios before upstream HTTP 429 quota exhaustion). Runs {i+1}-{iterations} skipped."
             print(f"  [WARN] {exhaustion_note}")
             break
 
@@ -171,10 +175,15 @@ def evaluate_provider_multi_run(
     seen = set()
     for r in runs:
         for q in r["metrics"].get("ungrounded_quotes", []):
-            k = (q.get("scenario"), q.get("quote"))
+            k = (q.get("scenario"), q.get("quote"), tuple(q.get("clause") or []))
             if k not in seen:
                 seen.add(k)
-                all_quotes.append(q)
+                all_quotes.append({
+                    "scenario": q.get("scenario"),
+                    "clause": q.get("clause"),
+                    "quote": q.get("quote"),
+                    "why": q.get("why") or "Quote did not match clause text verbatim"
+                })
 
     lat_mean = round(_mean(latencies), 1)
     lat_std = round(_stddev(latencies), 1)
@@ -183,6 +192,7 @@ def evaluate_provider_multi_run(
     summary: dict[str, Any] = {
         "provider": provider_name,
         "model": model_name,
+        "status": "not completed" if quota_exhausted else "completed",
         "iterations_completed": len(runs),
         "iterations_requested": iterations,
         "quota_exhausted": quota_exhausted,

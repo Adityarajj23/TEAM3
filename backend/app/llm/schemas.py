@@ -46,6 +46,7 @@ class TestStepOut(BaseModel):
 
 
 class TestCaseOut(BaseModel):
+    __test__ = False
     title: str = Field(min_length=5, max_length=300)
     description: str = ""
     clause_keys: list[str] = Field(min_length=1)
@@ -72,6 +73,7 @@ class TestCaseOut(BaseModel):
 
 
 class TestCaseBatch(BaseModel):
+    __test__ = False
     tests: list[TestCaseOut] = Field(min_length=1, max_length=20)
 
 

@@ -14,9 +14,9 @@ In accordance with our strict product integrity rules:
 
 | Provider | Model Identifier | Iterations Completed | Latency (Mean $\pm$ StdDev) | Clause Coverage (Mean $\pm$ StdDev) | Ungrounded Rate (Mean $\pm$ StdDev) | Schema Pass Rate | Ambiguity Recall | Operational Status & Notes |
 |---|---|---|---|---|---|---|---|---|
-| **Fixture (Mock)** | `fixture-v1` | 3 / 3 | $2.7\text{ ms} \pm 0.4\text{ ms}$ | $1.000 \pm 0.000$ | $0.000 \pm 0.000$ | 100.0% | $1.000 \pm 0.000$ | **Completed (10/10)**: Baseline harness verification; validates deterministic guardrails, AST validation, and database persistence. |
-| **Groq** | `openai/gpt-oss-120b` | 3 / 3 | $22,318.8\text{ ms} \pm 14,113.4\text{ ms}$ | $0.583 \pm 0.520$ | $0.417 \pm 0.520$ | 100.0% | $1.000 \pm 0.000$ | **Completed (Live Runs)**: Iterations 1 & 2 passed with 100% schema compliance. Iteration 3 encountered upstream provider rate limiting, absorbed by cooldown circuits. |
-| **Gemini** | `gemini-2.5-flash` | 1 / 3 | $1,651.8\text{ ms} \pm 0.0\text{ ms}$ | $0.000 \pm 0.000$ | $1.000 \pm 0.000$ | 0.0% | $0.000 \pm 0.000$ | **Degraded / Rate Limited**: Live runs not completed due to upstream HTTP 429 / credential quota exhaustion; circuit opened immediately to prevent cascading stalls. |
+| **Fixture (Mock)** | `fixture-v1` | 3 / 3 | $4.1\text{ ms} \pm 0.3\text{ ms}$ | $1.000 \pm 0.000$ | $0.000 \pm 0.000$ | 100.0% | $1.000 \pm 0.000$ | **Completed (10/10 $\times$ 3 runs)**: Baseline harness verification; validates deterministic guardrails, small-group clause chunking, AST validation, and database persistence. |
+| **Groq** | `openai/gpt-oss-120b` | 1 / 3 | $16,761.3\text{ ms} \pm 0.0\text{ ms}$ | $0.500 \pm 0.000$ | $0.533 \pm 0.000$ | 100.0% | $1.000 \pm 0.000$ | **not completed (finished 5/10 scenarios before upstream HTTP 429 quota exhaustion)**. Runs 2-3 skipped. Per-clause generation and repair loop active; ungrounded items rejected with deterministic reason logs. |
+| **Gemini** | `gemini-2.5-flash` | 1 / 3 | $114,826.6\text{ ms} \pm 0.0\text{ ms}$ | $0.800 \pm 0.000$ | $0.200 \pm 0.000$ | 100.0% | $1.000 \pm 0.000$ | **not completed (finished 8/10 scenarios before upstream HTTP 429 quota exhaustion)**. Runs 2-3 skipped. Achieved 80% coverage and 20% ungrounded rate under per-clause small-group chunking with quote repair. |
 
 *Source data persisted in `docs/ai_eval_benchmark.json` and SQLite `eval_runs` / `eval_results` tables.*
 
@@ -58,8 +58,16 @@ In accordance with our strict product integrity rules:
 TraceTest AI enforces deterministic quote verification on every generated acceptance criterion and test case via `app/guardrails/quotes.py`. If a generated criterion cites a clause key that does not exist or provides a `source_quote` that cannot be verified against the ingested requirement text, the output is flagged as **ungrounded**.
 
 During live multi-run benchmarking on `openai/gpt-oss-120b`:
-- **Scenario `ECHO-GOLD-003` (Input Validation)**: The model generated acceptance criteria targeting payload boundary conditions (e.g. `title` length exceeding 200 characters). While functionally valid as a QA test, the source quote paraphrased requirement language rather than reproducing verbatim text from clause `C2`.
-- **Verdict**: Caught by `verify_quote()` and surfaced in the human review queue with status `needs_confirmation` rather than silently approved into the test suite.
+- **Scenario `GOLD-003` (Time & Attendance Break Compliance)**:
+  - Cited clause: `GOLD-003.C3`
+  - Hallucinated quote: `"Supervisors should be notified promptly of non‑compliant shifts."`
+  - Cause: Paraphrased intent instead of quoting verbatim characters from clause `GOLD-003.C3`.
+  - Repair loop: Dispatched 2 targeted repair attempts feeding back the exact clause text and failing quote.
+  - Final verdict: Because the model failed to extract a verbatim excerpt, the ungrounded item was **hard-rejected** and recorded in `docs/ai_eval_benchmark.json` and the UI Guardrail Rejections panel with explicit reason: `Ungrounded: Source quote was not found verbatim in cited clauses ['GOLD-003.C3'] (after 2 repair attempts)`.
+
+On `gemini-2.5-flash`:
+- Achieved **80.0% clause coverage** and **20.0% ungrounded rate** on completed scenarios with 100% schema compliance before hitting upstream HTTP 429 quota exhaustion.
+- Small-group clause chunking (`group_size <= 2`) and verbatim quote enforcement prevented runaway hallucinations.
 
 ---
 

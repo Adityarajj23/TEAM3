@@ -34,13 +34,13 @@ export function RequirementsPage() {
   const [mode, setMode] = useState<"create" | "upload" | null>(null);
   return (
     <>
-      <PageHeader title="Requirements" subtitle="Dayforce HCM business requirements, decomposed into atomic clauses that tests and acceptance criteria cite."
+      <PageHeader title="Requirements" subtitle="Business requirements, decomposed into atomic clauses that tests and acceptance criteria cite."
         actions={can("requirement.write") && <>
           <Button onClick={() => setMode("upload")}><Upload className="h-4 w-4" />Upload document</Button>
           <Button variant="primary" onClick={() => setMode("create")}>New requirement</Button></>} />
       <div className="mb-2"><FilterChips state={st} /></div>
       <DataTable query={q} state={st} onRowClick={(r) => nav(`/requirements/${r.id}`)}
-        empty={<EmptyState title="No Dayforce requirements ingested yet" body="Upload a business requirement specification (.pdf, .txt, .md) or author a requirement to extract atomic clauses, detect ambiguities, and generate tests." action={can("requirement.write") ? <Button variant="primary" onClick={() => setMode("upload")}><Upload className="h-4 w-4" />Upload requirement document</Button> : undefined} />}
+        empty={<EmptyState title="No requirements ingested yet" body="Upload a business requirement specification (.pdf, .txt, .md) or author a requirement to extract atomic clauses, detect ambiguities, and generate tests." action={can("requirement.write") ? <Button variant="primary" onClick={() => setMode("upload")}><Upload className="h-4 w-4" />Upload requirement document</Button> : undefined} />}
         toolbar={<>
           <Input placeholder="Search key or title" className="w-60" defaultValue={st.q} aria-label="Search requirements"
             onKeyDown={(e) => e.key === "Enter" && st.setQ((e.target as HTMLInputElement).value)} />
@@ -286,8 +286,28 @@ function CriteriaTab({ r }: { r: Requirement }) {
         <div className="mt-3 grid gap-3 text-sm md:grid-cols-2">
           <div><p className="text-xs text-slate-500">Expected behaviour</p><p>{a.expected_behaviour}</p></div>
           <div><p className="text-xs text-slate-500">Cited clauses</p><p className="font-mono text-xs">{a.clause_keys.join(", ")}</p></div>
-          <div className="md:col-span-2"><p className="text-xs text-slate-500">Source quotation {a.quote_verified ? "(verified against clause text)" : "(not verified)"}</p>
-            <blockquote className="border-l-2 border-accent-ring pl-3 italic text-slate-700">{a.source_quote}</blockquote></div>
+          <div className="md:col-span-2">
+            <div className="flex items-center gap-2 mb-1">
+              <p className="text-xs font-medium text-slate-500">Source quotation</p>
+              {a.quote_verified ? (
+                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700">
+                  (verified against clause text)
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 rounded bg-rose-50 border border-rose-200 px-1.5 py-0.5 text-[10px] font-semibold text-rose-700 uppercase tracking-wider">
+                  Ungrounded Quote
+                </span>
+              )}
+            </div>
+            <blockquote className={cn("border-l-2 pl-3 italic text-slate-700", a.quote_verified ? "border-accent-ring" : "border-rose-400 bg-rose-50/30 py-1")}>
+              {a.source_quote}
+            </blockquote>
+            {!a.quote_verified && (
+              <p className="mt-1 text-[11px] text-rose-600 font-medium">
+                Guardrail violation: Quotation does not appear verbatim in cited clauses ({a.clause_keys.join(", ")}).
+              </p>
+            )}
+          </div>
           <div><p className="text-xs text-slate-500">Confidence</p><p className={cn(a.confidence < 0.6 && "text-amber-800")}>{Math.round(a.confidence * 100)}%{a.confidence < 0.6 && ", needs additional review"}</p></div>
           <div><p className="text-xs text-slate-500">Provenance</p><p>{a.provider}{a.model ? `, ${a.model}` : ""}</p></div>
           {a.assumptions?.length > 0 && <div className="md:col-span-2"><p className="text-xs text-slate-500">Assumptions</p>
