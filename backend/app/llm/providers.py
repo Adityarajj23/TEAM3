@@ -292,8 +292,8 @@ class GeminiProvider(LLMProvider):
         self.keys = s.gemini_keys
         self.key = self.keys[0] if self.keys else s.gemini_api_key
         self.pool = SlotPool(self.keys, self.name, concurrency_limit=2)
-        # 2.0-flash is shut down upstream in favor of 2.5-flash / 3.8-flash
-        self.primary_model = "gemini-2.5-flash" if s.gemini_model == "gemini-2.0-flash" else s.gemini_model
+        # gemini-3.5-flash provides best reasoning/throughput with active quota across key slots
+        self.primary_model = "gemini-3.5-flash" if s.gemini_model in ("gemini-2.0-flash", "gemini-2.5-flash") else s.gemini_model
         self.fallback_model = s.gemini_fallback_model
         self.model = self.primary_model
 

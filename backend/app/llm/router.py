@@ -1,4 +1,4 @@
-"""Provider routing: Groq -> Gemini -> (Ollama) -> explicit failure. Retries, backoff, circuit breakers,
+"""Provider routing: Gemini -> Groq -> (Ollama) -> explicit failure. Retries, backoff, circuit breakers,
 structured-output validation with at most two repair attempts, caching and persisted traces."""
 from __future__ import annotations
 
@@ -113,13 +113,13 @@ def provider_chain() -> list[LLMProvider]:
     s = get_settings()
     if s.llm_mode == "mock":
         return [_mock_override or MockProvider()]
-    return [p for p in (GroqProvider(s), GeminiProvider(s), OllamaProvider(s)) if p.configured()]
+    return [p for p in (GeminiProvider(s), GroqProvider(s), OllamaProvider(s)) if p.configured()]
 
 
 def provider_status() -> dict:
     s = get_settings()
     out: dict[str, Any] = {"mode": s.llm_mode, "providers": []}
-    for p in (GroqProvider(s), GeminiProvider(s), OllamaProvider(s)):
+    for p in (GeminiProvider(s), GroqProvider(s), OllamaProvider(s)):
         p_info: dict[str, Any] = {
             "name": p.name,
             "model": getattr(p, "model", ""),

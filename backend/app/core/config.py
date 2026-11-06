@@ -59,7 +59,7 @@ class Settings(BaseSettings):
     gemini_key: str | None = Field(None, alias="GEMINI_KEY")
     gemini_key2: str | None = Field(None, alias="GEMINI_KEY2")
     gemini_key3: str | None = Field(None, alias="GEMINI_KEY3")
-    gemini_model: str = Field("gemini-2.5-flash", alias="GEMINI_MODEL")
+    gemini_model: str = Field("gemini-3.5-flash", alias="GEMINI_MODEL")
     gemini_fallback_model: str = Field("gemini-2.5-flash-lite", alias="GEMINI_FALLBACK_MODEL")
 
     ollama_base_url: str | None = Field(None, alias="OLLAMA_BASE_URL")

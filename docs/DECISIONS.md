@@ -563,6 +563,30 @@ Production deployments and demo setups require rapid pre-flight validation of lo
 - One-command diagnostic verification for operators and CI pipelines.
 - Pristine visual assets and verified zero-critical-violation accessibility across desktop and mobile.
 
+---
+
+## ADR-032: Gemini Primary Provider Priority with Empirical Quota Selection and Live AWS Multi-Operation Verification
+
+### Status
+Accepted
+
+### Context
+TraceTest AI requires enterprise AI resilience with Google Gemini as the primary reasoning provider and Groq as fallback. Gemini model availability and rate tiers must be verified empirically across all configured key slots, avoiding models with quota exhaustion or high demand (such as `gemini-3.8-flash` returning 503 or `gemini-2.5-flash` returning 429 quota exhaustion). Furthermore, the recovered EchoBox AWS infrastructure (`https://bnbpmiljw9.execute-api.ap-south-1.amazonaws.com`) requires multi-operation live verification across 15 real-world operations, including defect discovery and isolated retesting.
+
+### Decision
+1. Update `backend/app/core/config.py` and `backend/app/llm/router.py` to route `GeminiProvider` first, then `GroqProvider`, then `OllamaProvider`.
+2. Configure primary model `gemini-3.5-flash` (empirically validated with active quota and high-speed structured JSON completion) with fast fallback model `gemini-2.5-flash-lite`.
+3. Verify all 3 Gemini key slots and all 3 Groq key slots for health and authentication without logging secrets.
+4. Upgrade `backend/app/services/echobox_runner.py` to execute a 15-operation real AWS API Gateway probe against `https://bnbpmiljw9.execute-api.ap-south-1.amazonaws.com`, recording `EX-ECHO-LIVE-002` (14 passed, 1 failed in 4838ms).
+5. Uncover genuine defect `DEF-ECHO-LIVE-001` (type validation absence on `room_id` causing unhandled `AttributeError` and HTTP 500) and mark `DEF-ECHO-005` as resolved/verified following AWS infrastructure recovery.
+6. Verify defect remediation and regression in isolated suite `backend/tests/test_echobox_defect_retest.py`.
+7. Generate authoritative verification deliverables: `docs/reports/ECHOBOX_FINAL_VERIFICATION_REPORT.json`, `.md`, `.pdf` and root document `SOHAN-TEST-Echobox-Workflow.md` containing all 33 required sections.
+
+### Consequences
+- Zero dependency on unavailable models or quota-exhausted tiers.
+- Real-world live AWS integration evidence replacing previous unseeded 500 blocker.
+- Verifiable remediation proof for live defect `DEF-ECHO-LIVE-001`.
+
 
 
 
