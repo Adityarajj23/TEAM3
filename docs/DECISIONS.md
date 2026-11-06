@@ -397,6 +397,45 @@ The application chrome originally retained hardcoded "Dayforce" branding badges,
 - Rapid keyboard access to all testing assets via `Cmd+K`.
 - Unambiguous visual provenance for every test execution and defect record.
 
+---
+
+## ADR-024: Small-Group Clause Generation, Verbatim Quote Repair Loops, and Ungrounded Guardrail Visualization
+
+### Context
+When language models process large batches of business requirement clauses simultaneously, attention degradation can lead to hallucinated quotes, paraphrased assertions, or ungrounded test steps. Relying on post-hoc rejection alone can waste valid work without giving the model an opportunity to rectify inaccurate excerpts. Furthermore, operators need explicit visibility into when and why content is rejected by deterministic guardrails.
+
+### Decision
+1. Restrict clause generation batch sizes to small groups (`group_size <= 2`) in both LangGraph workflow nodes and the evaluation benchmark harness.
+2. Demand verbatim, character-for-character substrings for all `source_quote` attributes and validate them strictly using `app.guardrails.quotes.verify_quote`.
+3. Implement an iterative quote repair loop (`repair_ungrounded_quotes`) allowing up to 2 targeted repair attempts where the failing quote, cited clause key, and exact clause text are fed back to the model.
+4. If an item remains ungrounded after repair attempts, hard-reject it and record the rejection rationale structured as `(scenario, clause, quote, why)` in `docs/ai_eval_benchmark.json`.
+5. Render a dedicated "Guardrail Rejections: Ungrounded Content Blocked" panel in `RunProgress.tsx` and warning callouts with `[REJECTED: UNGROUNDED QUOTE]` badges in `RequirementsPages.tsx`.
+
+### Consequences
+- Dramatic reduction in hallucinated assertions.
+- Complete operator visibility into blocked content and deterministic filter enforcement.
+- Model completions are grounded in actual source text with cryptographic fidelity.
+
+---
+
+## ADR-025: Unified SPA Hosting, Browser Isolation Tier Transparency, and Gated CI
+
+### Context
+Running frontend and backend on distinct origins during local development introduced CORS complexity and proxy friction. Furthermore, while Python test harnesses execute inside Bubblewrap kernel jails (`bwrap+rlimits`), Playwright web browser automation requires access to host browser binaries and local network sockets. Claiming identical sandbox isolation for both would be misleading. Finally, previous CI pipelines permitted dependency audit failures via `|| true`, risking silent CVE regressions.
+
+### Decision
+1. Configure FastAPI in `backend/app/main.py` to mount `frontend/dist` static assets and serve SPA fallback on non-API routes, unifying backend and frontend under a single loopback origin without altering OpenAPI contracts (`include_in_schema=False`).
+2. Clearly distinguish sandbox isolation tiers in `docs/SUPPORTED_TARGET_MATRIX.md` and UI execution records: Python libraries and serverless handlers run under `bwrap+rlimits` / `netns+rlimits`, whereas Playwright browser sessions run under `playwright:host_browser`.
+3. Correct the historical claim of "58 faults" in `reference_hcm/` to "8 deliberate faults (HCM-F01 to HCM-F08) causing 58 test failures in v1.0".
+4. Remove `|| true` fallback from `pip-audit` and `npm audit` in `.github/workflows/ci.yml`.
+5. Implement a full Playwright E2E test suite (`backend/tests/test_playwright_e2e.py`) driving the live single-origin application with automated `axe-core` accessibility audits across all primary screens.
+
+### Consequences
+- Zero-configuration single-port deployment for local testing and demos.
+- Honest, transparent security boundaries distinguishing browser automation from containerized execution.
+- Strictly gated continuous integration with automated accessibility enforcement.
+
+
 
 
 

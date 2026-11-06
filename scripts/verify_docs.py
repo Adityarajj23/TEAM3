@@ -191,6 +191,54 @@ def verify_no_secrets() -> list[str]:
     return errors
 
 
+def verify_cited_source_paths() -> list[str]:
+    """Verify that source code file paths cited in documentation exist in the repository."""
+    errors = []
+    pattern = re.compile(r'[`"\']((?:backend/app|backend/tests|frontend/src|echobox_harness|reference_hcm|scripts)/[A-Za-z0-9_\-./]+\.[a-zA-Z0-9]+)[`"\']')
+    docs = list(REPO_ROOT.glob("*.md")) + list((REPO_ROOT / "docs").glob("*.md"))
+    for doc in docs:
+        txt = doc.read_text(encoding="utf-8", errors="ignore")
+        for match in pattern.finditer(txt):
+            rel = match.group(1)
+            target = REPO_ROOT / rel
+            if not target.exists():
+                errors.append(f"{doc.relative_to(REPO_ROOT)}: Cited source path does not exist: '{rel}'")
+    return errors
+
+
+def verify_documented_counts() -> list[str]:
+    """Verify that cited entity, fault, and table counts in documentation match reality."""
+    errors = []
+    # 1. Verify table counts
+    sys.path.insert(0, str(REPO_ROOT / "backend"))
+    try:
+        from app.db.models import Base
+        actual_tables = len(Base.metadata.tables)
+    except Exception:
+        models_py = (REPO_ROOT / "backend" / "app" / "db" / "models.py").read_text(encoding="utf-8", errors="ignore")
+        actual_tables = len(set(re.findall(r'__tablename__\s*=\s*["\']([^"\']+)["\']', models_py)))
+
+    if actual_tables != 36:
+        errors.append(f"SQLAlchemy Base table count changed to {actual_tables}, expected 36")
+
+    # 2. Verify Reference HCM faults
+    hcm_v1_files = list((REPO_ROOT / "reference_hcm" / "v1_0").glob("*.py"))
+    fault_tags = set()
+    for f in hcm_v1_files:
+        txt = f.read_text(encoding="utf-8", errors="ignore")
+        for m in re.finditer(r"HCM-F\d+", txt):
+            fault_tags.add(m.group(0))
+    if len(fault_tags) != 8:
+        errors.append(f"Expected 8 deliberate HCM faults in reference_hcm/v1_0, found {len(fault_tags)}: {fault_tags}")
+
+    # Verify SUPPORTED_TARGET_MATRIX.md cites 8 deliberate faults
+    matrix_txt = (REPO_ROOT / "docs" / "SUPPORTED_TARGET_MATRIX.md").read_text(encoding="utf-8", errors="ignore")
+    if "8 deliberate faults" not in matrix_txt:
+        errors.append("docs/SUPPORTED_TARGET_MATRIX.md must cite '8 deliberate faults' for Reference HCM v1.0")
+
+    return errors
+
+
 def main() -> int:
     print("=" * 60)
     print(" TraceTest AI Documentation & Security Verification Suite")
@@ -198,7 +246,7 @@ def main() -> int:
 
     all_errors = []
 
-    print("[1/6] Verifying required documentation files...")
+    print("[1/8] Verifying required documentation files...")
     f_errs = verify_files_exist()
     if f_errs:
         all_errors.extend(f_errs)
@@ -207,7 +255,7 @@ def main() -> int:
     else:
         print(f"  PASS: All {len(REQUIRED_DOCS)} required files present.")
 
-    print("[2/6] Validating internal markdown links...")
+    print("[2/8] Validating internal markdown links...")
     l_errs = verify_markdown_links()
     if l_errs:
         all_errors.extend(l_errs)
@@ -218,7 +266,7 @@ def main() -> int:
     else:
         print("  PASS: All documentation links resolve accurately.")
 
-    print("[3/6] Verifying REST API endpoint coverage...")
+    print("[3/8] Verifying REST API endpoint coverage...")
     a_errs = verify_api_coverage()
     if a_errs:
         all_errors.extend(a_errs)
@@ -227,7 +275,7 @@ def main() -> int:
     else:
         print("  PASS: API reference covers all OpenAPI paths.")
 
-    print("[4/6] Verifying database schema documentation (SQLAlchemy 36 tables)...")
+    print("[4/8] Verifying database schema documentation (SQLAlchemy 36 tables)...")
     d_errs = verify_database_schema_coverage()
     if d_errs:
         all_errors.extend(d_errs)
@@ -236,7 +284,7 @@ def main() -> int:
     else:
         print("  PASS: Database schema documents all 36 SQLAlchemy models.")
 
-    print("[5/6] Validating security invariants (loopback bind, network isolation)...")
+    print("[5/8] Validating security invariants (loopback bind, network isolation)...")
     sec_errs = verify_security_invariants()
     if sec_errs:
         all_errors.extend(sec_errs)
@@ -245,7 +293,7 @@ def main() -> int:
     else:
         print("  PASS: Security invariants verified (127.0.0.1 bind, fail-closed sandbox).")
 
-    print("[6/6] Scanning for leaked API credentials / keys...")
+    print("[6/8] Scanning for leaked API credentials / keys...")
     s_errs = verify_no_secrets()
     if s_errs:
         all_errors.extend(s_errs)
@@ -253,6 +301,32 @@ def main() -> int:
             print(f"  FAIL: {e}")
     else:
         print("  PASS: Zero exposed credentials detected.")
+
+    print("[7/8] Verifying cited source code file paths exist...")
+    p_errs = verify_cited_source_paths()
+    if p_errs:
+        all_errors.extend(p_errs)
+        for e in p_errs:
+            print(f"  FAIL: {e}")
+    else:
+        print("  PASS: All cited source code paths exist in repository.")
+
+    print("[8/8] Verifying cited model, fault and entity counts match code...")
+    c_errs = verify_documented_counts()
+    if c_errs:
+        all_errors.extend(c_errs)
+        for e in c_errs:
+            print(f"  FAIL: {e}")
+    else:
+        print("  PASS: All cited counts match implementation ground truth.")
+
+    print("-" * 60)
+    if all_errors:
+        print(f"FAILED: {len(all_errors)} issues detected.")
+        return 1
+    else:
+        print("SUCCESS: All documentation, database, and security checks passed!")
+        return 0
 
     print("-" * 60)
     if all_errors:

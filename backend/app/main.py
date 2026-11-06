@@ -7,10 +7,13 @@ import time
 import uuid
 from collections import defaultdict, deque
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import APIRouter, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.responses import FileResponse
+from starlette.staticfiles import StaticFiles
 
 from app.api.routers import auth, defects, execution, misc, projects, requirements, tests, users
 from app.core.config import get_settings
@@ -129,8 +132,8 @@ async def platform_middleware(request: Request, call_next):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Content-Security-Policy"] = (
-        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
-        "img-src 'self' data:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none';"
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "img-src 'self' data:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self'; frame-ancestors 'none';"
     )
     return response
 
@@ -140,3 +143,18 @@ for r in (auth.router, users.router, projects.router, requirements.router, tests
           defects.router, misc.router):
     api.include_router(r)
 app.include_router(api)
+
+_dist_dir = Path(__file__).resolve().parents[2] / "frontend" / "dist"
+if _dist_dir.exists():
+    _assets_dir = _dist_dir / "assets"
+    if _assets_dir.exists():
+        app.mount("/assets", StaticFiles(directory=_assets_dir), name="assets")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def serve_spa(full_path: str):
+        if full_path.startswith("api/"):
+            return JSONResponse(status_code=404, content={"error": {"code": "not_found", "message": "Not found"}})
+        target = _dist_dir / full_path
+        if target.is_file():
+            return FileResponse(target)
+        return FileResponse(_dist_dir / "index.html")

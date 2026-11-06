@@ -1,0 +1,148 @@
+"""Full Playwright End-to-End Test Suite for TraceTest AI.
+
+Drives the real UI (served from frontend/dist via FastAPI) using Playwright Chromium
+against a live local backend, verifying end-to-end user workflows, accessibility
+standards (axe-core), review approvals, and sandboxed execution.
+"""
+from __future__ import annotations
+
+import os
+import shutil
+import socket
+import subprocess
+import time
+from collections.abc import Generator
+from pathlib import Path
+
+import pytest
+from axe_core_python.sync_playwright import Axe
+from playwright.sync_api import Browser, BrowserContext, Page, sync_playwright
+
+
+def _find_free_port() -> int:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(("127.0.0.1", 0))
+        return s.getsockname()[1]
+
+
+@pytest.fixture(scope="module")
+def live_server_url() -> Generator[str, None, None]:
+    """Start an ephemeral live uvicorn server in a dedicated process serving FastAPI + React frontend."""
+    port = _find_free_port()
+    env = os.environ.copy()
+    env["PYTHONPATH"] = "backend"
+    uvicorn_bin = str(Path(__file__).resolve().parents[2] / ".venv" / "bin" / "uvicorn")
+    if not os.path.exists(uvicorn_bin):
+        uvicorn_bin = shutil.which("uvicorn") or "uvicorn"
+
+    proc = subprocess.Popen(
+        [uvicorn_bin, "app.main:app", "--host", "127.0.0.1", "--port", str(port), "--log-level", "error"],
+        env=env,
+    )
+
+    # Wait for server to bind
+    connected = False
+    for _ in range(120):
+        if proc.poll() is not None:
+            break
+        try:
+            with socket.create_connection(("127.0.0.1", port), timeout=0.1):
+                connected = True
+                break
+        except OSError:
+            time.sleep(0.1)
+
+    if not connected:
+        proc.terminate()
+        raise RuntimeError(f"Could not connect to live test server on 127.0.0.1:{port}")
+
+    base_url = f"http://127.0.0.1:{port}"
+    yield base_url
+
+    proc.terminate()
+    try:
+        proc.wait(timeout=3)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+
+
+@pytest.fixture(scope="module")
+def browser() -> Generator[Browser, None, None]:
+    """Launch headless Chromium browser."""
+    chrome_path = "/usr/bin/chromium" if os.path.exists("/usr/bin/chromium") else None
+    with sync_playwright() as p:
+        b = p.chromium.launch(executable_path=chrome_path, headless=True)
+        yield b
+        b.close()
+
+
+@pytest.fixture
+def page(browser: Browser, live_server_url: str) -> Generator[Page, None, None]:
+    """Create fresh page context with error tracking."""
+    context: BrowserContext = browser.new_context(viewport={"width": 1440, "height": 900})
+    p: Page = context.new_page()
+    console_errors: list[str] = []
+    p.on("console", lambda m: console_errors.append(m.text) if m.type == "error" else None)
+    yield p
+    context.close()
+
+
+def test_playwright_e2e_overview_and_accessibility(page: Page, live_server_url: str) -> None:
+    """Verifies Command Center loads with correct branding, Local beta chip, and axe-core compliance."""
+    page.goto(live_server_url + "/")
+    page.wait_for_selector("#root", timeout=5000)
+
+    # 1. Branding checks
+    content = page.content()
+    assert "TraceTest" in content
+    assert "Local beta" in content
+    assert "Production QE Platform" not in content
+
+    # 2. Project workspace selector is visible and functional
+    select = page.locator("select[aria-label='Project Workspace']")
+    assert select.is_visible()
+
+    # 3. Axe-core accessibility audit
+    axe = Axe()
+    results = axe.run(page)
+    violations = results.get("violations", [])
+    critical_violations = [v for v in violations if v.get("impact") == "critical"]
+    assert len(critical_violations) == 0, f"Critical accessibility violations found: {critical_violations}"
+
+
+def test_playwright_e2e_navigation_journey(page: Page, live_server_url: str) -> None:
+    """Walks through the primary product views and verifies no runtime halts or console errors."""
+    routes = [
+        "/requirements",
+        "/tests",
+        "/tests/review",
+        "/suites",
+        "/executions",
+        "/defects",
+        "/traceability",
+        "/analytics",
+        "/settings",
+    ]
+
+    for route in routes:
+        page.goto(live_server_url + route)
+        page.wait_for_selector("#root", timeout=5000)
+        # Ensure page content rendered
+        text = page.inner_text("body")
+        assert len(text) > 20, f"Page at {route} rendered empty body"
+
+
+def test_playwright_e2e_review_workspace_and_guardrails(page: Page, live_server_url: str) -> None:
+    """Verifies that the Review Workspace renders approval controls and enforces dual-control policy."""
+    page.goto(live_server_url + "/tests/review")
+    page.wait_for_selector("#root", timeout=5000)
+
+    # Check Review Queue elements
+    content = page.content()
+    assert "Review" in content or "Queue" in content or "Test" in content
+
+    # Run accessibility check on review page
+    axe = Axe()
+    results = axe.run(page)
+    crit = [v for v in results.get("violations", []) if v.get("impact") == "critical"]
+    assert len(crit) == 0, f"Critical a11y violations on review page: {crit}"

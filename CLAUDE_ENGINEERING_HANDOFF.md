@@ -411,7 +411,7 @@ erDiagram
 
 ## SECTION H — Core Algorithms & Security Logic
 
-### 1. GitHub URL Validation & SSRF Defense (`backend/app/services/repo_ingest.py`)
+### 1. GitHub URL Validation & SSRF Defense (`backend/app/services/repo_ingest/url_validator.py`)
 ```python
 def validate_github_url(url: str) -> tuple[str, str]:
     # 1. Parse URL with urllib
@@ -453,7 +453,7 @@ def validate_git_ref(ref: str) -> str:
     return clean
 ```
 
-### 3. POSIX Sandbox Resource Constraints (`backend/app/services/sandbox.py`)
+### 3. POSIX Sandbox Resource Constraints (`backend/app/execution/sandbox.py`)
 Prior to spawning subprocesses, `preexec_fn` enforces strict OS limits:
 - `RLIMIT_CPU`: Maximum 30 seconds of CPU time.
 - `RLIMIT_AS`: Maximum 512 MB virtual memory allocation.

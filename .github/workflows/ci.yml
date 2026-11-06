@@ -19,7 +19,7 @@ jobs:
           cache-dependency-path: backend/requirements-dev.txt
       - run: pip install -r backend/requirements-dev.txt
       - name: Dependency vulnerability check
-        run: pip-audit -r backend/requirements.txt || true
+        run: pip-audit -r backend/requirements.txt
       - name: Lint
         run: cd backend && ruff check app tests
       - name: Type check
@@ -47,7 +47,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: cd frontend && npm ci
       - name: Dependency audit
-        run: cd frontend && npm audit --audit-level=high || true
+        run: cd frontend && npm audit --audit-level=high
       - run: cd frontend && npm run gen:api && git diff --exit-code src/types/api.gen.ts
       - run: cd frontend && npm run lint
       - run: cd frontend && npm run typecheck
@@ -89,3 +89,35 @@ jobs:
         with:
           name: hcm-${{ matrix.hcm_version }}-junit
           path: artifacts/hcm-${{ matrix.hcm_version }}.xml
+
+  e2e:
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    env:
+      TRACETEST_LLM_MODE: mock
+      TRACETEST_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements-dev.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        run: |
+          pip install -r backend/requirements-dev.txt
+          playwright install --with-deps chromium
+          cd frontend && npm ci && npm run build
+      - name: Run Playwright E2E & Accessibility Tests
+        run: |
+          PYTHONPATH=backend pytest backend/tests/test_playwright_e2e.py -v --junitxml=artifacts/e2e-junit.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-junit
+          path: artifacts/e2e-junit.xml
