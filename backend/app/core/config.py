@@ -142,6 +142,10 @@ def get_settings() -> Settings:
     if s.app_env != "production" and s.secret_key == "change-me-in-env":
         secret_file = s.data_dir / ".secret_key"
         if secret_file.exists():
+            try:
+                secret_file.chmod(0o600)
+            except OSError:
+                pass
             content = secret_file.read_text().strip()
             if content:
                 s.secret_key = content

@@ -4,13 +4,20 @@ from __future__ import annotations
 import ast
 from dataclasses import dataclass, field
 
-ALLOWED_IMPORTS = {
+BASE_ALLOWED = {
     "pytest", "decimal", "datetime", "math", "re", "json", "dataclasses", "typing", "fractions",
+}
+HCM_ALLOWED = {
     "reference_hcm", "reference_hcm.payroll", "reference_hcm.attendance", "reference_hcm.leave",
     "reference_hcm.eligibility", "reference_hcm.approvals",
-    "echobox_harness", "echobox_harness.backend", "echobox_harness.table",
-    "boto3", "boto3.dynamodb.conditions", "moto",
 }
+REAL_SUT_ALLOWED = {
+    "boto3", "boto3.dynamodb.conditions", "moto", "moto.dynamodb", "jose",
+}
+SIMULATION_ALLOWED = {
+    "echobox_harness", "echobox_harness.backend", "echobox_harness.table",
+}
+ALLOWED_IMPORTS = BASE_ALLOWED | HCM_ALLOWED | REAL_SUT_ALLOWED | SIMULATION_ALLOWED
 PLAYWRIGHT_IMPORTS = {"playwright", "playwright.sync_api"}
 FORBIDDEN_NAMES = {
     "open", "eval", "exec", "compile", "__import__", "__builtins__", "globals", "locals", "vars", "getattr", "setattr",
@@ -28,7 +35,7 @@ class ValidationReport:
     test_functions: list[str] = field(default_factory=list)
 
 
-def validate_script(source: str, allow_playwright: bool = False) -> ValidationReport:
+def validate_script(source: str, allow_playwright: bool = False, env_kind: str = "real_code") -> ValidationReport:
     errors: list[str] = []
     if not source or not source.strip():
         return ValidationReport(False, ["Script is empty"])
@@ -39,7 +46,14 @@ def validate_script(source: str, allow_playwright: bool = False) -> ValidationRe
     except SyntaxError as exc:
         return ValidationReport(False, [f"SyntaxError: {exc.msg} (line {exc.lineno})"])
 
-    allowed = ALLOWED_IMPORTS | (PLAYWRIGHT_IMPORTS if allow_playwright else set())
+    if env_kind == "simulation":
+        allowed = BASE_ALLOWED | HCM_ALLOWED | SIMULATION_ALLOWED
+    elif env_kind in ("real_code", "platform_run", "default"):
+        allowed = BASE_ALLOWED | HCM_ALLOWED | REAL_SUT_ALLOWED
+    else:  # generic
+        allowed = BASE_ALLOWED
+    if allow_playwright:
+        allowed |= PLAYWRIGHT_IMPORTS
     tests: list[str] = []
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
@@ -76,3 +90,9 @@ def validate_script(source: str, allow_playwright: bool = False) -> ValidationRe
     if not tests:
         errors.append("Script defines no test_* function")
     return ValidationReport(not errors, sorted(set(errors), key=errors.index), tests)
+
+
+def validate_test_syntax(source: str, env_kind: str = "real_code", allow_playwright: bool = False) -> tuple[bool, list[str]]:
+    """Validates test syntax against allowlist for the given environment kind."""
+    rep = validate_script(source, allow_playwright=allow_playwright, env_kind=env_kind)
+    return rep.valid, rep.errors

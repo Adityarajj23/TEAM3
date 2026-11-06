@@ -76,7 +76,7 @@ All dependencies and manifest versions are verified against lockfiles and packag
 - **ORM & Data Layer**: `SQLAlchemy 2.0.36`, `Alembic 1.14.0`, `aiosqlite 0.20.0`
 - **Validation**: `Pydantic 2.10.4`, `Pydantic-Settings 2.7.0`
 - **AI & Agent Orchestration**: `LangChain 0.3.14`, `LangChain-Core 0.3.29`, `LangGraph 0.2.60`, `LangGraph-Checkpoint 2.0.9`
-- **LLM SDKs**: `groq 0.15.0`, `google-genai 0.1.1`
+- **LLM SDKs**: `groq 0.15.0`, `google-genai 1.2.0`
 - **Testing & Tooling**: `pytest 8.3.4`, `pytest-cov 6.0.0`, `ruff 0.8.4`, `mypy 1.14.0`
 
 ### Frontend Application

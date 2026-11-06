@@ -155,7 +155,7 @@ def verify_security_invariants() -> list[str]:
         if not s.require_network_isolation:
             errors.append("Security invariant violated: require_network_isolation must default to True")
         iso = detect_isolation_level()
-        if iso not in ("netns+rlimits", "rlimits_only", "none"):
+        if iso not in ("bwrap+rlimits", "netns+rlimits", "rlimits_only", "none"):
             errors.append(f"Invalid isolation level detected: {iso}")
     except Exception:
         # Fallback to static check of config.py

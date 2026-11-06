@@ -48,6 +48,23 @@ async def platform_middleware(request: Request, call_next):
     request.state.trace_id = trace_id
     token = current_trace_id.set(trace_id)
     try:
+        # 0. Payload size limit (10MB max) to mitigate unbounded payload memory exhaustion
+        content_length = request.headers.get("content-length")
+        if content_length:
+            try:
+                if int(content_length) > 10 * 1024 * 1024:
+                    return JSONResponse(
+                        status_code=413,
+                        content={"error": {
+                            "code": "payload_too_large",
+                            "message": "Request payload exceeds 10MB limit",
+                            "details": None,
+                            "trace_id": trace_id,
+                        }},
+                    )
+            except ValueError:
+                pass
+
         # 1. Host header validation to prevent DNS rebinding attacks
         raw_host = request.headers.get("host", "").strip()
         if raw_host:
@@ -110,7 +127,11 @@ async def platform_middleware(request: Request, call_next):
     response.headers["X-Trace-Id"] = trace_id
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
-    response.headers["Referrer-Policy"] = "same-origin"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none';"
+    )
     return response
 
 

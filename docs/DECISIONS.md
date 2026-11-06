@@ -303,3 +303,43 @@ Users interacting with TraceTest AI needed a clear, sequential mental model of t
 - Clear visual cues separating simulated test environments from live cloud targets.
 - Complete set of executive and technical artifacts for stakeholders, evaluators, and engineers.
 
+---
+
+## ADR-018: Bubblewrap Filesystem & Network Isolation (`bwrap+rlimits`)
+
+### Context
+Unshare-based network namespace isolation (`unshare -rn`) was vulnerable to host filesystem exposure: test scripts executing inside the sandbox could theoretically read host files (e.g. `~/.env`, `var/tracetest.db`) if not prevented by runtime controls. A robust sandbox must guarantee zero filesystem leakage, zero secret leakage, and fail-closed isolation.
+
+### Decision
+1. Implement Bubblewrap containerized execution (`bwrap+rlimits`) as the primary isolation mechanism on Linux systems.
+2. Configure Bubblewrap with:
+   - `--unshare-all`, `--die-with-parent`, `--new-session`
+   - `--clearenv` to wipe all inherited process environment variables, with explicit minimal whitelist (`PATH`, `HOME=/tmp`, `LANG=C.UTF-8`, `PYTHONDONTWRITEBYTECODE=1`, `PYTHONHASHSEED=0`)
+   - Read-only mounts for system binaries and libraries (`/usr`, `/lib`, `/lib64`, `/etc`)
+   - Isolated in-memory tmpfs for `/tmp`, `/home`, and `/var` (completely masking user homes, host `.env`, and application SQLite databases)
+   - Virtual environment read-only mount at `/opt/venv`
+   - Transient workspace bound at `/work` with `--chdir /work`
+3. Retain `rlimits` (CPU limit, virtual memory limit, output cap) while exempting `RLIMIT_NPROC` when Bubblewrap is active (as Bubblewrap already provides isolated PID namespaces and host process masking).
+
+### Consequences
+- Mathematical guarantee that test scripts cannot access host credentials, files, or databases.
+- Isolated loopback networking with network egress strictly blocked.
+- Automatic fallback to `netns+rlimits` on Linux hosts without Bubblewrap, or fail-closed refusal when network isolation is unavailable.
+
+---
+
+## ADR-019: DNS Rebinding Prevention via Pinned IP Resolution and Git `http.curloptResolve`
+
+### Context
+Repository ingestion accepts a GitHub repository URL. A classic Time-of-Check to Time-of-Wait (TOCTOU) DNS rebinding vulnerability could occur if a DNS lookup validates a public IP at the start of ingestion, but `git clone` subsequently re-resolves the domain to a private IP (e.g., `127.0.0.1` or `169.254.169.254`).
+
+### Decision
+1. Resolve and validate the target domain upfront using `socket.getaddrinfo`, asserting that all resolved IPs are non-loopback, non-private (RFC 1918), non-link-local, and globally routable.
+2. Pin the validated public IP directly into the `git` invocation using Git's `-c http.curloptResolve=github.com:443:<pinned_ip>` configuration parameter.
+3. This forces libcurl inside `git` to connect strictly to the pre-validated IP without secondary hostname re-resolution, completely eliminating DNS rebinding attacks.
+
+### Consequences
+- Prevents SSRF attacks against internal networks or cloud metadata services.
+- Deterministic connection routing for all git clone and fetch operations.
+
+

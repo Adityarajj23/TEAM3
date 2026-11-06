@@ -109,14 +109,24 @@ class SandboxResult:
     isolation_level: str = "none"
 
 
-def _limits(memory_mb: int | None, cpu_seconds: int):
+@dataclass
+class SandboxedProbeResult:
+    status: str  # passed | failed | error | timed_out
+    stdout: str = ""
+    stderr: str = ""
+    error_message: str | None = None
+    duration_ms: int = 0
+    isolation_level: str = "none"
+
+
+def _limits(memory_mb: int | None, cpu_seconds: int, is_bwrap: bool = False):
     def apply() -> None:  # runs in the child (POSIX only)
         import resource
         os.setsid()
         limits = [(resource.RLIMIT_CPU, cpu_seconds), (resource.RLIMIT_FSIZE, 50 * 1024 * 1024),
                   (resource.RLIMIT_CORE, 0)]
-        if hasattr(resource, "RLIMIT_NPROC"):
-            # Block fork bombs by capping max concurrent processes per user
+        if not is_bwrap and hasattr(resource, "RLIMIT_NPROC"):
+            # Block fork bombs by capping max concurrent processes per user (skipped under bwrap which unshares PID namespace)
             limits.append((resource.RLIMIT_NPROC, 64))
         if memory_mb:  # browsers reserve large virtual address spaces, so Playwright runs skip RLIMIT_AS
             limits += [(resource.RLIMIT_AS, memory_mb * 1024 * 1024), (resource.RLIMIT_NOFILE, 256)]
@@ -129,6 +139,34 @@ def _limits(memory_mb: int | None, cpu_seconds: int):
 
 
 _UNSHARE_OK: bool | None = None
+_BWRAP_OK: bool | None = None
+
+
+def _bwrap_available() -> bool:
+    global _BWRAP_OK
+    if _BWRAP_OK is None:
+        path = shutil.which("bwrap")
+        if not path or not sys.platform.startswith("linux"):
+            _BWRAP_OK = False
+        else:
+            try:
+                cmd = [path, "--unshare-all", "--ro-bind", "/usr", "/usr"]
+                for d in ["/bin", "/lib", "/lib64"]:
+                    p = Path(d)
+                    if p.is_symlink():
+                        cmd.extend(["--symlink", os.readlink(d), d])
+                    elif p.exists():
+                        cmd.extend(["--ro-bind", d, d])
+                cmd.extend(["--proc", "/proc", "--dev", "/dev", "/usr/bin/true"])
+                r = subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    timeout=5,
+                )
+                _BWRAP_OK = r.returncode == 0
+            except Exception:
+                _BWRAP_OK = False
+    return _BWRAP_OK
 
 
 def _unshare_available() -> bool:
@@ -148,6 +186,8 @@ def _unshare_available() -> bool:
 
 def detect_isolation_level() -> str:
     """Detects available execution isolation level."""
+    if sys.platform.startswith("linux") and _bwrap_available():
+        return "bwrap+rlimits"
     if sys.platform.startswith("linux") and _unshare_available():
         return "netns+rlimits"
     if os.name == "posix":
@@ -192,7 +232,8 @@ def _parse_junit(xml_text: str, file_to_key: dict[str, str]) -> dict[str, TestOu
 
 def run_pytest(specs: list[ScriptSpec], hcm_version: str | None, runner: str = "pytest",
                target_url: str | None = None, timeout_s: int | None = None,
-               artifact_dir: Path | None = None) -> SandboxResult:
+               artifact_dir: Path | None = None, skip_ast_validation: bool = False,
+               env_kind: str = "real_code") -> SandboxResult:
     settings = get_settings()
     timeout_s = timeout_s or settings.exec_timeout_seconds
     allow_pw = runner == "playwright"
@@ -218,11 +259,12 @@ def run_pytest(specs: list[ScriptSpec], hcm_version: str | None, runner: str = "
         else:
             (work / "conftest.py").write_text(PLAYWRIGHT_CONFTEST)
         for spec in specs:
-            report = validate_script(spec.script, allow_playwright=allow_pw)
-            if not report.valid:
-                pre_rejected[spec.test_key] = TestOutcome(
-                    spec.test_key, "error", 0, "Rejected by AST allowlist: " + "; ".join(report.errors))
-                continue
+            if not skip_ast_validation:
+                report = validate_script(spec.script, allow_playwright=allow_pw, env_kind=env_kind)
+                if not report.valid:
+                    pre_rejected[spec.test_key] = TestOutcome(
+                        spec.test_key, "error", 0, "Rejected by AST allowlist: " + "; ".join(report.errors))
+                    continue
             (work / spec.file_name).write_text(spec.script)
             file_to_key[spec.file_name] = spec.test_key
 
@@ -252,7 +294,53 @@ def run_pytest(specs: list[ScriptSpec], hcm_version: str | None, runner: str = "
         iso_level = detect_isolation_level()
         use_netns = False
         if runner == "pytest":
-            if iso_level == "netns+rlimits":
+            if iso_level == "bwrap+rlimits":
+                use_netns = True
+                bwrap_bin = shutil.which("bwrap") or "bwrap"
+                bwrap_cmd = [
+                    bwrap_bin,
+                    "--unshare-all",
+                    "--die-with-parent",
+                    "--new-session",
+                    "--clearenv",
+                    "--setenv", "PATH", "/usr/bin:/bin",
+                    "--setenv", "HOME", "/tmp",
+                    "--setenv", "LANG", "C.UTF-8",
+                    "--setenv", "PYTHONDONTWRITEBYTECODE", "1",
+                    "--setenv", "PYTHONHASHSEED", "0",
+                    "--ro-bind", "/usr", "/usr",
+                ]
+                for d in ["/bin", "/lib", "/lib64"]:
+                    p = Path(d)
+                    if p.is_symlink():
+                        target = os.readlink(d)
+                        bwrap_cmd.extend(["--symlink", target, d])
+                    elif p.exists():
+                        bwrap_cmd.extend(["--ro-bind", d, d])
+                bwrap_cmd.extend([
+                    "--proc", "/proc",
+                    "--dev", "/dev",
+                    "--tmpfs", "/tmp",
+                    "--tmpfs", "/home",
+                    "--tmpfs", "/var",
+                ])
+                if Path("/etc").exists():
+                    bwrap_cmd.extend(["--ro-bind", "/etc", "/etc"])
+                venv_dir = Path(sys.prefix).resolve()
+                if venv_dir != Path("/usr"):
+                    bwrap_cmd.extend(["--ro-bind", str(venv_dir), "/opt/venv"])
+                    python_bin = "/opt/venv/bin/python3"
+                else:
+                    python_bin = sys.executable
+                if hcm_version:
+                    bwrap_cmd.extend(["--setenv", "REFERENCE_HCM_VERSION", hcm_version])
+                bwrap_cmd.extend(["--bind", str(work), "/work", "--chdir", "/work"])
+                cmd = bwrap_cmd + [
+                    python_bin, "-I", "-B", "-m", "pytest", "-q", "-p", "no:cacheprovider",
+                    "-o", "console_output_style=classic", "--junitxml=/work/junit.xml",
+                    "--rootdir", "/work", "/work"
+                ]
+            elif iso_level == "netns+rlimits":
                 use_netns = True
                 cmd = [shutil.which("unshare") or "unshare", "-rn", *cmd]
             else:
@@ -269,7 +357,11 @@ def run_pytest(specs: list[ScriptSpec], hcm_version: str | None, runner: str = "
         start = time.monotonic()
         popen_kw: dict = {"cwd": str(work), "env": env, "stdout": subprocess.PIPE, "stderr": subprocess.STDOUT}
         if os.name == "posix":
-            popen_kw["preexec_fn"] = _limits(settings.exec_memory_mb if runner == "pytest" else None, timeout_s + 5)
+            popen_kw["preexec_fn"] = _limits(
+                settings.exec_memory_mb if runner == "pytest" else None,
+                timeout_s + 5,
+                is_bwrap=(iso_level == "bwrap+rlimits"),
+            )
         else:
             popen_kw["creationflags"] = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
         proc = subprocess.Popen(cmd, **popen_kw)
@@ -306,3 +398,33 @@ def run_pytest(specs: list[ScriptSpec], hcm_version: str | None, runner: str = "
         return SandboxResult(status, outcomes, duration, text, junit_text, proc.returncode, use_netns, files, iso_level)
     finally:
         shutil.rmtree(work, ignore_errors=True)
+
+
+def run_sandboxed_pytest(
+    test_content: str,
+    timeout_seconds: int = 15,
+    mount_echobox_harness: bool = False,
+    env_kind: str = "generic",
+) -> SandboxedProbeResult:
+    """Convenience runner for isolated, sandboxed execution of test content."""
+    spec = ScriptSpec("probe", test_content)
+    result = run_pytest(
+        specs=[spec],
+        hcm_version=None,
+        runner="pytest",
+        timeout_s=timeout_seconds,
+        skip_ast_validation=True,
+        env_kind=env_kind,
+    )
+    outcome = result.outcomes.get("probe")
+    status = outcome.status if outcome else ("passed" if result.status == "completed" and result.returncode == 0 else "error")
+    err_msg = outcome.message if outcome and outcome.message else (result.log if status != "passed" else None)
+    return SandboxedProbeResult(
+        status=status,
+        stdout=result.log,
+        stderr="",
+        error_message=err_msg,
+        duration_ms=result.duration_ms,
+        isolation_level=result.isolation_level,
+    )
+

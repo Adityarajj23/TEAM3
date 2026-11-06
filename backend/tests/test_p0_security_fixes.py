@@ -258,9 +258,10 @@ def test_sandbox_isolation_level_detection_and_fail_closed(monkeypatch):
 
     # Test detection
     iso = sb.detect_isolation_level()
-    assert iso in ("netns+rlimits", "rlimits_only", "none")
+    assert iso in ("bwrap+rlimits", "netns+rlimits", "rlimits_only", "none")
 
-    # Simulate unshare unavailable on linux without override -> must fail closed
+    # Simulate unshare and bwrap unavailable on linux without override -> must fail closed
+    monkeypatch.setattr(sb, "_bwrap_available", lambda: False)
     monkeypatch.setattr(sb, "_unshare_available", lambda: False)
     monkeypatch.setenv("TRACETEST_ALLOW_WEAK_SANDBOX", "0")
     from app.core.config import get_settings

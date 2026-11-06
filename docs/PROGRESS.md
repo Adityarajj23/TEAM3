@@ -260,3 +260,21 @@ All 33 technical and user documents are present, detailed, and mutually verified
 35. `docs/eval-report.md` — Reproducible benchmark evaluation report with CLI commands.
 36. `docs/openapi.json` — Machine-readable OpenAPI 3.1 specification for all 77 API paths.
 
+---
+
+## 9. Round 2 Phase 1: Security Hardening & Web Hygiene Verification
+
+- **DNS Rebinding Prevention**: Validates public IPs upfront with `socket.getaddrinfo` and rejects private, loopback, or link-local IPs. Pins resolved public IP into Git using `-c http.curloptResolve=github.com:443:<pinned_ip>`.
+- **Bubblewrap Filesystem Isolation (`bwrap+rlimits`)**: Implemented containerized execution isolating `/home`, `/var`, `/tmp`, unsetting secret environment variables via `--clearenv`, mounting `/usr`, `/lib`, `/lib64`, and `/etc` read-only, and mounting the work directory in an isolated tmpfs. Tested with probe scripts verifying host `.env` and `tracetest.db` are completely inaccessible.
+- **Environment-Aware AST Allowlist**: Distinguishes `real_code` vs `simulation` vs `generic` test scripts. Re-implementation imports (`echobox_harness`) are strictly restricted to simulation environments and blocked in production / real-code runs.
+- **Web Hygiene & Security Headers**: Injected `Content-Security-Policy`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, and `Referrer-Policy: strict-origin-when-cross-origin`. Implemented 10MB payload size limit middleware returning HTTP 413.
+- **Secret & Session Security**: Verified `.secret_key` permissions (0600), `HttpOnly` and `SameSite=Strict` cookie flags, session revocation, and zero-secret leakage.
+- **Verification Suites**:
+  - `backend/tests/test_round2_security.py`: 9/9 passed in 4.68s.
+  - Full backend pytest suite: 111 passed, 1 xfailed in 14.89s.
+  - Ruff linting: 0 errors.
+  - Mypy static typing: 0 errors across 70 source files.
+  - Vitest frontend tests: 9/9 passed in 1.80s.
+  - `scripts/verify_docs.py`: 6/6 checks passed.
+
+

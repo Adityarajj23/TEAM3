@@ -27,6 +27,7 @@ def run_hardened_git(
     args: list[str],
     cwd: Path | None = None,
     auth_token: str | None = None,
+    pinned_ip: str | None = None,
     timeout: int = DEFAULT_TIMEOUT,
 ) -> subprocess.CompletedProcess[str]:
     """Runs a git command with strict security flags, isolated environment, and token protection."""
@@ -55,7 +56,12 @@ def run_hardened_git(
         env["GIT_ASKPASS"] = str(askpass_script)
         env["TRACETEST_GIT_TOKEN"] = auth_token.strip()
 
-    cmd = ["git"] + HARDENED_GIT_CONFIG + args
+    extra_config: list[str] = []
+    if pinned_ip and pinned_ip.strip():
+        # Pin DNS to defeat DNS rebinding attacks
+        extra_config.extend(["-c", f"http.curloptResolve=github.com:443:{pinned_ip.strip()}"])
+
+    cmd = ["git"] + HARDENED_GIT_CONFIG + extra_config + args
     try:
         proc = subprocess.run(
             cmd,
@@ -77,8 +83,18 @@ def clone_repository(
     branch: str = "main",
     commit_sha: str | None = None,
     auth_token: str | None = None,
+    pinned_ip: str | None = None,
 ) -> str:
     """Clones a repository securely without persisting credentials into .git/config."""
+    from app.services.repo_ingest.url_validator import resolve_and_validate_github_url
+
+    if not pinned_ip and repo_url.startswith("https://github.com/"):
+        try:
+            _, _, resolved_ip = resolve_and_validate_github_url(repo_url)
+            pinned_ip = resolved_ip
+        except Exception:
+            pass
+
     target_dir.parent.mkdir(parents=True, exist_ok=True)
     if not target_dir.exists():
         clone_args = [
@@ -89,7 +105,7 @@ def clone_repository(
             repo_url,
             str(target_dir),
         ]
-        proc = run_hardened_git(clone_args, auth_token=auth_token, timeout=DEFAULT_TIMEOUT)
+        proc = run_hardened_git(clone_args, auth_token=auth_token, pinned_ip=pinned_ip, timeout=DEFAULT_TIMEOUT)
         if proc.returncode != 0:
             err = (proc.stderr or "").replace(auth_token or "", "[REDACTED]")
             raise BadRequest(f"Git clone failed: {err[:200]}")

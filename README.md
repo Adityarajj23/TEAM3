@@ -116,7 +116,7 @@ flowchart TD
 
 ## 5. Technology Stack & Exact Versions
 
-- **Backend**: Python `3.11.16`, FastAPI `0.115.6`, Pydantic `2.10.4`, SQLAlchemy `2.0.36`, SQLite 3 (WAL mode), LangGraph `0.2.60`, Groq SDK `0.15.0`, Google GenAI SDK `0.1.1`, Argon2-cffi, Playwright, pytest `8.3.4`.
+- **Backend**: Python `3.11.16`, FastAPI `0.115.6`, Pydantic `2.10.4`, SQLAlchemy `2.0.36`, SQLite 3 (WAL mode), LangGraph `0.2.60`, Groq SDK `0.15.0`, Google GenAI SDK `1.2.0`, Argon2-cffi, Playwright, pytest `8.3.4`.
 - **Frontend**: React `18.3.1`, TypeScript `5.6.3`, Vite `6.0.6`, Tailwind CSS `3.4.17`, Radix UI primitives, TanStack Query `5.62.11`, React Router `7.1.1`, Recharts `2.15.0`, Lucide Icons `0.469.0`, Vitest `3.0.2`.
 - **Standards & Tooling**: Ruff `0.8.4` (clean, 0 errors), mypy `1.14.0`, openapi-typescript `7.4.4`.
 
