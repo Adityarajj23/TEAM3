@@ -48,19 +48,22 @@ const NAV_SECTIONS: NavSection[] = [
   },
 ];
 
-export function Wordmark({ compact }: { compact?: boolean }) {
+export function Wordmark({ compact, projectName }: { compact?: boolean; projectName?: string }) {
+  const badgeLabel = projectName ? (projectName.length > 14 ? projectName.slice(0, 12) + "…" : projectName) : "Platform";
   return (
     <div className="flex items-center gap-2.5">
-      <div className="flex h-7 w-7 items-center justify-center rounded bg-[#3067DB] text-white shadow-xs">
-        <span className="font-mono text-xs font-bold tracking-tight">DF</span>
+      <div className="flex h-7 w-7 items-center justify-center rounded bg-[#3067DB] text-white shadow-xs ring-1 ring-[#3067DB]/20">
+        <span className="font-mono text-xs font-bold tracking-tight">TT</span>
       </div>
       {!compact && (
         <div className="flex flex-col leading-none">
           <div className="flex items-center gap-1.5">
             <span className="text-sm font-semibold tracking-tight text-slate-900">TraceTest<span className="font-normal text-slate-500"> AI</span></span>
-            <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-[#3067DB] border border-blue-100">Dayforce</span>
+            <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-[#3067DB] border border-blue-100 truncate max-w-[110px]" title={projectName || "Platform"}>
+              {badgeLabel}
+            </span>
           </div>
-          <span className="text-[10px] text-slate-400 font-medium">QA Engineering</span>
+          <span className="text-[10px] text-slate-400 font-medium">Enterprise Quality Verification</span>
         </div>
       )}
     </div>
@@ -72,7 +75,7 @@ function Breadcrumbs() {
   const parts = pathname.split("/").filter(Boolean);
   const allItems = NAV_SECTIONS.flatMap((s) => s.items);
   const nav = allItems.find((n) => n.to !== "/" && pathname.startsWith(n.to.split("?")[0]));
-  if (!parts.length) return <span className="text-xs font-medium text-slate-600">Dayforce Quality Command Center</span>;
+  if (!parts.length) return <span className="text-xs font-medium text-slate-600">Enterprise Quality Command Center</span>;
   return (
     <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1.5 text-xs">
       <Link to={nav?.to ?? "/"} className="font-medium text-slate-600 hover:text-slate-900">{nav?.label ?? parts[0]}</Link>
@@ -92,37 +95,108 @@ function GlobalSearch() {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [debounced, setDebounced] = useState("");
+  const [selectedIndex, setSelectedIndex] = useState(0);
   const nav = useNavigate();
   const box = useRef<HTMLDivElement>(null);
-  useEffect(() => { const t = setTimeout(() => setDebounced(q.trim()), 250); return () => clearTimeout(t); }, [q]);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { const t = setTimeout(() => setDebounced(q.trim()), 200); return () => clearTimeout(t); }, [q]);
+
   useEffect(() => {
-    const h = (e: MouseEvent) => { if (box.current && !box.current.contains(e.target as Node)) setOpen(false); };
-    document.addEventListener("mousedown", h);
-    return () => document.removeEventListener("mousedown", h);
+    const onMouseDown = (e: MouseEvent) => { if (box.current && !box.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", onMouseDown);
+    return () => document.removeEventListener("mousedown", onMouseDown);
   }, []);
-  const res = useQuery({ queryKey: ["search", debounced], enabled: debounced.length >= 2,
-    queryFn: () => api.get<{ results: { type: string; id: number; key: string; title: string }[] }>("/search", { q: debounced }) });
+
+  // Global Cmd+K / Ctrl+K keyboard shortcut
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        inputRef.current?.focus();
+        setOpen(true);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  const res = useQuery({
+    queryKey: ["search", debounced],
+    enabled: debounced.length >= 2,
+    queryFn: () => api.get<{ results: { type: string; id: number; key: string; title: string }[] }>("/search", { q: debounced })
+  });
+
   const bases: Record<string, string> = { requirement: "/requirements/", test: "/tests/", defect: "/defects/", execution: "/executions/" };
   const path = (t: string, id: number) => (bases[t] ?? "/") + id;
+  const items = res.data?.results ?? [];
+
+  useEffect(() => {
+    setSelectedIndex(0);
+  }, [debounced]);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!open || items.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setSelectedIndex((prev) => (prev + 1) % items.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setSelectedIndex((prev) => (prev - 1 + items.length) % items.length);
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      const target = items[selectedIndex];
+      if (target) {
+        setOpen(false);
+        setQ("");
+        nav(path(target.type, target.id));
+      }
+    } else if (e.key === "Escape") {
+      setOpen(false);
+      inputRef.current?.blur();
+    }
+  };
+
   return (
     <div ref={box} className="relative w-full max-w-sm">
       <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" aria-hidden />
-      <input value={q} onChange={(e) => { setQ(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)}
-        placeholder="Search Dayforce requirements, tests, defects..." aria-label="Global search"
-        className="h-9 w-full rounded border border-slate-200 bg-slate-50 pl-8 pr-2 text-xs text-slate-900 placeholder:text-slate-400 focus:border-[#3067DB] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#3067DB]" />
+      <input
+        ref={inputRef}
+        value={q}
+        onChange={(e) => { setQ(e.target.value); setOpen(true); }}
+        onFocus={() => setOpen(true)}
+        onKeyDown={handleKeyDown}
+        placeholder="Search tests, requirements, defects... (⌘K)"
+        aria-label="Global search"
+        className="h-9 w-full rounded border border-slate-200 bg-slate-50 pl-8 pr-12 text-xs text-slate-900 placeholder:text-slate-400 focus:border-[#3067DB] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#3067DB]"
+      />
+      <kbd className="pointer-events-none absolute right-2.5 top-2.5 hidden h-4 select-none items-center gap-0.5 rounded border border-slate-200 bg-white px-1 font-mono text-[10px] font-medium text-slate-400 sm:flex">
+        ⌘K
+      </kbd>
       {open && debounced.length >= 2 && (
         <div className="absolute z-30 mt-1 w-full overflow-hidden rounded border border-slate-200 bg-white shadow-popover" role="listbox">
-          {res.isLoading ? <p className="px-3 py-2 text-xs text-slate-500">Searching...</p> :
-            !res.data?.results.length ? <p className="px-3 py-2 text-xs text-slate-500">No matches for “{debounced}”</p> :
-              res.data.results.map((r) => (
-                <button key={r.type + r.id} role="option" aria-selected={false}
-                  onClick={() => { setOpen(false); setQ(""); nav(path(r.type, r.id)); }}
-                  className="flex w-full items-baseline gap-2 px-3 py-2 text-left text-xs hover:bg-slate-50 focus:bg-blue-50 focus:outline-none">
-                  <span className="w-20 shrink-0 text-2xs uppercase tracking-wider text-slate-500 font-medium">{r.type}</span>
-                  <span className="font-mono text-xs text-[#3067DB]">{r.key}</span>
-                  <span className="truncate text-slate-900">{r.title}</span>
-                </button>
-              ))}
+          {res.isLoading ? (
+            <p className="px-3 py-2 text-xs text-slate-500">Searching...</p>
+          ) : !items.length ? (
+            <p className="px-3 py-2 text-xs text-slate-500">No matches for “{debounced}”</p>
+          ) : (
+            items.map((r, idx) => (
+              <button
+                key={r.type + r.id}
+                role="option"
+                aria-selected={idx === selectedIndex}
+                onClick={() => { setOpen(false); setQ(""); nav(path(r.type, r.id)); }}
+                className={cn(
+                  "flex w-full items-baseline gap-2 px-3 py-2 text-left text-xs focus:outline-none transition-colors",
+                  idx === selectedIndex ? "bg-blue-50 text-slate-900 font-medium" : "hover:bg-slate-50 text-slate-700"
+                )}
+              >
+                <span className="w-20 shrink-0 text-2xs uppercase tracking-wider text-slate-500 font-medium">{r.type}</span>
+                <span className="font-mono text-xs text-[#3067DB]">{r.key}</span>
+                <span className="truncate text-slate-900">{r.title}</span>
+              </button>
+            ))
+          )}
         </div>
       )}
     </div>
@@ -168,7 +242,7 @@ function Notifications() {
 }
 
 export function AppShell() {
-  const { projects, projectId, setProjectId } = useProjects();
+  const { projects, projectId, setProjectId, current } = useProjects();
   const [collapsed, setCollapsed] = useState(false);
   const cfg = useQuery({ queryKey: ["config"], queryFn: () => api.get<any>("/config"), staleTime: 60_000 });
   const llmReady = cfg.data?.llm?.any_configured;
@@ -178,7 +252,7 @@ export function AppShell() {
       <aside className={cn("flex shrink-0 flex-col border-r border-slate-200 bg-white transition-[width] duration-200",
         collapsed ? "w-14" : "w-60")} aria-label="Primary">
         <div className="flex h-14 items-center justify-between border-b border-slate-200 px-3.5">
-          <Link to="/" aria-label="TraceTest AI overview"><Wordmark compact={collapsed} /></Link>
+          <Link to="/" aria-label="TraceTest AI overview"><Wordmark compact={collapsed} projectName={current?.name} /></Link>
         </div>
         <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-4">
           {NAV_SECTIONS.map((section) => (
@@ -205,11 +279,11 @@ export function AppShell() {
           ))}
         </nav>
 
-        {/* Prototype Disclaimer Banner */}
+        {/* Platform Verification System Notice */}
         {!collapsed && (
           <div className="mx-2 mb-2 p-2 bg-slate-50 rounded border border-slate-200 text-[10px] text-slate-500 leading-tight">
-            <span className="font-semibold text-slate-700 block">Dayforce QE Prototype</span>
-            Independent verification system. Not officially affiliated with Dayforce Inc.
+            <span className="font-semibold text-slate-700 block">Production QE Platform</span>
+            Autonomous requirement verification, sandboxed test execution & defect lifecycle.
           </div>
         )}
 
@@ -222,9 +296,9 @@ export function AppShell() {
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-14 shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-5">
           <div className="flex items-center gap-2">
-            <select aria-label="Dayforce Project Workspace" value={projectId ?? ""} onChange={(e) => setProjectId(e.target.value ? Number(e.target.value) : null)}
+            <select aria-label="Project Workspace" value={projectId ?? ""} onChange={(e) => setProjectId(e.target.value ? Number(e.target.value) : null)}
               className="h-9 max-w-[16rem] rounded border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-800 focus:border-[#3067DB] focus:outline-none focus:ring-1 focus:ring-[#3067DB]">
-              <option value="">All Dayforce Workspaces</option>
+              <option value="">All Project Workspaces</option>
               {projects.map((p) => <option key={p.id} value={p.id}>{p.key} — {p.name}</option>)}
             </select>
           </div>

@@ -377,7 +377,26 @@ Single-run AI evaluations can give misleading impressions of model reliability d
 ### Consequences
 - Transparent, statistically grounded visibility into model performance and variance.
 - Robust protection against fabricated metrics or silent failures during upstream provider outages.
-- Clear separation between deterministic harness validation (mock) and live generative intelligence (Groq/Gemini).
+---
+
+## ADR-023: Product Chrome Refinement, Dynamic 6-Stage Journey, and Global Command Palette
+
+### Context
+The application chrome originally retained hardcoded "Dayforce" branding badges, static fallbacks in the 6-stage verification journey (`?? 21`, `?? 2`, `?? 6`), and a duplicated repository title/description banner directly below the dashboard page header. Furthermore, power users lacked a rapid keyboard-driven navigation mechanism across requirements, tests, defects, and execution runs. Finally, execution detail records needed explicit visual demarcation between primary real-code runs under moto and fallback simulations.
+
+### Decision
+1. In `AppShell.tsx`, replace the static "DF" icon with the neutral "TT" (TraceTest) mark, display the active project name dynamically in the wordmark chip, and update the subtitle to "Enterprise Quality Verification".
+2. Implement a global `Cmd+K` / `Ctrl+K` keyboard shortcut and command palette in `GlobalSearch` with keyboard navigation (ArrowUp/Down, Enter, Escape).
+3. Replace the "Dayforce QE Prototype" disclaimer with a permanent "Production QE Platform" verification system badge.
+4. In `DashboardPage.tsx`, eliminate the duplicate title and description card, replacing it with a concise multi-environment verification status ledger. Remove all hardcoded fallbacks from the 6-stage journey, making it strictly data-driven based on actual API KPI counts and directly linking each step to filtered lists.
+5. In `ExecutionDetailPage.tsx`, render prominent badges for execution environment kind (`real_code` in emerald green vs `simulation` in amber), sandbox isolation level (`bwrap+rlimits` in purple), and a copyable Git commit SHA chip.
+6. In `DefectsPage.tsx`, integrate an explicit `evidence_type` dropdown filter and table column to differentiate execution failures from static analysis findings.
+
+### Consequences
+- Polished, professional enterprise user experience with zero hardcoded prototype artifacts.
+- Rapid keyboard access to all testing assets via `Cmd+K`.
+- Unambiguous visual provenance for every test execution and defect record.
+
 
 
 

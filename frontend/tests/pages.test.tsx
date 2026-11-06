@@ -18,9 +18,44 @@ const PROJECTS = page([{ id: 1, key: "PAY", name: "Payroll Management", descript
 test("application boots directly into workspace without requiring login", async () => {
   mockFetch([[/auth\/me/, ME], [/projects/, PROJECTS], [/analytics\/dashboard/, { kpis: { total_projects: 1, active_projects: 1, total_requirements: 0, analysed_requirements: 0, total_test_cases: 0, approved_test_cases: 0, pending_reviews: 0, total_executions: 0, pass_rate: 0, failed_executions: 0, open_defects: 0, critical_defects: 0, requirement_coverage: 0 }, charts: { execution_trend: [], result_distribution: [], coverage_by_project: [], defect_severity: [], defect_resolution: [], test_status: [] }, recent_changes: [], recent_executions: [], projects: [] }]]);
   renderApp(<Routes><Route element={<AppShell />}><Route index element={<DashboardPage />} /></Route></Routes>);
-  expect(await screen.findByText(/Dayforce Quality Engineering Workspace/)).toBeInTheDocument();
+  expect(await screen.findByText(/Quality Engineering Workspace/)).toBeInTheDocument();
   expect(screen.queryByLabelText("Work email")).not.toBeInTheDocument();
   expect(screen.queryByLabelText("Password")).not.toBeInTheDocument();
+});
+
+test("navigation shell renders TT wordmark and dynamic active project", async () => {
+  const echoProjects = page([{ id: 1, key: "ECHO", name: "EchoBox Platform", description: "", status: "active",
+    stats: { requirements: 1, tests: 1, suites: 1, open_defects: 0, members: 1, coverage_pct: 50 } }]);
+  mockFetch([[/auth\/me/, ME], [/projects/, echoProjects], [/config/, { environment: "test", llm: { any_configured: false, providers: [] } }], [/notifications/, []]]);
+  renderApp(<Routes><Route element={<AppShell />}><Route index element={<p>home</p>} /></Route></Routes>);
+  expect(await screen.findByText("TT")).toBeInTheDocument();
+  expect(screen.getByText("Enterprise Quality Verification")).toBeInTheDocument();
+  expect(await screen.findByTitle("EchoBox Platform")).toBeInTheDocument();
+  expect(screen.getByRole("option", { name: "ECHO — EchoBox Platform" })).toBeInTheDocument();
+});
+
+test("command palette opens via Cmd+K keyboard shortcut and queries search API", async () => {
+  const searchResults = { results: [{ type: "test", id: 42, key: "TC-0042", title: "Verify JWT Signature" }] };
+  const calls = mockFetch([
+    [/auth\/me/, ME],
+    [/projects/, PROJECTS],
+    [/config/, { environment: "test", llm: { any_configured: false, providers: [] } }],
+    [/notifications/, []],
+    [/search/, searchResults],
+  ]);
+  renderApp(<Routes><Route element={<AppShell />}><Route index element={<p>home</p>} /></Route></Routes>);
+  const searchInput = await screen.findByLabelText("Global search");
+  expect(searchInput).toHaveAttribute("placeholder", "Search tests, requirements, defects... (⌘K)");
+
+  // Trigger Cmd+K
+  await userEvent.keyboard("{Meta>}k{/Meta}");
+  expect(searchInput).toHaveFocus();
+
+  // Type query
+  await userEvent.type(searchInput, "JWT");
+  expect(await screen.findByText("TC-0042")).toBeInTheDocument();
+  expect(screen.getByText("Verify JWT Signature")).toBeInTheDocument();
+  expect(calls.some((c) => c.url.includes("/search"))).toBe(true);
 });
 
 test("dashboard renders KPIs from the analytics API, not constants", async () => {

@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Check, Copy, GitCommit } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { DataTable, FilterChips } from "@/components/DataTable";
@@ -27,7 +28,7 @@ export function ExecutionsPage() {
         actions={<a className="text-sm text-accent hover:underline" href={downloadUrl("/exports/executions.csv", { project_id: pid })}>Export CSV</a>} />
       <div className="mb-2"><FilterChips state={st} /></div>
       <DataTable query={q} state={st} onRowClick={(e) => nav(`/executions/${e.id}`)}
-        empty={<EmptyState title="No executions recorded yet" body="Execute an approved Dayforce test suite against a configured environment to inspect sandboxed execution results, logs, and failure diagnostics." />}
+        empty={<EmptyState title="No executions recorded yet" body="Execute an approved test suite against a configured target environment to inspect sandboxed execution results, logs, and failure diagnostics." action={<Button variant="primary" onClick={() => nav("/tests")}>Browse Test Cases</Button>} />}
         toolbar={<>
           <Input placeholder="Execution ID" className="w-40" defaultValue={st.q} aria-label="Search executions" onKeyDown={(e) => e.key === "Enter" && st.setQ((e.target as HTMLInputElement).value)} />
           <Select className="w-36" value={st.filters.status} onChange={(e) => st.setFilter("status", e.target.value)} aria-label="Status">
@@ -39,8 +40,8 @@ export function ExecutionsPage() {
           { id: "status", header: "Status", sortKey: "status", cell: (e) => <Badge value={e.status} /> },
           { id: "source", header: "Source", cell: (e) => <Badge value={e.source} /> },
           { id: "suite", header: "Suite", cell: (e) => e.suite?.name ?? (e.retry_of_id ? "Rerun" : "Ad hoc") },
-          { id: "env", header: "Environment", cell: (e) => e.environment?.name },
-          { id: "isolation", header: "Isolation", cell: (e) => <span className="font-mono text-2xs px-1.5 py-0.5 rounded bg-slate-100 text-slate-700">{e.isolation_level || "netns+rlimits"}</span> },
+          { id: "env", header: "Environment", cell: (e) => <div className="flex flex-col"><span className="text-slate-800 font-medium">{e.environment?.name ?? "Default"}</span><span className="text-2xs text-slate-500 font-mono">{label(e.environment?.kind || "real_code")}</span></div> },
+          { id: "isolation", header: "Isolation", cell: (e) => <span className="font-mono text-2xs px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-100">{e.isolation_level || "bwrap+rlimits"}</span> },
           { id: "res", header: "Results", cell: (e) => <ResultBar e={e} /> },
           { id: "dur", header: "Duration", sortKey: "duration_ms", cell: (e) => fmtDuration(e.duration_ms), className: "tabular-nums" },
           { id: "start", header: "Started", sortKey: "started_at", cell: (e) => <span className="text-slate-600">{fmtDate(e.started_at)}</span> },
@@ -75,6 +76,15 @@ export function ExecutionDetailPage() {
   const [selected, setSelected] = useState<ExecResult | null>(null);
   const [runIds, setRunIds] = useState<number[]>([]);
   const [env, setEnv] = useState("");
+  const [copiedSha, setCopiedSha] = useState(false);
+
+  const copySha = (sha: string) => {
+    navigator.clipboard.writeText(sha);
+    setCopiedSha(true);
+    setTimeout(() => setCopiedSha(false), 2000);
+    toast.ok("Commit SHA copied to clipboard");
+  };
+
   const retry = useMutation({ mutationFn: (failedOnly: boolean) => api.post<any>(`/executions/${id}/retry`, { failed_only: failedOnly, environment_id: env ? Number(env) : null }),
     onSuccess: (r) => { toast.ok(`Started ${r.execution.key}`); nav(`/executions/${r.execution.id}`); }, onError: toast.error });
   const analyse = useMutation({ mutationFn: (resultId?: number) => api.post<{ run_ids: number[] }>(`/executions/${id}/analyse-failure`, { result_id: resultId ?? null }),
@@ -88,8 +98,49 @@ export function ExecutionDetailPage() {
   const running = ["queued", "running"].includes(e.status);
   return (
     <>
-      <PageHeader title={<span className="flex flex-wrap items-center gap-2"><Key className="text-sm">{e.key}</Key>{e.suite?.name ?? "Ad hoc execution"}<Badge value={e.status} /><Badge value={e.source} /></span>}
-        subtitle={`${e.environment?.name}. ${e.source === "historical_import" ? "Imported historical record of a genuine run against the Reference HCM engine." : "Executed by the platform in the restricted sandbox."}`}
+      <PageHeader
+        title={
+          <span className="flex flex-wrap items-center gap-2">
+            <Key className="text-sm">{e.key}</Key>
+            {e.suite?.name ?? "Ad hoc execution"}
+            <Badge value={e.status} />
+            <Badge value={e.source} />
+            {e.environment?.kind === "real_code" ? (
+              <span className="rounded bg-emerald-100 text-emerald-800 border border-emerald-200 px-2 py-0.5 text-2xs font-semibold uppercase tracking-wider">
+                Real Code (SUT Primary)
+              </span>
+            ) : e.environment?.kind === "simulation" ? (
+              <span className="rounded bg-amber-100 text-amber-800 border border-amber-200 px-2 py-0.5 text-2xs font-semibold uppercase tracking-wider">
+                Simulation (Baseline)
+              </span>
+            ) : e.environment?.kind ? (
+              <span className="rounded bg-blue-100 text-blue-800 border border-blue-200 px-2 py-0.5 text-2xs font-semibold uppercase tracking-wider">
+                {label(e.environment.kind)}
+              </span>
+            ) : null}
+            <span className="rounded bg-purple-100 text-purple-800 border border-purple-200 px-2 py-0.5 font-mono text-2xs font-semibold">
+              {e.isolation_level || "bwrap+rlimits"}
+            </span>
+            {e.commit_sha && (
+              <button
+                onClick={() => copySha(e.commit_sha!)}
+                className="inline-flex items-center gap-1 font-mono text-2xs px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer"
+                title={`Commit: ${e.commit_sha} (Click to copy)`}
+              >
+                <GitCommit className="h-3 w-3 text-slate-500" />
+                <span>{e.commit_sha.slice(0, 10)}</span>
+                {copiedSha ? <Check className="h-2.5 w-2.5 text-emerald-600" /> : <Copy className="h-2.5 w-2.5 text-slate-400" />}
+              </button>
+            )}
+          </span>
+        }
+        subtitle={`${e.environment?.name || "Target Environment"}. ${
+          e.environment?.kind === "real_code"
+            ? "Executed real repository entrypoints under moto AWS DynamoDB within bwrap+rlimits isolation."
+            : e.source === "historical_import"
+            ? "Imported historical record of a genuine run against the Reference HCM engine."
+            : "Executed by the platform inside restricted POSIX sandbox."
+        }`}
         actions={<>
           {running && can("suite.execute") && <Button variant="danger" onClick={() => cancel.mutate()}>Cancel</Button>}
           {!running && failed.length > 0 && can("execution.read") && <Button onClick={() => analyse.mutate(undefined)} loading={analyse.isPending}>Analyse failures</Button>}
@@ -164,7 +215,7 @@ function ResultEvidence({ r, onAnalyse, canAnalyse }: { r: ExecResult; onAnalyse
 // ---------------- defects ----------------
 export function DefectsPage() {
   const { projectId } = useProjects();
-  const st = useListState(["project_id", "status", "severity", "approval_status", "open_only"], { sort: "created_at" });
+  const st = useListState(["project_id", "status", "severity", "approval_status", "open_only", "evidence_type"], { sort: "created_at" });
   const pid = st.filters.project_id || (projectId ? String(projectId) : "");
   const params = { ...st.params, ...(pid ? { project_id: pid } : {}), approval_status: st.filters.approval_status || "approved" };
   const q = useQuery({ queryKey: ["defects", params], queryFn: () => api.get<Page<Defect>>("/defects", params) });
@@ -190,6 +241,8 @@ export function DefectsPage() {
             <option value="">Any status</option>{["open", "triaged", "assigned", "in_progress", "fixed", "ready_for_retest", "verified", "closed", "reopened"].map((s) => <option key={s} value={s}>{label(s)}</option>)}</Select>
           <Select className="w-36" value={st.filters.severity} onChange={(e) => st.setFilter("severity", e.target.value)} aria-label="Severity">
             <option value="">Any severity</option>{["critical", "high", "medium", "low"].map((s) => <option key={s} value={s}>{label(s)}</option>)}</Select>
+          <Select className="w-40" value={st.filters.evidence_type} onChange={(e) => st.setFilter("evidence_type", e.target.value)} aria-label="Evidence Type">
+            <option value="">Any evidence</option><option value="execution_failure">Execution Failure</option><option value="static_analysis">Static Analysis</option><option value="manual">Manual Finding</option></Select>
           <Select className="w-44" value={st.filters.approval_status} onChange={(e) => st.setFilter("approval_status", e.target.value)} aria-label="Approval">
             <option value="">Approved defects</option><option value="recommended">Awaiting approval</option><option value="dismissed">Dismissed</option><option value="all">All</option></Select>
           <label className="flex items-center gap-1.5 text-sm text-slate-700"><input type="checkbox" checked={st.filters.open_only === "true"} onChange={(e) => st.setFilter("open_only", e.target.checked ? "true" : "")} />Open only</label></>}
@@ -198,7 +251,7 @@ export function DefectsPage() {
           { id: "title", header: "Title", cell: (d) => <span className="text-ink">{d.title}</span> },
           { id: "sev", header: "Severity", sortKey: "severity", cell: (d) => <Badge value={d.severity} /> },
           { id: "pri", header: "Priority", cell: (d) => d.priority.toUpperCase() },
-          { id: "evidence", header: "Evidence", cell: (d) => <span className="font-mono text-2xs px-1.5 py-0.5 rounded bg-slate-100 text-slate-700">{label(d.evidence_type || "execution_failure")}</span> },
+          { id: "evidence", header: "Evidence", cell: (d) => <span className={cn("text-2xs font-medium px-1.5 py-0.5 rounded", d.evidence_type === "execution_failure" ? "bg-red-50 text-red-700 border border-red-200" : d.evidence_type === "static_analysis" ? "bg-blue-50 text-blue-700 border border-blue-200" : "bg-slate-100 text-slate-700")}>{label(d.evidence_type || "execution_failure")}</span> },
           { id: "status", header: "Status", sortKey: "status", cell: (d) => d.approval_status === "approved" ? <Badge value={d.status} /> : <Badge value={d.approval_status} /> },
           { id: "owner", header: "Owner", cell: (d) => d.owner?.name ?? <span className="text-slate-400">Unassigned</span> },
           { id: "created", header: "Opened", sortKey: "created_at", cell: (d) => <span className="text-slate-600">{fmtDate(d.created_at, false)}</span> },

@@ -1,6 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
 import {
-  AlertTriangle,
   ArrowRight,
   BookOpen,
   CheckCircle2,
@@ -57,8 +56,11 @@ const STATUS_COLOR: Record<string, string> = {
 
 const axis = { fontSize: 11, fill: "#64748B" };
 
-function DayforceOnboardingHub() {
+function ProjectOnboardingHub({ current }: { current?: any }) {
   const nav = useNavigate();
+  const isDayforce = !current || current?.key?.startsWith("DF");
+  const isEcho = current?.key === "ECHO";
+
   return (
     <div className="space-y-6">
       {/* Hero Welcome Card */}
@@ -67,13 +69,13 @@ function DayforceOnboardingHub() {
           <div className="space-y-1.5">
             <div className="inline-flex items-center gap-2 rounded bg-blue-50 px-2 py-0.5 text-xs font-semibold text-[#3067DB] border border-blue-100">
               <Sparkles className="h-3.5 w-3.5" />
-              <span>Dayforce Quality Engineering Workspace</span>
+              <span>{current?.name || "Enterprise"} Quality Engineering Workspace</span>
             </div>
             <h2 className="text-xl font-semibold text-slate-900 tracking-tight">
-              Ready for Dayforce Requirement Verification
+              Ready for {current?.name || "Requirement"} Verification
             </h2>
             <p className="text-xs text-slate-600 max-w-2xl leading-relaxed">
-              Verify Dayforce HCM business requirements through AI-assisted clause decomposition, ambiguity detection,
+              Verify {current?.name ? `${current.name} specifications` : "business requirements"} through AI-assisted clause decomposition, ambiguity detection,
               grounded acceptance criteria synthesis, and sandboxed test execution against target environments.
             </p>
           </div>
@@ -98,7 +100,7 @@ function DayforceOnboardingHub() {
             </div>
             <h3 className="text-xs font-semibold text-slate-900">1. Ingest Requirements</h3>
             <p className="text-[11px] text-slate-500 leading-normal">
-              Upload Dayforce business scenarios, CR documents, or policies in PDF, TXT, or Markdown format with immutable versioning.
+              Upload business scenarios, CR documents, or policies in PDF, TXT, or Markdown format with immutable versioning.
             </p>
           </div>
           <button
@@ -159,52 +161,83 @@ function DayforceOnboardingHub() {
             </p>
           </div>
           <button
-            onClick={() => nav("/suites")}
+            onClick={() => nav("/executions")}
             className="mt-4 flex items-center gap-1 text-xs font-medium text-emerald-600 hover:underline pt-2 border-t border-slate-100"
           >
-            <span>Test Suites</span>
+            <span>Test Executions</span>
             <ArrowRight className="h-3 w-3" />
           </button>
         </div>
       </div>
 
-      {/* Dayforce Module Directory */}
+      {/* Domain / Architecture Directory */}
       <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-xs">
         <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
           <div className="flex items-center gap-2">
             <BookOpen className="h-4 w-4 text-[#3067DB]" />
-            <h3 className="text-xs font-semibold text-slate-900">Dayforce Active Verification Domains</h3>
+            <h3 className="text-xs font-semibold text-slate-900">
+              {isEcho ? "EchoBox Target Architecture Components" : isDayforce ? "Dayforce Active Verification Domains" : "Target System Modules"}
+            </h3>
           </div>
           <Link to="/projects" className="text-xs font-medium text-[#3067DB] hover:underline">
             View All Projects
           </Link>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-          <div className="rounded border border-slate-200 p-3 bg-slate-50/50">
-            <span className="font-semibold text-slate-800 block">DF-PAY: Payroll</span>
-            <span className="text-[11px] text-slate-500 block mt-1">
-              Gross-to-net, FLSA overtime thresholds, statutory penny rounding, shift differentials.
-            </span>
+        {isEcho ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+            <div className="rounded border border-slate-200 p-3 bg-slate-50/50">
+              <span className="font-semibold text-slate-800 block">ECHO-ROOM: Ephemeral Rooms</span>
+              <span className="text-[11px] text-slate-500 block mt-1">
+                Room creation, 24-hour TTL expiration, pseudonym generation, room ownership.
+              </span>
+            </div>
+            <div className="rounded border border-slate-200 p-3 bg-slate-50/50">
+              <span className="font-semibold text-slate-800 block">ECHO-MSG: Messages & RPC</span>
+              <span className="text-[11px] text-slate-500 block mt-1">
+                Anonymous message submission, DynamoDB single-table storage, rate limiting.
+              </span>
+            </div>
+            <div className="rounded border border-slate-200 p-3 bg-slate-50/50">
+              <span className="font-semibold text-slate-800 block">ECHO-AUTH: Dual Cognito Pools</span>
+              <span className="text-[11px] text-slate-500 block mt-1">
+                Owner vs respondent authentication, JWT signature validation, token expiry.
+              </span>
+            </div>
+            <div className="rounded border border-slate-200 p-3 bg-slate-50/50">
+              <span className="font-semibold text-slate-800 block">ECHO-MOD: Moderation & Export</span>
+              <span className="text-[11px] text-slate-500 block mt-1">
+                Content filtering, room closing, CSV/JSON export, soft-delete archival.
+              </span>
+            </div>
           </div>
-          <div className="rounded border border-slate-200 p-3 bg-slate-50/50">
-            <span className="font-semibold text-slate-800 block">DF-WFM: Workforce Mgmt</span>
-            <span className="text-[11px] text-slate-500 block mt-1">
-              Electronic punch pairing, meal break compliance (30 min / 5 hr), rest intervals.
-            </span>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+            <div className="rounded border border-slate-200 p-3 bg-slate-50/50">
+              <span className="font-semibold text-slate-800 block">DF-PAY: Payroll</span>
+              <span className="text-[11px] text-slate-500 block mt-1">
+                Gross-to-net, FLSA overtime thresholds, statutory penny rounding, shift differentials.
+              </span>
+            </div>
+            <div className="rounded border border-slate-200 p-3 bg-slate-50/50">
+              <span className="font-semibold text-slate-800 block">DF-WFM: Workforce Mgmt</span>
+              <span className="text-[11px] text-slate-500 block mt-1">
+                Electronic punch pairing, meal break compliance (30 min / 5 hr), rest intervals.
+              </span>
+            </div>
+            <div className="rounded border border-slate-200 p-3 bg-slate-50/50">
+              <span className="font-semibold text-slate-800 block">DF-LVE: Absence & Leave</span>
+              <span className="text-[11px] text-slate-500 block mt-1">
+                Pay-period accrual rates, annual carryover caps, forfeiture boundaries, payouts.
+              </span>
+            </div>
+            <div className="rounded border border-slate-200 p-3 bg-slate-50/50">
+              <span className="font-semibold text-slate-800 block">DF-BEN: Benefits & Eligibility</span>
+              <span className="text-[11px] text-slate-500 block mt-1">
+                Full-time hours threshold (≥30 hr), contractor exclusions, enrollment windows.
+              </span>
+            </div>
           </div>
-          <div className="rounded border border-slate-200 p-3 bg-slate-50/50">
-            <span className="font-semibold text-slate-800 block">DF-LVE: Absence & Leave</span>
-            <span className="text-[11px] text-slate-500 block mt-1">
-              Pay-period accrual rates, annual carryover caps, forfeiture boundaries, payouts.
-            </span>
-          </div>
-          <div className="rounded border border-slate-200 p-3 bg-slate-50/50">
-            <span className="font-semibold text-slate-800 block">DF-BEN: Benefits & Eligibility</span>
-            <span className="text-[11px] text-slate-500 block mt-1">
-              Full-time hours threshold (≥30 hr), contractor exclusions, enrollment windows.
-            </span>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );
@@ -232,11 +265,11 @@ export default function DashboardPage() {
   return (
     <>
       <PageHeader
-        title={current ? `${current.name} Command Center` : "Dayforce Quality Command Center"}
+        title={current ? `${current.name} Command Center` : "Enterprise Quality Command Center"}
         subtitle={
           current
             ? current.description
-            : "Real-time verification metrics and quality intelligence for Dayforce HCM requirements."
+            : "Real-time verification metrics and quality intelligence for business requirements."
         }
         actions={
           <div className="flex items-center gap-2 text-xs">
@@ -287,7 +320,7 @@ export default function DashboardPage() {
             {
               num: 1,
               name: "Connect",
-              detail: current?.key ? `${current.key} Attached` : "GitHub Clone",
+              detail: current?.key ? `${current.key} Connected` : "Repository Link",
               active: true,
               done: !!current?.key,
               onClick: () => setConnectOpen(true),
@@ -295,7 +328,7 @@ export default function DashboardPage() {
             {
               num: 2,
               name: "Analyze",
-              detail: current?.key ? "AST & Secrets Mapped" : "Inspect Source",
+              detail: current?.key ? "Source & AST Mapped" : "Inspect Source",
               active: !!current?.key,
               done: !!current?.key,
               onClick: () => nav("/projects"),
@@ -303,34 +336,34 @@ export default function DashboardPage() {
             {
               num: 3,
               name: "Requirements",
-              detail: `${k?.total_requirements ?? 21} Grounded`,
+              detail: `${k?.total_requirements ?? 0} Grounded`,
               active: (k?.total_requirements ?? 0) > 0,
               done: (k?.total_requirements ?? 0) > 0,
-              onClick: () => nav("/requirements"),
+              onClick: () => nav(`/requirements?${scope}`),
             },
             {
               num: 4,
               name: "Test Generation",
-              detail: `${k?.total_test_cases ?? 21} Traceable`,
+              detail: `${k?.total_test_cases ?? 0} Traceable`,
               active: (k?.total_test_cases ?? 0) > 0,
               done: (k?.total_test_cases ?? 0) > 0,
-              onClick: () => nav("/tests"),
+              onClick: () => nav(`/tests?${scope}`),
             },
             {
               num: 5,
               name: "Execute",
-              detail: `${k?.total_executions ?? 2} Sandboxed`,
+              detail: `${k?.total_executions ?? 0} Sandboxed`,
               active: (k?.total_executions ?? 0) > 0,
               done: (k?.total_executions ?? 0) > 0,
-              onClick: () => nav("/executions"),
+              onClick: () => nav(`/executions?${scope}`),
             },
             {
               num: 6,
               name: "Defects & Retest",
-              detail: `${k?.open_defects ?? 6} Classified`,
+              detail: `${k?.open_defects ?? 0} Open`,
               active: (k?.open_defects ?? 0) > 0,
-              done: true,
-              onClick: () => nav("/defects"),
+              done: (k?.total_defects ?? 0) > 0,
+              onClick: () => nav(`/defects?${scope}`),
             },
           ].map((s) => (
             <button
@@ -355,22 +388,17 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Connected Repository & Multi-Environment Verification Status Banner */}
+      {/* Connected Repository & Multi-Environment Verification Status */}
       {((current as any)?.github || current?.key === "ECHO") && (
         <div className="mb-6 rounded-lg border border-slate-200 bg-white p-5 shadow-xs">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 pb-4 mb-4">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-blue-50 text-[#3067DB] border border-blue-100">
-                  {current?.key || "ECHO"}
-                </span>
-                <h2 className="text-base font-semibold text-slate-900 tracking-tight">
-                  {current?.name || "EchoBox — Anonymous Conversation Platform"}
-                </h2>
-              </div>
-              <p className="text-xs text-slate-500 max-w-3xl">
-                {current?.description || "Ephemeral anonymous conversation platform with dual Cognito pools and single-table DynamoDB."}
-              </p>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3 mb-4">
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-blue-50 text-[#3067DB] border border-blue-100">
+                {current?.key || "ECHO"}
+              </span>
+              <span className="text-xs font-semibold text-slate-900 tracking-tight">
+                Repository & Execution Environment Status
+              </span>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <button
@@ -431,51 +459,51 @@ export default function DashboardPage() {
               </span>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 text-xs">
-              {/* In-Memory Harness */}
+              {/* Real SUT Primary Engine */}
               <div className="rounded border border-emerald-200 bg-emerald-50/40 p-2.5 space-y-1">
                 <div className="flex items-center justify-between">
                   <span className="font-semibold text-emerald-900 flex items-center gap-1">
                     <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                    <span>In-Memory Test Harness</span>
+                    <span>Real Code SUT (Primary)</span>
                   </span>
                   <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-semibold">
-                    21/21 Passed
+                    moto DynamoDB
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-600 leading-tight">
-                  Run EX-000001: 21 automated pytest scripts executed inside POSIX resource-restricted subprocess sandbox in 1.92s (100% pass rate).
+                  Real SUT entrypoint (`kind="real_code"`, `is_default=true`). Executes actual Lambda handlers under moto DynamoDB in Linux bwrap+rlimits sandbox.
                 </p>
               </div>
 
-              {/* Live Remote AWS API Gateway */}
-              <div className="rounded border border-amber-200 bg-amber-50/40 p-2.5 space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-amber-900 flex items-center gap-1">
-                    <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
-                    <span>Remote AWS API Gateway</span>
-                  </span>
-                  <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-semibold">
-                    HTTP 500 Blocked
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-600 leading-tight">
-                  Run EX-ECHO-LIVE-001: Live probe against ap-south-1 returned HTTP 500 in 574ms (Request ID: [REQUEST-ID]). Documented under DEF-ECHO-005.
-                </p>
-              </div>
-
-              {/* AI Providers */}
+              {/* Simulation Harness Baseline */}
               <div className="rounded border border-slate-200 bg-slate-50/60 p-2.5 space-y-1">
                 <div className="flex items-center justify-between">
                   <span className="font-semibold text-slate-800 flex items-center gap-1">
-                    <Server className="h-3.5 w-3.5 text-slate-600" />
-                    <span>AI Inference Providers</span>
+                    <CheckCircle2 className="h-3.5 w-3.5 text-slate-500" />
+                    <span>Simulation (Baseline)</span>
                   </span>
-                  <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-slate-200 text-slate-800 font-semibold">
-                    Pool Active
+                  <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-slate-200 text-slate-700 font-semibold">
+                    In-Memory
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-600 leading-tight">
-                  Groq (gpt-oss-120b): Healthy (100% coverage). Gemini (2.5-flash): Degraded (429 Quota Exhaustion handled via SlotPool cooldown).
+                  Fast in-memory simulation (`kind="simulation"`). Preserved as secondary baseline for regression detection.
+                </p>
+              </div>
+
+              {/* AI Inference Providers */}
+              <div className="rounded border border-blue-200 bg-blue-50/40 p-2.5 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-slate-800 flex items-center gap-1">
+                    <Server className="h-3.5 w-3.5 text-blue-600" />
+                    <span>AI Provider SlotPool</span>
+                  </span>
+                  <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 font-semibold">
+                    Multi-Slot
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-600 leading-tight">
+                  Groq (gpt-oss-120b) + Gemini (2.5-flash). Dynamic multi-slot rotation, rate-limit cooldown, and circuit breaker protection.
                 </p>
               </div>
             </div>
@@ -541,7 +569,7 @@ export default function DashboardPage() {
 
           {/* If workspace has no requirements/executions, display Onboarding Hub */}
           {isEmptyWorkspace ? (
-            <DayforceOnboardingHub />
+            <ProjectOnboardingHub current={current} />
           ) : (
             <>
               {/* Analytics Panels when real data exists */}
