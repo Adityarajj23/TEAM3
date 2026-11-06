@@ -18,7 +18,7 @@ The objective was to prove TraceTest AI's ability to:
 
 - **Frontend**:
   - React 18, TypeScript 5.6, Vite 5, Tailwind CSS, Framer Motion, Lucide icons, Sonner toast alerts.
-  - Client API dispatcher in `src/api/client.ts` pointing to `https://bnbpmiljw9.execute-api.ap-south-1.amazonaws.com`.
+  - Client API dispatcher in `src/api/client.ts` pointing to `https://<api-id>.execute-api.ap-south-1.amazonaws.com`.
 - **Backend**:
   - AWS API Gateway HTTP API in region `ap-south-1`.
   - Single AWS Lambda function (`backend/lambda_function.py`, 790 lines, Python 3.12).
@@ -57,7 +57,7 @@ TraceTest AI's static and dynamic analysis revealed five genuine issues in EchoB
 - **Impact**: For $N$ public rooms, $N+1$ DynamoDB queries are executed sequentially, creating high latency and Lambda timeout risks at scale.
 
 ### Defect 5: Live AWS Gateway Upstream Server Error (`DEF-ECHO-005`)
-- **Observation**: Probing `https://bnbpmiljw9.execute-api.ap-south-1.amazonaws.com` with `{"action": "discover_rooms"}` returned `HTTP 500 Internal Server Error` in 574ms with request ID `GYaZ0hH4BcwEMqw=`.
+- **Observation**: Probing `https://<api-id>.execute-api.ap-south-1.amazonaws.com` with `{"action": "discover_rooms"}` returned `HTTP 500 Internal Server Error` in 574ms with request ID `[REQUEST-ID]`.
 - **Handling**: Per strict TraceTest AI integrity rules, this was **not masked or faked**. It was recorded as a live cloud infrastructure blocker (unseeded DynamoDB table or IAM execution role permission deficit).
 
 ---

@@ -459,7 +459,7 @@ export default function DashboardPage() {
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-600 leading-tight">
-                  Run EX-ECHO-LIVE-001: Live probe against ap-south-1 returned HTTP 500 in 574ms (Request ID: GYaZ0hH4BcwEMqw=). Documented under DEF-ECHO-005.
+                  Run EX-ECHO-LIVE-001: Live probe against ap-south-1 returned HTTP 500 in 574ms (Request ID: [REQUEST-ID]). Documented under DEF-ECHO-005.
                 </p>
               </div>
 

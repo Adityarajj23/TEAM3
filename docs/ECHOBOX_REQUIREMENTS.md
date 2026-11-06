@@ -113,7 +113,7 @@ This document catalogs the 21 source-grounded requirements extracted from [sohan
 - **Module**: `ECHO-SECURITY`
 - **Provenance**: `External assumption requiring verification` (`src/api/client.ts:5-8`)
 - **Clauses**:
-  - `ECHO-REQ-011.C1`: The client specifies default API endpoint `https://bnbpmiljw9.execute-api.ap-south-1.amazonaws.com`.
+  - `ECHO-REQ-011.C1`: The client specifies default API endpoint `https://<api-id>.execute-api.ap-south-1.amazonaws.com`.
   - `ECHO-REQ-011.C2`: Production verification probes evaluate live upstream HTTP status codes.
   - `ECHO-REQ-011.C3`: Unseeded upstream cloud infrastructure returning HTTP 500 shall be recorded as an external blocker.
 

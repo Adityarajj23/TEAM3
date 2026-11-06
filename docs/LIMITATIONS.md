@@ -9,7 +9,7 @@ In accordance with enterprise transparency and rigorous verification standards, 
 ## 2. Target Application Cloud Limitations (EchoBox AWS Endpoint)
 
 ### Live AWS API Gateway Blocked State (`DEF-ECHO-005`)
-- **Observed Behavior**: Live probes targeting `https://bnbpmiljw9.execute-api.ap-south-1.amazonaws.com` return `HTTP 500 Internal Server Error`.
+- **Observed Behavior**: Live probes targeting `https://<api-id>.execute-api.ap-south-1.amazonaws.com` return `HTTP 500 Internal Server Error`.
 - **Root Cause**: The upstream AWS Lambda function or DynamoDB table (`EchoBox`) in AWS region `ap-south-1` is currently unseeded or misconfigured.
 - **Handling**: TraceTest AI records this state as `blocked` in Tier C execution reports rather than faking a 200 OK response. Full local validation is maintained via the in-memory test-safe harness (`echobox_harness`).
 

@@ -23,7 +23,7 @@ The Repository Ingestion Engine transforms arbitrary software source repositorie
 [ Architecture Synthesis ]
   - Framework detection (React 18, Vite, Tailwind, AWS Lambda, DynamoDB)
   - Module decomposition (8 functional modules)
-  - Endpoint discovery (POST https://bnbpmiljw9.execute-api.ap-south-1.amazonaws.com)
+  - Endpoint discovery (POST https://<api-id>.execute-api.ap-south-1.amazonaws.com)
           |
           v
 [ Requirements & Test Synthesis ]

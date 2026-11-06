@@ -4,6 +4,37 @@ All notable changes to the TraceTest AI platform are documented in this file.
 
 ---
 
+## [1.3.0] — 2026-11-06 (Production Hardening & Verification Release)
+
+### Security (P0)
+- **Eliminated Dummy Session Bypass**: Replaced insecure dummy admin session fallback with cryptographically signed HMAC operator session cookies (`SameSite=Strict`, `HttpOnly=True`). Added Host and Origin header validation middleware and enforced strict `127.0.0.1` loopback binding (`8780b43`).
+- **Prohibited Untrusted Host Execution**: Eliminated host `npm run build` and `npx vite preview` on untrusted target repositories, replacing them with safe static AST/manifest analysis (`0a48b30`).
+- **Hardened Git Ingestion**: Implemented `run_hardened_git` in `git_client.py` using a `0700` transient `GIT_ASKPASS` script, restricted git flags (`core.hooksPath=/dev/null`, `protocol.file.allow=never`), and enforced 250MB / 10,000 files limits (`b1676bb`).
+- **Fail-Closed Sandbox**: Implemented `detect_isolation_level()` and enforced `require_network_isolation=True`. Added `RLIMIT_NPROC=64` to prevent fork bombs and hardened AST allowlist against dunder attribute traversal (`cca51d0`).
+
+### SUT Fidelity & Provenance (P1)
+- **Real SUT Execution under Moto**: Created `RealLambdaBackend` in `echobox_harness/backend.py` executing the actual `lambda_function.py` against DynamoDB single table under `moto.mock_aws()`, faithfully uncovering `DEF-ECHO-006` (unverified JWT signatures) (`b2c27cf`).
+- **Data Provenance & Classification**: Added `evidence_type` and `source_commit_sha` to defects; added `origin`, `source_commit_sha`, and `confidence` to requirements (inferred requirements default to `needs_confirmation`) via Alembic migration `0002_security_and_provenance.py` (`b2c27cf`).
+- **Pre-Flight Prompt Secret Redaction**: Added regex scrubber in `app/llm/router.py` stripping AWS keys, SSH keys, GitHub tokens, and Groq/Gemini API keys before model submission (`b2c27cf`).
+
+### Reliability & Architecture (P2)
+- **Modularized Repository Ingestion**: Decomposed 2,070-line monolithic `repo_ingest.py` into 5 cohesive submodules in `app/services/repo_ingest/` (`url_validator.py`, `secret_scanner.py`, `ast_analyzer.py`, `echobox_derivation.py`, `generic_derivation.py`) (`5665d34`).
+- **SQLite WAL Concurrency**: Verified SQLite WAL concurrency with 30 concurrent writes across 8 threads and configured `busy_timeout=10000` (`5665d34`).
+- **Background Task Reconciliation**: Implemented startup recovery hook (`recover_interrupted`) marking orphaned running tasks as `interrupted` upon server restart (`5665d34`).
+- **Cross-Project Isolation**: Enforced strict project boundary verification across test cases, executions, and requirements, rejecting cross-project ID tampering with HTTP 404 (`5665d34`).
+
+### UI & Polish
+- **6-Stage Project Journey Header**: Added visual, step-by-step project journey header (Connect, Analyze, Requirements, Test Generation, Execute, Defects) in `DashboardPage.tsx` (`8bcd14f`).
+- **Environment & Isolation Badges**: Surfaced sandbox isolation level and execution environment badges across `AppShell.tsx`, `/config` API, and execution detail views (`8bcd14f`).
+- **Defect Evidence Metadata**: Displayed defect evidence classification tags and source commit SHAs in defect views (`8bcd14f`).
+
+### Documentation & Challenge Deliverables
+- **Challenge Artifacts**: Added `docs/demo-script.md` (10-min presenter script), `docs/slides-outline.md` (5-slide presentation deck), and `docs/eval-report.md` (reproducible benchmark report).
+- **Automated Verification Suite**: Enhanced `scripts/verify_docs.py` to validate all 36 SQLAlchemy tables, security invariants, internal links, and zero secret leakage.
+- **Visual Assets**: Captured 60 authenticated Playwright screenshots across 6 responsive viewports and generated clean axe-core accessibility audit report (`docs/a11y-report.json`).
+
+---
+
 ## [1.2.0] — 2026-11-06 (EchoBox Production-Grade QA Case Study Release)
 
 ### Added
@@ -15,7 +46,7 @@ All notable changes to the TraceTest AI platform are documented in this file.
 - **Multi-Tiered Verification Pipeline (`app/services/echobox_runner.py`)**:
   - **Tier A**: Static AST action matrix extraction (13 actions) and TypeScript compilation check (clean build in 4.61s).
   - **Tier B**: Local test-safe in-memory execution harness (`echobox_harness`) running in POSIX sandbox (21/21 passed in 1.92s).
-  - **Tier C**: Live AWS API Gateway integration probe capturing HTTP 500 upstream server error with request ID `GYaZ0hH4BcwEMqw=`.
+  - **Tier C**: Live AWS API Gateway integration probe capturing HTTP 500 upstream server error with request ID `[REQUEST-ID]`.
   - **Browser E2E**: Playwright headless browser automation against local Vite preview server, capturing full-page UI screenshots.
 - **Defect Tracking Ledger**:
   - Seeded 5 verified genuine defects (`DEF-ECHO-001` through `DEF-ECHO-005`):

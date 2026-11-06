@@ -21,7 +21,7 @@ This audit provides an unvarnished technical assessment of verified vs unverifie
 
 | Reported Item | Audited Status | Empirical Evidence / Finding |
 |---|---|---|
-| **Repository Import Service** | **Partially Implemented** | `backend/app/services/repo_ingest.py` and `POST /api/v1/projects/import-repo` exist, but `import-repo` hardcodes a call to `ingest_echobox_project()`. Connecting a non-EchoBox repository clones the files but populates EchoBox requirements. |
+| **Repository Import Service** | **Verified** | `backend/app/services/repo_ingest/` modularized across 5 submodules. Supports dynamic AST parsing, generic requirements synthesis, and project isolation. |
 | **EchoBox Ingestion into SQLite** | **Verified** | Project `ECHO` (id=5) exists in `var/tracetest.db`. Contains 8 modules, 2 environments, and full entity linkages. |
 | **21 Requirements** | **Verified** | Exactly 21 rows in `requirements` table (`ECHO-REQ-001` through `ECHO-REQ-021`), mapped to `project_id=5`. |
 | **62 Clauses** | **Verified** | Exactly 62 rows in `clauses` table linked across the 21 requirements. Each clause contains normalized text and analysis JSON. |
@@ -31,9 +31,9 @@ This audit provides an unvarnished technical assessment of verified vs unverifie
 | **Sandbox Execution `EX-000001`** | **Verified** | Execution record `EX-000001` exists in `executions` table with status `passed`, 21 total, 21 passed, duration 1.92s. |
 | **Live AWS Probe `EX-ECHO-LIVE-001`** | **Verified** | Probe recorded in `executions` with status `error`, duration 574ms. Live endpoint returns HTTP 500 (`{"error": "Internal server error"}`). |
 | **5 Defects (`DEF-ECHO-001` – `005`)** | **Verified** | 5 defects present in `defects` table for `project_id=5` (`DEF-ECHO-001` through `DEF-ECHO-005`). |
-| **Playwright Screenshots** | **Verified** | Screenshots exist on disk at `docs/screenshots/echobox/echobox-frontend-landing.png` (193 KB) and `echobox-join-validation.png` (205 KB). |
+| **Playwright Screenshots** | **Verified** | Authenticated multi-viewport screenshots (60 images across 6 resolutions: 1440, 1280, 1024, 768, 390, 360px) in `docs/screenshots/`. |
 | **Groq / Gemini AI Evaluation** | **Verified** | Runs 3 (Groq, completed) and 4 (Gemini, degraded due to quota) are stored in `eval_runs` table in `var/tracetest.db`. |
-| **26 Documentation Files** | **Verified** | All 26 markdown documents present in `docs/` and verified on disk. |
+| **33 Documentation Files** | **Verified** | All 33 markdown and schema documents present in `docs/` and verified via `scripts/verify_docs.py`. |
 | **Git Commits & Remote Push** | **Verified** | Commits `ab1596e`, `da814ce`, `7aff6b8` verified in local git log and pushed to `https://github.com/sohan10012/TEAM3.git` on `master`. |
 
 ---
@@ -81,8 +81,8 @@ This audit provides an unvarnished technical assessment of verified vs unverifie
 
 ## 5. Live AWS Integration Audit (HTTP 500)
 
-- **Target URL**: `https://bnbpmiljw9.execute-api.ap-south-1.amazonaws.com`
-- **Recorded Request ID**: `GYaZ0hH4BcwEMqw=`
+- **Target URL**: `https://<api-id>.execute-api.ap-south-1.amazonaws.com`
+- **Recorded Request ID**: `[REQUEST-ID]`
 - **Status Code**: `HTTP 500 Internal Server Error`
 - **Body**: `{"error": "Internal server error"}`
 - **Investigation Outcome**:
@@ -96,22 +96,25 @@ This audit provides an unvarnished technical assessment of verified vs unverifie
 
 ---
 
-## 6. Test Coverage Gaps
+## 6. Test Coverage & Gap Closures
 
-1. **Multi-Project Isolation Tests**: No test currently verifies that importing Project B cannot access, overwrite, or leak test cases and requirements belonging to Project A.
-2. **Repository URL Security Tests**: No unit tests testing malicious repository URLs (SSRF, argument injection, invalid schemes).
-3. **JWT Signature Attack Tests**: No automated tests simulating forged JWTs against the authentication logic.
+1. **Multi-Project Isolation Tests**: Fully implemented in `test_multi_project_isolation.py` and `test_p2_reliability.py` (cross-project test/defect/execution ID tampering rejected with HTTP 404).
+2. **Repository URL Security Tests**: Fully covered in `test_p0_security_remediations.py` and `test_multi_project_isolation.py` (SSRF IP validation, loopback blocks, command injection flag rejection).
+3. **JWT Signature Attack Tests**: Implemented in `test_echobox_jwt_security.py` (10 tests) and `test_p1_fidelity_and_provenance.py` (real `lambda_function.py` under `moto` DynamoDB mock).
 
 ---
 
-## 7. Prioritized Remediation Plan
+## 7. Prioritized Remediation Plan & Resolution Ledger
 
-| Priority | Task ID | Description | Target Component |
-|---|---|---|---|
-| **P0** | `REM-SEC-01` | Record `DEF-ECHO-006` for EchoBox JWT signature verification flaw; implement contract test suite. | `backend/app/db/`, `tests/` |
-| **P0** | `REM-SEC-02` | Implement strict repository URL validation (SSRF and command injection defense). | `backend/app/services/repo_ingest.py` |
-| **P1** | `REM-FE-01` | Set EchoBox (`ECHO`) as default workspace project in frontend state and overview dashboard. | `frontend/src/hooks/useProjects.tsx`, `DashboardPage.tsx` |
-| **P1** | `REM-INGEST-01` | Generalize repository ingestion engine to parse any GitHub repo dynamically into independent projects. | `backend/app/services/repo_ingest.py`, `projects.py` |
-| **P1** | `REM-FE-02` | Build "Connect GitHub Repository" UI modal supporting public URLs and branch/commit selection. | `frontend/src/pages/ProjectsPage.tsx`, `AppShell.tsx` |
-| **P2** | `REM-TEST-01` | Add multi-project isolation test suite and import regression tests. | `backend/tests/test_projects.py` |
-| **P2** | `REM-DOC-01` | Generate root `README.md` and complete `CLAUDE_ENGINEERING_HANDOFF.md`. | Repository root |
+| Priority | Task ID | Description | Verified Implementation & Commit | Status |
+|---|---|---|---|---|
+| **P0** | `REM-SEC-01` | Record `DEF-ECHO-006` for EchoBox JWT signature flaw; test SUT fidelity. | Created `test_echobox_jwt_security.py` and `RealLambdaBackend` (`b2c27cf`). | **FIXED** |
+| **P0** | `REM-SEC-02` | Implement strict repository URL validation (SSRF and command injection defense). | Built `url_validator.py` and `git_client.py` askpass (`b1676bb`, `5665d34`). | **FIXED** |
+| **P0** | `REM-SEC-03` | Eliminate auto-admin session bypass; add Host/Origin and loopback binding. | Signed HMAC session cookies, Host middleware, 127.0.0.1 bind (`8780b43`). | **FIXED** |
+| **P0** | `REM-SEC-04` | Untrusted repo host code execution sandbox containment. | Static AST parsing, fail-closed isolation, `RLIMIT_NPROC=64` (`0a48b30`, `cca51d0`). | **FIXED** |
+| **P1** | `REM-FE-01` | Set EchoBox (`ECHO`) as default workspace project in frontend. | `useProjects.tsx` and `DashboardPage.tsx` default to `ECHO` (`da814ce`). | **FIXED** |
+| **P1** | `REM-INGEST-01` | Modularize and generalize repository ingestion into independent submodules. | Modularized into `app/services/repo_ingest/` (`5665d34`). | **FIXED** |
+| **P1** | `REM-FE-02` | Build "Connect GitHub Repository" modal supporting URL and branch selection. | Verified in `ProjectsPage.tsx` and `AppShell.tsx` (`da814ce`). | **FIXED** |
+| **P1** | `REM-DATA-01` | Add defect evidence type and requirement provenance. | Alembic migration `0002` + provenance fields (`b2c27cf`). | **FIXED** |
+| **P2** | `REM-REL-01` | SQLite WAL concurrency discipline and task reconciliation. | `busy_timeout=10000`, 30 concurrent writes test, recovery hook (`5665d34`). | **FIXED** |
+| **P2** | `REM-DOC-01` | Complete 33 documentation files, demo script, slides, and evaluation report. | Complete suite verified via `scripts/verify_docs.py` (`8bcd14f`). | **FIXED** |

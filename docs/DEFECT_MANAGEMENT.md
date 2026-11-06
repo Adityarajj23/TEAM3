@@ -92,7 +92,7 @@ The Defect Management subsystem tracks defects discovered through automated test
 ### DEF-ECHO-005: Live AWS API Gateway Returns HTTP 500 Server Error
 - **Severity**: `critical` | **Priority**: `p1` | **Status**: `open`
 - **Linked Requirement**: `ECHO-REQ-011` | **Linked Test**: `TC-ECHO-0011`
-- **Location**: Live Cloud Endpoint `https://bnbpmiljw9.execute-api.ap-south-1.amazonaws.com`
+- **Location**: Live Cloud Endpoint `https://<api-id>.execute-api.ap-south-1.amazonaws.com`
 - **Defect Description**: The production AWS API Gateway returns `HTTP 500 Internal Server Error` with `{"error": "Internal server error"}` on public actions.
 - **Root Cause**: DynamoDB table `EchoBox` is unseeded in region `ap-south-1` or Lambda execution role lacks IAM permission for `dynamodb:Query`.
 - **Recommended Fix**:

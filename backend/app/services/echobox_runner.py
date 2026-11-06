@@ -113,7 +113,7 @@ def run_tier_b_local_execution(db: Session, project: Project, env_local: Environ
 def run_tier_c_live_probe(db: Session, project: Project, env_live: Environment) -> Execution:
     """Tier C: Live API Gateway Integration Probe (captures actual HTTP 500 error)."""
     print("--- [Tier C] Live AWS API Gateway Integration Probe ---")
-    url = env_live.base_url or "https://bnbpmiljw9.execute-api.ap-south-1.amazonaws.com"
+    url = env_live.base_url or "https://<api-id>.execute-api.ap-south-1.amazonaws.com"
     payload = json.dumps({"action": "discover_rooms"}).encode("utf-8")
     req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"}, method="POST")
 
@@ -323,7 +323,7 @@ def seed_defects(db: Session, project: Project, ex_local: Execution, ex_live: Ex
         {
             "key": "DEF-ECHO-005",
             "title": "Live AWS API Gateway endpoint returns HTTP 500 Internal Server Error",
-            "description": "Probing the live production API Gateway endpoint (https://bnbpmiljw9.execute-api.ap-south-1.amazonaws.com) with standard public actions returns HTTP 500 Internal Server Error, indicating unseeded DynamoDB tables or missing IAM execution role permissions in AWS region ap-south-1.",
+            "description": "Probing the live production API Gateway endpoint (https://<api-id>.execute-api.ap-south-1.amazonaws.com) with standard public actions returns HTTP 500 Internal Server Error, indicating unseeded DynamoDB tables or missing IAM execution role permissions in AWS region ap-south-1.",
             "severity": "critical",
             "priority": "p1",
             "status": "open",
@@ -332,8 +332,8 @@ def seed_defects(db: Session, project: Project, ex_local: Execution, ex_live: Ex
             "exec_id": ex_live.id,
             "expected_result": "Live AWS API Gateway should return HTTP 200 with active public room listing.",
             "actual_result": "HTTP 500 Internal Server Error with body {'error': 'Internal server error'}.",
-            "reproduction_steps": "curl -X POST https://bnbpmiljw9.execute-api.ap-south-1.amazonaws.com -H 'Content-Type: application/json' -d '{\"action\": \"discover_rooms\"}'",
-            "error_log": "HTTP 500: Internal Server Error\nApigw-Requestid: GYaZ0hH4BcwEMqw=",
+            "reproduction_steps": "curl -X POST https://<api-id>.execute-api.ap-south-1.amazonaws.com -H 'Content-Type: application/json' -d '{\"action\": \"discover_rooms\"}'",
+            "error_log": "HTTP 500: Internal Server Error\nApigw-Requestid: [REQUEST-ID]",
             "ai_analysis": {
                 "root_cause": "AWS Cloud resources unseeded or IAM permissions missing",
                 "fix_suggestion": "Verify DynamoDB table 'EchoBox' exists in ap-south-1 and ensure Lambda execution role has dynamodb:Query and dynamodb:PutItem permissions.",

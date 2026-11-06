@@ -274,10 +274,32 @@ The `echobox_harness` originally relied on an in-memory Python simulation (`Memo
 ### Consequences
 - Clean separation of concerns and maintainability across ingestion pipelines.
 - Full resilience to application restarts without dangling jobs.
-- Mathematically verified tenant isolation preventing data leakage between independent repositories.
+- Mathematically verified tenant isolation preventing data leakage between independent repositories.---
 
+## ADR-017: 6-Stage Project Journey UI, Visual Isolation Badges, and Empirical Verification Deliverables
 
+### Context
+Users interacting with TraceTest AI needed a clear, sequential mental model of the software quality engineering journey: from repository connection and analysis to requirement extraction, test synthesis, execution, and defect resolution. Furthermore, user confidence required explicit visibility into execution environment fidelity (In-Memory Harness vs Live Remote vs Browser E2E) and sandbox isolation levels. Finally, production readiness required reproducible evaluation artifacts, a structured 10-minute demo script, and executive presentation materials.
 
+### Decision
+1. Implement a 6-stage linear project journey header in `frontend/src/pages/DashboardPage.tsx`:
+   - Stage 1: Connect (`/projects`)
+   - Stage 2: Analyze (`/settings`)
+   - Stage 3: Requirements (`/requirements`)
+   - Stage 4: Test Generation (`/tests`)
+   - Stage 5: Execute (`/executions`)
+   - Stage 6: Defects (`/defects`)
+   Each stage shows active status and requirement/test metrics.
+2. Surface sandbox isolation level badges (`[Network Isolated: unshare]` or `[Standard POSIX rlimits]`) and environment kind badges in `AppShell.tsx`, the `/config` API, and execution detail views.
+3. Classify defects with explicit `evidence_type` metadata tags (`execution_failure`, `static_analysis`, `manual`) to ensure complete transparency regarding how defects were identified.
+4. Author comprehensive challenge deliverables:
+   - `docs/demo-script.md`: 10-minute live presentation guide with minute-by-minute talking tracks and exact click paths.
+   - `docs/slides-outline.md`: 5-slide technical/executive presentation structure.
+   - `docs/eval-report.md`: Reproducible AI benchmark evaluation report with command reproduction scripts.
+   - `docs/a11y-report.json`: Automated WCAG AA accessibility audit across 6 responsive viewports with zero critical violations.
 
-
+### Consequences
+- Transparent, guided user workflow eliminating confusion on multi-repository projects.
+- Clear visual cues separating simulated test environments from live cloud targets.
+- Complete set of executive and technical artifacts for stakeholders, evaluators, and engineers.
 

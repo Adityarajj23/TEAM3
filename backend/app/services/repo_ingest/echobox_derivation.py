@@ -64,7 +64,7 @@ def ingest_echobox_project(db: Session, actor_id: int, repo_path: Path | None = 
             project_id=proj.id,
             name="EchoBox AWS Live (API Gateway)",
             kind="web",
-            base_url="https://bnbpmiljw9.execute-api.ap-south-1.amazonaws.com",
+            base_url="https://<api-id>.execute-api.ap-south-1.amazonaws.com",
             is_default=False
         )
         db.add_all([env_local, env_live])
@@ -712,10 +712,10 @@ def test_frontend_room_id_contract():
             "provenance": "External assumption requiring verification",
             "file": "src/api/client.ts",
             "lines": "5-8",
-            "description": "The client application targets https://bnbpmiljw9.execute-api.ap-south-1.amazonaws.com as its default upstream API Gateway. Live probes evaluate whether cloud resources (Lambda execution and DynamoDB tables) are operational.",
+            "description": "The client application targets https://<api-id>.execute-api.ap-south-1.amazonaws.com as its default upstream API Gateway. Live probes evaluate whether cloud resources (Lambda execution and DynamoDB tables) are operational.",
             "objective": "Verify production cloud endpoint readiness and document upstream infrastructure availability.",
             "clauses": [
-                "ECHO-REQ-011.C1: The client specifies default API endpoint https://bnbpmiljw9.execute-api.ap-south-1.amazonaws.com.",
+                "ECHO-REQ-011.C1: The client specifies default API endpoint https://<api-id>.execute-api.ap-south-1.amazonaws.com.",
                 "ECHO-REQ-011.C2: Production verification probes evaluate live upstream HTTP status codes.",
                 "ECHO-REQ-011.C3: Unseeded upstream cloud infrastructure returning HTTP 500 shall be recorded as an external blocker."
             ],
@@ -724,7 +724,7 @@ def test_frontend_room_id_contract():
                     "key": "ECHO-REQ-011.AC1",
                     "clause_keys": ["ECHO-REQ-011.C1", "ECHO-REQ-011.C2", "ECHO-REQ-011.C3"],
                     "description": "Live probe against AWS Gateway accurately captures upstream server error without masking it as success.",
-                    "quote": "const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://bnbpmiljw9.execute-api.ap-south-1.amazonaws.com';",
+                    "quote": "const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://<api-id>.execute-api.ap-south-1.amazonaws.com';",
                     "preconditions": "Network connectivity to AWS ap-south-1.",
                     "expected": "Capture HTTP 500 and identify upstream Lambda unseeded state (DEF-ECHO-005)."
                 }
@@ -736,10 +736,10 @@ def test_frontend_room_id_contract():
                     "test_type": "contract",
                     "clause_keys": ["ECHO-REQ-002.C1", "ECHO-REQ-011.C2", "ECHO-REQ-011.C3"],
                     "ac_keys": ["ECHO-REQ-011.AC1"],
-                    "source_quote": "const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://bnbpmiljw9.execute-api.ap-south-1.amazonaws.com';",
+                    "source_quote": "const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://<api-id>.execute-api.ap-south-1.amazonaws.com';",
                     "expected_result": "Live AWS Gateway returns HTTP 500 Internal Server Error, documenting blocked upstream state.",
                     "preconditions": "AWS API Gateway live endpoint accessible via HTTPS.",
-                    "test_data": {"endpoint": "https://bnbpmiljw9.execute-api.ap-south-1.amazonaws.com", "action": "discover_rooms"},
+                    "test_data": {"endpoint": "https://<api-id>.execute-api.ap-south-1.amazonaws.com", "action": "discover_rooms"},
                     "script": """import pytest, json
 
 def test_live_gateway_specification_contract():

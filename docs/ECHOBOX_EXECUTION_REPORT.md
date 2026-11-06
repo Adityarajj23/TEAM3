@@ -67,7 +67,7 @@ Executed using TraceTest AI's isolated POSIX sandbox (`app/execution/sandbox.py`
 
 ## 4. Tier C — Live AWS Cloud Integration Probe (`EX-ECHO-LIVE-001`)
 
-- **Target URL**: `https://bnbpmiljw9.execute-api.ap-south-1.amazonaws.com`
+- **Target URL**: `https://<api-id>.execute-api.ap-south-1.amazonaws.com`
 - **Method**: `POST`
 - **Payload**: `{"action": "discover_rooms"}`
 - **Response Status**: `HTTP 500 Internal Server Error`
@@ -77,7 +77,7 @@ Executed using TraceTest AI's isolated POSIX sandbox (`app/execution/sandbox.py`
   Content-Type: application/json
   Content-Length: 34
   Connection: close
-  Apigw-Requestid: GYaZ0hH4BcwEMqw=
+  Apigw-Requestid: [REQUEST-ID]
   ```
 - **Response Body**:
   ```json

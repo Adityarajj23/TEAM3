@@ -56,7 +56,7 @@ TraceTest AI was validated against [sohan10012/EchoBox](https://github.com/sohan
 | **Acceptance Criteria** | 21 Verifiable Acceptance Criteria |
 | **Test Cases Generated** | 21 Automated Pytest / Contract Tests |
 | **Tier B Local Execution** | **21 / 21 Passed** (100% pass rate in 1.9s) |
-| **Tier C Live AWS Gateway** | **HTTP 500 Recorded** (Blocked upstream infrastructure, documented with request ID `GYaZ0hH4BcwEMqw=`) |
+| **Tier C Live AWS Gateway** | **HTTP 500 Recorded** (Blocked upstream infrastructure, documented with request ID `[REQUEST-ID]`) |
 | **Browser E2E Tests** | **Passed** (Captured `echobox-frontend-landing.png` and `echobox-join-validation.png`) |
 | **Genuine Defects Logged** | 5 Verified Defects (`DEF-ECHO-001` through `DEF-ECHO-005`) |
 

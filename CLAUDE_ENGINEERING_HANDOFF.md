@@ -53,7 +53,7 @@ To maintain complete technical integrity, this ledger honestly distinguishes bet
 | **Multi-Project Isolation** | **VERIFIED** | Database assertions across `ECHO` and `SMPL` | Projects have strictly partitioned requirements, clauses, ACs, tests, executions, defects, and environments in SQLite. |
 | **EchoBox Ingestion** | **VERIFIED** | 21 requirements, 62 clauses, 21 ACs, 21 tests | Ingested from commit `b3740a62ad414a141e82146adafb47c4850fd782` across 8 functional modules. |
 | **EchoBox In-Memory Harness** | **VERIFIED** | Run `EX-000001`: 21/21 passed in 1.92s; `test_echobox_harness_contract.py` (5/5 passed) | High-fidelity mock of DynamoDB Single Table API and 13 Lambda RPC dispatch actions. |
-| **EchoBox Live AWS Probing** | **VERIFIED BLOCKED** | Run `EX-ECHO-LIVE-001`: HTTP 500 in 574ms (Req ID: `GYaZ0hH4BcwEMqw=`) | Documented honestly under `DEF-ECHO-005`. Blocked on missing AWS CloudWatch/IAM access to unseeded DynamoDB table. |
+| **EchoBox Live AWS Probing** | **VERIFIED BLOCKED** | Run `EX-ECHO-LIVE-001`: HTTP 500 in 574ms (Req ID: `[REQUEST-ID]`) | Documented honestly under `DEF-ECHO-005`. Blocked on missing AWS CloudWatch/IAM access to unseeded DynamoDB table. |
 | **EchoBox Security Audit** | **VERIFIED** | `test_echobox_jwt_security.py` (10/10 passed) | Discovered and cataloged `DEF-ECHO-006` (unverified cryptographic JWT signatures in `lambda_function.py`). |
 | **Browser E2E Automation** | **VERIFIED** | Run `EX-E2E-BROWSER-001`: Playwright Chromium screenshots | Verified clean landing page and client-side room ID validation error states (`docs/screenshots/echobox/`). |
 | **AI Multi-Key Orchestration** | **VERIFIED** | Benchmark Run 3 (Groq 100% coverage, 61.1s) & Run 4 (Gemini cooldown) | 3 Groq keys (`GROQ_API_KEY*`) and 3 Gemini keys (`GEMINI_API_KEY*`) with round-robin, cooldown, and failover. |
@@ -579,37 +579,55 @@ cd frontend && npm run dev
 ## SECTION N — Known Bugs & Empirical Limitations
 
 1. **EchoBox Live AWS Gateway HTTP 500 (`DEF-ECHO-005`)**:
-   - Probing the live remote AWS API Gateway (`https://bnbpmiljw9.execute-api.ap-south-1.amazonaws.com`) returns `HTTP 500 Internal Server Error` (Request ID: `GYaZ0hH4BcwEMqw=`).
+   - Probing the live remote AWS API Gateway (`https://<api-id>.execute-api.ap-south-1.amazonaws.com`) returns `HTTP 500 Internal Server Error` (Request ID: `[REQUEST-ID]`).
    - Root Cause: Top-level exception in AWS Lambda handler, most likely caused by unseeded or unpermissioned DynamoDB tables in `ap-south-1`.
    - Resolution Status: Documented as blocked. TraceTest AI cannot fix the remote AWS deployment without AWS IAM credentials.
 2. **EchoBox Unverified JWT Signature Fallback (`DEF-ECHO-006`)**:
    - Audited lines 120–146 in `var/repos/EchoBox/backend/lambda_function.py`. The fallback authentication path decodes ID token payload claims without verifying cryptographic signatures against Cognito JWKS.
-   - Resolution Status: Documented under defect `DEF-ECHO-006` and verified with automated test `test_echobox_jwt_security.py`.
+   - Resolution Status: Documented under defect `DEF-ECHO-006` and verified with automated test `test_echobox_jwt_security.py` and `test_p1_fidelity_and_provenance.py`.
 3. **Gemini Free-Tier Rate Limits (HTTP 429)**:
    - High-concurrency benchmark suites exhaust Gemini free-tier TPM quotas rapidly.
    - Mitigation: Managed automatically via `SlotPool` cooldowns and Groq failover.
 
 ---
 
-## SECTION O — Prioritized Engineering Backlog
+## SECTION O — Remediation Ledger & Future Backlog
 
-### P0 (Critical - Security & Stability)
-- **Problem**: Remote AWS API Gateway returns HTTP 500 on all calls.
+### 1. Completed & Verified Remediation Ledger
+
+| Priority | ID | Issue & Vulnerability | Remediation Implementation | Verified Commit | Status |
+|---|---|---|---|---|---|
+| **P0** | `SEC-01` | Insecure Dummy Admin Session Bypass (`id=0`) | Removed dummy admin fallback. Minted signed HMAC operator session cookies (`SameSite=Strict`, `HttpOnly=True`), Host/Origin validation middleware, and loopback bind (`127.0.0.1`). | `8780b43` | **FIXED** |
+| **P0** | `SEC-02` | Untrusted Repo Code Execution on Host | Prohibited host execution (`npm run build`, `vite preview`). Replaced with safe static AST/manifest analysis. | `0a48b30` | **FIXED** |
+| **P0** | `SEC-03` | Unsafe Git Subprocess Ingestion & Credentials | Created `run_hardened_git` in `git_client.py` using `0700` transient `GIT_ASKPASS` script, restricted git flags (`core.hooksPath=/dev/null`, `protocol.file.allow=never`), and 250MB/10K limits. | `b1676bb` | **FIXED** |
+| **P0** | `SEC-04` | Fail-Open Sandbox & Weak Process Limits | Added `detect_isolation_level()`, Alembic migration `0002_security_and_provenance.py`, fail-closed execution (`require_network_isolation=True`), `RLIMIT_NPROC=64`, and AST dunder traversal blocks. | `cca51d0` | **FIXED** |
+| **P1** | `FID-01` | In-Memory Simulation vs SUT Code Execution | Built `RealLambdaBackend` in `echobox_harness/backend.py` executing real `lambda_function.py` against DynamoDB single table under `moto.mock_aws()`. Accurately exposes `DEF-ECHO-006`. | `b2c27cf` | **FIXED** |
+| **P1** | `DAT-01` | Defect Evidence Classification & Provenance | Added `evidence_type` and `source_commit_sha` to `defects` table; added `origin`, `source_commit_sha`, and `confidence` to `requirements` (inferred requirements default to `needs_confirmation`). | `b2c27cf` | **FIXED** |
+| **P1** | `SEC-05` | LLM Prompt Secret Redaction | Implemented pre-flight regex redaction in `app/llm/router.py` stripping AWS keys, SSH keys, GitHub tokens, and Groq/Gemini API keys before model submission. | `b2c27cf` | **FIXED** |
+| **P2** | `REL-01` | Monolithic `repo_ingest.py` Maintainability | Modularized 2,070-line file into 5 submodules (`url_validator.py`, `secret_scanner.py`, `ast_analyzer.py`, `echobox_derivation.py`, `generic_derivation.py`). | `5665d34` | **FIXED** |
+| **P2** | `REL-02` | SQLite WAL Concurrency & Orphaned Tasks | Configured SQLite `busy_timeout=10000`, verified with 30 concurrent writes across 8 threads. Added startup background task reconciliation (`interrupted`). | `5665d34` | **FIXED** |
+| **P2** | `REL-03` | Cross-Project Endpoint Data Isolation | Implemented strict project boundary checks across test cases, executions, and requirements; verified with cross-project access rejection test (HTTP 404). | `5665d34` | **FIXED** |
+| **UI** | `POL-01` | Project Journey & Isolation Visibility | Implemented 6-stage project journey header in `DashboardPage.tsx`, environment and sandbox isolation badges in `AppShell.tsx` and `/config` API, and defect evidence metadata. | `8bcd14f` | **FIXED** |
+
+---
+
+### 2. Remaining External Blockers & Future Backlog
+
+### P0 (External Infrastructure Blocker)
+- **Problem**: Remote AWS API Gateway returns HTTP 500 on live calls (`DEF-ECHO-005`).
   - *Evidence*: Run `EX-ECHO-LIVE-001`.
-  - *Fix*: Obtain AWS IAM credentials or configure CloudWatch monitoring to seed DynamoDB tables in `ap-south-1`.
-  - *Acceptance Criteria*: Live probe returns HTTP 200 or defined 400 Bad Request response.
+  - *Status*: **BLOCKED ON AWS IAM CREDENTIALS**. TraceTest AI cannot modify or seed remote AWS infrastructure in `ap-south-1` without credentials.
+  - *Resolution Path*: When AWS IAM credentials are provided, configure CloudWatch monitoring and seed the `EchoBox` DynamoDB table.
 
-### P1 (High - Functionality & Automation)
+### P1 (Future Enhancement)
 - **Problem**: Automated PR webhooks for connected repositories.
-  - *Evidence*: Repositories currently require manual refresh via `POST /api/v1/projects/{id}/refresh-repo`.
-  - *Fix*: Implement GitHub Webhook handler for `push` and `pull_request` events to auto-trigger change impact analysis.
-  - *Acceptance Criteria*: Ingested project triggers retest whenever upstream branch changes.
+  - *Current Flow*: Repositories are refreshed manually via `POST /api/v1/projects/{id}/refresh-repo`.
+  - *Future Enhancement*: Implement GitHub Webhook handler for `push` and `pull_request` events to auto-trigger change impact analysis.
 
-### P2 (Medium - Performance)
-- **Problem**: Sandbox subprocess spawning overhead for large suites (>100 tests).
-  - *Evidence*: `pytest` subprocess execution averages ~90ms per test case.
-  - *Fix*: Implement persistent worker pool with warm imports for reference harness executions.
-  - *Acceptance Criteria*: Reduce 100-test execution duration from ~9s to <3s.
+### P2 (Performance Enhancement)
+- **Problem**: Subprocess spawning overhead for large test suites (>100 tests).
+  - *Current Flow*: POSIX subprocess execution averages ~90ms per test case.
+  - *Future Enhancement*: Implement persistent worker pool with warm imports for reference harness executions.
 
 ---
 

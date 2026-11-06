@@ -72,7 +72,7 @@ Every record in this index corresponds to verified on-disk artifacts and databas
 
 ### 2.3 Tier C — Live AWS API Gateway Probe (`EX-ECHO-LIVE-001`)
 
-- **Target URL**: `https://bnbpmiljw9.execute-api.ap-south-1.amazonaws.com`
+- **Target URL**: `https://<api-id>.execute-api.ap-south-1.amazonaws.com`
 - **Region**: AWS `ap-south-1` (Mumbai)
 - **Execution Run ID**: `EX-ECHO-LIVE-001` in `var/tracetest.db`
 - **Timestamp**: `2026-11-06T00:27:06+05:30`
@@ -84,7 +84,7 @@ Every record in this index corresponds to verified on-disk artifacts and databas
   content-type: application/json
   content-length: 33
   date: Wed, 05 Nov 2026 18:57:06 GMT
-  apigw-requestid: GYaZ0hH4BcwEMqw=
+  apigw-requestid: [REQUEST-ID]
   ```
 - **HTTP Response Payload Captured**:
   ```json
@@ -157,7 +157,7 @@ All 5 genuine discrepancies identified during the EchoBox analysis and execution
 | **`DEF-ECHO-002`** | `Low` | Defensive silent slicing on input strings | `backend/lambda_function.py#L112-L115` | Oversized names and descriptions are silently truncated rather than returning HTTP 400. |
 | **`DEF-ECHO-003`** | `High` | Invalid room visibility silently defaults to public | `backend/lambda_function.py#L117` | `is_public = (body.get("visibility") != "private")`<br>Typing `"privte"` makes room public! |
 | **`DEF-ECHO-004`** | `Medium` | $N+1$ query amplification in room discovery | `backend/lambda_function.py#L225-L238` | `discover_rooms` loops through every room executing secondary `Select="COUNT"` query. |
-| **`DEF-ECHO-005`** | `High` | Live AWS API Gateway returns HTTP 500 | `https://bnbpmiljw9.execute-api.ap-south-1.amazonaws.com` | Unseeded DynamoDB table or IAM role issue in `ap-south-1`. |
+| **`DEF-ECHO-005`** | `High` | Live AWS API Gateway returns HTTP 500 | `https://<api-id>.execute-api.ap-south-1.amazonaws.com` | Unseeded DynamoDB table or IAM role issue in `ap-south-1`. |
 
 ---
 

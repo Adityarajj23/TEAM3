@@ -47,7 +47,7 @@ To eliminate AI hallucination, every extracted requirement and clause must carry
    - Example: Single-table DynamoDB primary key design with `PK: ROOM#{id}` and `SK: METADATA`.
 4. **`External assumption requiring verification`**:
    - An external service dependency whose live status cannot be verified from source code alone.
-   - Example: Upstream AWS API Gateway endpoint availability at `https://bnbpmiljw9.execute-api.ap-south-1.amazonaws.com`.
+   - Example: Upstream AWS API Gateway endpoint availability at `https://<api-id>.execute-api.ap-south-1.amazonaws.com`.
 5. **`Unable to verify`**:
    - Features referenced in documentation or comments where implementation is absent or inaccessible.
 

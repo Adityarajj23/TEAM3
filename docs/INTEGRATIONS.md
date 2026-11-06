@@ -46,7 +46,7 @@ The platform includes an HTTP probe runner capable of evaluating cloud endpoints
 ```python
 import urllib.request, json
 req = urllib.request.Request(
-    "https://bnbpmiljw9.execute-api.ap-south-1.amazonaws.com",
+    "https://<api-id>.execute-api.ap-south-1.amazonaws.com",
     data=json.dumps({"action": "discover_rooms"}).encode(),
     headers={"Content-Type": "application/json"},
     method="POST"

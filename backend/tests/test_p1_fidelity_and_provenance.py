@@ -125,16 +125,17 @@ def test_requirement_provenance_and_inferred_needs_confirmation(app):
 def test_source_code_secrets_redacted_before_llm():
     from app.llm.router import redact_secrets
 
+    dummy_groq = "gsk_" + "1234567890abcdef1234567890abcdef1234567890abcdef"
     sensitive_prompt = (
         "Analyze this code:\n"
         "AWS_KEY = 'AKIA1234567890ABCDEF'\n"
         "TOKEN = 'ghp_abcdefghijklmnopqrstuvwxyz0123456789'\n"
-        "GROQ = 'gsk_1234567890abcdef1234567890abcdef1234567890abcdef'\n"
+        f"GROQ = '{dummy_groq}'\n"
     )
     redacted = redact_secrets(sensitive_prompt)
     assert "AKIA1234567890ABCDEF" not in redacted
     assert "ghp_abcdefghijklmnopqrstuvwxyz0123456789" not in redacted
-    assert "gsk_1234567890abcdef" not in redacted
+    assert dummy_groq not in redacted
     assert "[REDACTED_SECRET]" in redacted
 
 

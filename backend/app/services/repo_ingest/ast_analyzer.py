@@ -136,7 +136,7 @@ def analyze_repository(repo_path: Path) -> RepoAnalysisResult:
             ],
             actions_found=sorted(list(set(actions))),
             endpoints_found=[
-                {"method": "POST", "url": "https://bnbpmiljw9.execute-api.ap-south-1.amazonaws.com", "target": "EchoBox AWS HTTP API Gateway"}
+                {"method": "POST", "url": "https://<api-id>.execute-api.ap-south-1.amazonaws.com", "target": "EchoBox AWS HTTP API Gateway"}
             ],
             frameworks=frameworks or ["AWS Lambda", "DynamoDB", "Cognito", "React", "Vite"],
             secret_findings=secrets

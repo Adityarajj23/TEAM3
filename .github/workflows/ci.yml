@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, master]
   pull_request:
 
 jobs:
@@ -23,6 +23,8 @@ jobs:
         run: python scripts/export_openapi.py && git diff --exit-code docs/openapi.json
       - name: Tests (MockProvider fixtures, real sandbox)
         run: cd backend && pytest -q --cov=app --cov-report=term --junitxml=../artifacts/backend-junit.xml
+      - name: Verify Documentation & Invariants
+        run: python scripts/verify_docs.py
       - uses: actions/upload-artifact@v4
         if: always()
         with: { name: backend-junit, path: artifacts/backend-junit.xml }
