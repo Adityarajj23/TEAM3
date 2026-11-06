@@ -9,6 +9,7 @@ ALLOWED_IMPORTS = {
     "reference_hcm", "reference_hcm.payroll", "reference_hcm.attendance", "reference_hcm.leave",
     "reference_hcm.eligibility", "reference_hcm.approvals",
     "echobox_harness", "echobox_harness.backend", "echobox_harness.table",
+    "boto3", "boto3.dynamodb.conditions", "moto",
 }
 PLAYWRIGHT_IMPORTS = {"playwright", "playwright.sync_api"}
 FORBIDDEN_NAMES = {

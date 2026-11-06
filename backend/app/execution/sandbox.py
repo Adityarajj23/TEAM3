@@ -208,6 +208,12 @@ def run_pytest(specs: list[ScriptSpec], hcm_version: str | None, runner: str = "
             if (REPO_ROOT / "echobox_harness").exists():
                 shutil.copytree(REPO_ROOT / "echobox_harness", work / "echobox_harness",
                                 ignore=shutil.ignore_patterns("__pycache__"))
+            if (REPO_ROOT / "var" / "repos" / "sohan10012_EchoBox" / "backend").exists():
+                shutil.copytree(REPO_ROOT / "var" / "repos" / "sohan10012_EchoBox" / "backend", work / "echobox_real_backend",
+                                ignore=shutil.ignore_patterns("__pycache__"))
+            elif (REPO_ROOT / "var" / "repos" / "EchoBox" / "backend").exists():
+                shutil.copytree(REPO_ROOT / "var" / "repos" / "EchoBox" / "backend", work / "echobox_real_backend",
+                                ignore=shutil.ignore_patterns("__pycache__"))
             (work / "conftest.py").write_text(GUARD_CONFTEST)
         else:
             (work / "conftest.py").write_text(PLAYWRIGHT_CONFTEST)

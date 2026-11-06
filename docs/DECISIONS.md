@@ -241,23 +241,23 @@ Repository import operations previously cloned repositories by embedding tokens 
 
 ---
 
-## ADR-014: Fail-Closed Sandbox Execution, Honest Isolation Level Auditing, and Process Limits
+## ADR-015: Real SUT Execution Fidelity under Moto, Honest Provenance, and AI Secret Redaction
 
 ### Context
-Previous test executions applied process resource limits and conditionally wrapped pytest in `unshare -rn` only when unshare was detected. If network isolation failed, execution silently proceeded without network containment. In addition, execution records did not persist the exact isolation level achieved, and process counts were not bounded against fork bombs.
+The `echobox_harness` originally relied on an in-memory Python simulation (`MemoryDynamo`, `EchoBoxMemoryBackend`) that reimplemented EchoBox logic rather than executing the target repository's code. This masked real-world defects such as unverified JWT signatures. In addition, requirement and defect provenance were ambiguous: requirements derived from code lacked commit SHA grounding and were treated as confirmed, while defects did not differentiate between static analysis findings and runtime test execution failures. Furthermore, prompts passed to cloud LLMs risked leaking host or cloud secrets.
 
 ### Decision
-1. Explicitly detect the isolation level at runtime (`detect_isolation_level()`): `netns+rlimits` (Linux with network namespace unshare), `rlimits_only` (POSIX resource limits), or `none`.
-2. Persist `isolation_level` on every `Execution` database record and return it in API payloads and UI execution badges.
-3. Enforce a fail-closed execution policy by default (`TRACETEST_REQUIRE_NETWORK_ISOLATION=true`): if network namespace isolation cannot be established, pytest execution is refused with a clear diagnostic error. A development override flag (`TRACETEST_ALLOW_WEAK_SANDBOX=1`) permits execution only if explicitly acknowledged, marking the result with `weak:rlimits_only`.
-4. Add `RLIMIT_NPROC` (capped at 64 processes) to the POSIX child preexec limit set to prevent fork bombs.
-5. In the AST allowlist, treat AST validation as defense-in-depth, explicitly rejecting dunder identifier access (e.g. `__builtins__`, `__import__`, `__class__`, `__bases__`, `__subclasses__`), reflection tricks, `while` loops, and forbidden imports.
-6. Verify that sandbox execution environments scrub all host API keys and application secrets from the child process.
+1. Implement `RealLambdaBackend` in `echobox_harness/backend.py`, which directly imports and invokes the actual `var/repos/{owner}_{repo_name}/backend/lambda_function.py` entrypoint inside an in-process mocked AWS environment powered by `moto` (`mock_aws()` with DynamoDB table `"EchoBox"`). Expose mode selection via `backend="real"` vs `backend="simulation"`.
+2. Add `origin` (`documented`, `inferred_from_code`, `manual`), `source_commit_sha`, and `confidence` to `Requirement` records. Any requirement inferred from code starts in `status="needs_confirmation"` and requires human review/confirmation before automated test generation.
+3. Add `source_paths` and line ranges to `Clause` records to establish exact code and documentation grounding.
+4. Add `evidence_type` (`execution_failure`, `static_analysis`, `manual`) and `source_commit_sha` to `Defect` records. Explicitly prohibit labeling static analysis findings (such as unverified JWT token parsing) as runtime test failures without an actual failing test run.
+5. Add pre-flight regex-based secret redaction (`redact_secrets`) across all LLM prompt pipelines in `app/llm/router.py`, masking AWS credentials, RSA/SSH private keys, GitHub tokens, Groq/Gemini API keys, and secret values before network transmission.
 
 ### Consequences
-- Eliminates silent degradation of execution isolation.
-- Provides transparent, auditable proof of containment for all execution artifacts.
-- Protects the host system against network socket exfiltration and process table exhaustion attacks.
+- High-fidelity execution of actual target repository code against AWS SDK contracts without incurring AWS billing or cloud network latency.
+- Honest and auditable separation of documented specifications from inferred heuristics, and execution failures from static analysis findings.
+- Zero cloud or host credential leaks in LLM traces or prompt logs.
+
 
 
 

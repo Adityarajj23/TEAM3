@@ -498,9 +498,78 @@ class EchoBoxBackend:
         return _response(200, {"message": "Legacy room claimed successfully"})
 
 
-_default_backend = EchoBoxBackend()
+class RealLambdaBackend:
+    """Executes the REAL EchoBox lambda_function.py against mocked AWS infrastructure via moto."""
+
+    def __init__(self, repo_dir: Any = None):
+        import os
+        from pathlib import Path
+        os.environ["AWS_DEFAULT_REGION"] = "ap-south-1"
+        os.environ["AWS_ACCESS_KEY_ID"] = "mock_key"
+        os.environ["AWS_SECRET_ACCESS_KEY"] = "mock_secret"
+        import boto3
+        from moto import mock_aws
+
+        self._mock = mock_aws()
+        self._mock.start()
+
+        self.dynamodb = boto3.resource("dynamodb", region_name="ap-south-1")
+        self.table = self.dynamodb.create_table(
+            TableName="EchoBox",
+            KeySchema=[{"AttributeName": "PK", "KeyType": "HASH"}, {"AttributeName": "SK", "KeyType": "RANGE"}],
+            AttributeDefinitions=[{"AttributeName": "PK", "AttributeType": "S"}, {"AttributeName": "SK", "AttributeType": "S"}],
+            BillingMode="PAY_PER_REQUEST"
+        )
+
+        candidate_paths = [
+            Path("/home/Sohan/PROJECTS/tracetest-ai/var/repos/sohan10012_EchoBox/backend"),
+            Path("/home/Sohan/PROJECTS/tracetest-ai/var/repos/EchoBox/backend"),
+            Path("echobox_real_backend"),
+        ]
+        if repo_dir:
+            p_repo = Path(repo_dir)
+            candidate_paths.insert(0, p_repo / "backend")
+            candidate_paths.insert(0, p_repo)
+
+        real_backend_dir = None
+        for p in candidate_paths:
+            if (p / "lambda_function.py").exists():
+                real_backend_dir = p
+                break
+
+        if not real_backend_dir:
+            raise RuntimeError(f"Real EchoBox lambda_function.py not found in {candidate_paths}")
+
+        import sys
+        if str(real_backend_dir) not in sys.path:
+            sys.path.insert(0, str(real_backend_dir))
+
+        import lambda_function
+        self.lambda_mod = lambda_function
+        self.lambda_mod.table = self.table
+
+    def dispatch(self, event: dict[str, Any]) -> dict[str, Any]:
+        return self.lambda_mod.lambda_handler(event, None)
+
+    def stop(self):
+        try:
+            self._mock.stop()
+        except Exception:
+            pass
+
+    def __del__(self):
+        self.stop()
 
 
-def get_default_backend() -> EchoBoxBackend:
+_default_backend: EchoBoxBackend | None = None
+
+
+def get_default_backend(mode: str | None = None) -> Any:
+    global _default_backend
+    exec_mode = mode or os.environ.get("ECHOBOX_EXECUTION_MODE", "simulation")
+    if exec_mode == "real":
+        return RealLambdaBackend()
+    if _default_backend is None:
+        _default_backend = EchoBoxBackend()
     return _default_backend
 

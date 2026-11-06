@@ -66,15 +66,18 @@ def _insert_clauses(db: Session, req: Requirement, version: RequirementVersion, 
 def create_requirement(db: Session, project: Project, *, title: str, description: str, business_objective: str = "",
                        priority: str = "medium", category: str = "functional", module_id: int | None = None,
                        author_id: int | None = None, source_type: str = "manual", key: str | None = None,
+                       origin: str = "manual", source_commit_sha: str | None = None, confidence: float | None = None,
                        created_at=None, audit_source: str = "platform") -> Requirement:
     description = sanitize_text(description)
     if len(description) < 10:
         raise BadRequest("Requirement description is too short")
     key = key or next_key(db, Requirement, f"{project.key}-REQ", 3)
     ts = created_at or utcnow()
+    initial_status = "needs_confirmation" if origin == "inferred_from_code" else "draft"
     req = Requirement(key=key, project_id=project.id, module_id=module_id, title=title.strip(), category=category,
-                      priority=priority, status="draft", current_version=1, author_id=author_id,
-                      source_type=source_type, created_at=ts, updated_at=ts)
+                      priority=priority, status=initial_status, current_version=1, author_id=author_id,
+                      source_type=source_type, origin=origin, source_commit_sha=source_commit_sha,
+                      confidence=confidence, created_at=ts, updated_at=ts)
     db.add(req)
     db.flush()
     v = RequirementVersion(requirement_id=req.id, version=1, title=req.title, description=description,

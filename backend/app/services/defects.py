@@ -43,6 +43,8 @@ def create_manual(db: Session, project_id: int, project_key: str, data: dict, ac
         db.get(TestCase, data["test_case_id"]) if data.get("test_case_id") else None)
     d = Defect(key=next_key(db, Defect, f"DEF-{project_key}", 4), project_id=project_id, title=data["title"],
                description=data.get("description", ""), severity=data["severity"], priority=data["priority"],
+               evidence_type=data.get("evidence_type", "execution_failure" if res else "manual"),
+               source_commit_sha=data.get("source_commit_sha"),
                status="open", approval_status="approved", requirement_id=t.requirement_id if t else data.get("requirement_id"),
                test_case_id=t.id if t else None, execution_id=res.execution_id if res else None,
                execution_result_id=res.id if res else None, expected_result=data.get("expected_result", ""),

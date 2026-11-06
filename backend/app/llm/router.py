@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import random
+import re
 import threading
 import time
 from dataclasses import dataclass
@@ -19,6 +20,26 @@ from app.llm.providers import GeminiProvider, GroqProvider, MockProvider, Ollama
 
 T = TypeVar("T", bound=BaseModel)
 MAX_REPAIRS = 2
+
+SECRET_PATTERNS = [
+    re.compile(r"\bAKIA[0-9A-Z]{16}\b"),
+    re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----[^-]+-----END (?:RSA |EC |OPENSSH )?PRIVATE KEY-----", re.DOTALL),
+    re.compile(r"\b(?:ghp_[a-zA-Z0-9]{36}|github_pat_[a-zA-Z0-9_]{82})\b"),
+    re.compile(r"\bgsk_[a-zA-Z0-9]{32,}\b"),
+    re.compile(r"\bAIzaSy[a-zA-Z0-9_-]{33}\b"),
+    re.compile(r"(?i)(?:api_key|secret_key|private_key)\s*[:=]\s*['\"][0-9a-zA-Z_\-]{16,}['\"]"),
+]
+
+
+def redact_secrets(text: str) -> str:
+    """Scans and redacts host/cloud credentials before transmission to external LLMs."""
+    if not text:
+        return ""
+    redacted = text
+    for pat in SECRET_PATTERNS:
+        redacted = pat.sub("[REDACTED_SECRET]", redacted)
+    return redacted
+
 
 
 class NoProviderConfigured(Exception):
@@ -153,6 +174,8 @@ def _cache_put(phash, task, provider, model, response: dict) -> None:
 
 def generate(task: str, system: str, user: str, schema: type[T], run_id: int | None = None,
              use_cache: bool = True, chain: list[LLMProvider] | None = None) -> LLMResult:
+    system = redact_secrets(system)
+    user = redact_secrets(user)
     settings = get_settings()
     explicit = chain is not None
     chain = chain if explicit else provider_chain()

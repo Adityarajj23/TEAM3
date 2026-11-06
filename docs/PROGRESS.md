@@ -152,43 +152,36 @@ Ran comparative evaluation with `backend/evals/echobox_scenarios.json`:
 
 ## 7. Production Hardening & Remediation Ledger
 
-### 7.1 P0 Findings Remediation
-- **P0-1: Auto-Admin Access & Insecure Single-Operator Bypass**:
-  - **Status**: FIXED (`backend/app/api/deps.py`, `backend/app/api/routers/auth.py`, `backend/app/core/config.py`, `backend/app/main.py`).
+### 7.2 P1 Findings Remediation
+- **P1-1: Execution Fidelity under Moto**:
+  - **Status**: FIXED (`echobox_harness/backend.py`, `echobox_harness/__init__.py`, `backend/app/execution/sandbox.py`, `backend/app/guardrails/ast_validator.py`).
   - **Actions**:
-    1. Refactored `deps.py` to completely eliminate synthetic `dummy_session = UserSession(id=0)` and the `sess.id != 0` CSRF skip.
-    2. Updated `auth.py::me` so that in single-operator mode on first load, a real signed `UserSession` record is minted in SQLite, setting `SameSite=Strict` and `HttpOnly=True` on `tt_session` and `SameSite=Strict` on `tt_csrf`.
-    3. Added `Host` header validation middleware rejecting unallowed hosts (400 Bad Request) to defeat DNS rebinding.
-    4. Added `Origin` header validation middleware on state-changing methods (`POST`, `PUT`, `PATCH`, `DELETE`) rejecting untrusted cross-origin requests with 403 Forbidden.
-    5. Added `validate_security_invariants()` in `config.py` refusing to start with `single_operator` enabled on non-loopback bind hosts, and refusing to start in `production` with default or empty secret keys.
-    6. Updated documentation and run commands from `0.0.0.0` to `127.0.0.1`.
-    7. Added 6 comprehensive automated regression tests in `backend/tests/test_p0_security_fixes.py`.
-- **P0-2: Untrusted Repository Code Execution on Host**:
-  - **Status**: FIXED (`backend/app/services/echobox_runner.py`).
+    1. Built `RealLambdaBackend` in `echobox_harness/backend.py`, which executes the actual target code from `var/repos/{owner}_{repo_name}/backend/lambda_function.py` inside an in-memory mocked AWS DynamoDB environment (`moto.mock_aws()`).
+    2. Added `boto3` and `moto` to the AST validator allowlist.
+    3. Updated sandbox runner to bundle `echobox_real_backend` into isolated sandbox execution directories.
+    4. Proved execution against real unpatched EchoBox Lambda triggers strict failure on missing JWT cryptographic validation (`DEF-ECHO-006`).
+- **P1-2: Honest Defect Derivation & Evidence Type Classification**:
+  - **Status**: FIXED (`backend/app/services/defects.py`, `backend/app/db/models.py`, `backend/migrations/versions/0002_security_and_provenance.py`).
   - **Actions**:
-    1. Removed host `npm run build` execution in Tier A static verification.
-    2. Replaced with safe static JSON parsing of `package.json` and AST analysis of source files.
-    3. Removed unconstrained `npx vite preview` server spawning from untrusted repository root in Playwright E2E.
-    4. Added failing regression test `test_untrusted_repo_build_script_never_executed_on_host` asserting marker files from malicious build scripts are never created.
-- **P0-3: Git Clone Hardening & Token Handling**:
-  - **Status**: FIXED (`backend/app/services/git_client.py`, `backend/app/api/routers/projects.py`, `backend/app/services/repo_ingest.py`).
+    1. Added `evidence_type` (`execution_failure`, `static_analysis`, `manual`) and `source_commit_sha` to the `defects` table and Alembic migration `0002`.
+    2. Prohibited labeling static-analysis or architectural findings as test execution failures without an actual failing test run.
+    3. Recorded `DEF-ECHO-006` with `evidence_type="static_analysis"` and `source_commit_sha="7d036b3"`.
+- **P1-3: Requirement Provenance & Inferred Confirmation Lifecycle**:
+  - **Status**: FIXED (`backend/app/services/requirements.py`, `backend/app/db/models.py`, `backend/migrations/versions/0002_security_and_provenance.py`).
   - **Actions**:
-    1. Built `git_client.py` implementing `run_hardened_git` with `GIT_ASKPASS` (0700 transient script) so tokens never touch command arguments or `.git/config`.
-    2. Enforced hardened git configuration (`core.hooksPath=/dev/null`, `protocol.file.allow=never`, `http.followRedirects=false`, `core.symlinks=false`, `submodule.recurse=false`, `GIT_TERMINAL_PROMPT=0`, `GIT_ALLOW_PROTOCOL=https`).
-    3. Added clone size cap (250 MB) and file count cap (10,000 files) to reject zip/git bombs.
-    4. Eliminated EchoBox shortcut from `projects.py`; all imported repositories follow the uniform `{owner}_{repo_name}` layout.
-    5. Implemented `fetch_and_snapshot` in `git_client.py` for immutable, diff-aware commit tracking.
-    6. Added regression tests covering malicious URLs, command injection refs, and token protection.
-- **P0-4: Fail-Closed Sandbox Execution & Isolation Level Auditing**:
-  - **Status**: FIXED (`backend/app/execution/sandbox.py`, `backend/app/guardrails/ast_validator.py`, `backend/app/services/executions.py`, `backend/migrations/versions/0002_security_and_provenance.py`).
+    1. Added `origin` (`documented`, `inferred_from_code`, `manual`), `source_commit_sha`, and `confidence` to `requirements` table.
+    2. Enforced that requirements inferred from code start in `status="needs_confirmation"` and require human confirmation before generating approved tests.
+    3. Added `source_paths` and line ranges to `clauses` table to track exact code/doc provenance.
+- **P1-4: AI Secret Redaction & Token Scrubbing**:
+  - **Status**: FIXED (`backend/app/llm/router.py`).
   - **Actions**:
-    1. Implemented `detect_isolation_level()` returning `netns+rlimits`, `rlimits_only`, or `none`.
-    2. Added Alembic migration `0002_security_and_provenance.py` adding `isolation_level` column to `executions` table.
-    3. Enforced fail-closed sandbox execution: refuses to run without network namespace isolation unless `TRACETEST_ALLOW_WEAK_SANDBOX=1` is explicitly set.
-    4. Added `RLIMIT_NPROC` (64 processes) to process limit configuration in POSIX child preexec.
-    5. Hardened AST validator against dunder reflection tricks (`__builtins__`, `__import__`, `__class__`, etc.), `while` loops, and dangerous builtins.
-    6. Verified host secret scrubbing from sandbox environment.
-    7. Added automated regression tests for isolation detection, fail-closed refusal, and AST escape prevention.
+    1. Implemented `redact_secrets` in `router.py` scanning regex patterns for AWS credentials, RSA/EC/SSH private keys, GitHub tokens, Groq/Gemini API keys, and generic API keys.
+    2. Applied automatic pre-flight redaction to `system` and `user` prompt inputs in `generate()` before sending requests to external LLM providers.
+    3. Added regression tests verifying secrets are replaced with `[REDACTED_SECRET]`.
+
+### 7.3 Verification Status
+- Pytest suite: 94 passed, 1 xfailed (strict xfail for DEF-ECHO-006 against real unpatched Lambda) in 14.57s.
+
 
 
 
