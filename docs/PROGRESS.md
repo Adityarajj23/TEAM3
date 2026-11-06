@@ -601,3 +601,13 @@ Secret & Leak Scan:       0 leaked keys/tokens in repo, screenshots, or git hist
   - Authored acceptance suite `backend/tests/test_cureonix_real_ingest.py` (4/4 passed).
   - Authored comprehensive deliverable `docs/PHASE_1_REPOSITORY_INGESTION.md`.
   - 159 backend tests passed, 13 frontend tests passed, 0 ruff errors, 0 mypy errors, 8/8 `scripts/verify_docs.py` checks passed.
+
+
+- **Demo Project Cleanup & Workspace Selector Deduplication**:
+  - Identified and eliminated automatic demo project generation in `backend/app/seed/seed.py` by removing `_ensure_dayforce_projects()` and `DAYFORCE_PROJECTS`.
+  - Backed up database to `var/backups/tracetest-20261106T205501.db` and cleanly purged 6 unwanted legacy demo projects (`DF-PAY`, `DF-WFM`, `DF-LVE`, `DF-BEN`, `OCTO`, `SMPL`) and all associated child entities from `var/tracetest.db`.
+  - Verified that `var/tracetest.db` retains strictly two real projects: `ECHO` (EchoBox: 21 requirements, 21 tests, 9 executions, 7 defects) and `CUREON` (Cureonix: 23 requirements, 0 tests, 0 executions, 0 defects).
+  - Resolved duplicated "All Project Workspaces" entries in `CustomSelect` and `AppShell.tsx`.
+  - Removed obsolete Dayforce UI cards from `DashboardPage.tsx` and updated application title in `index.html`.
+  - Added test coverage in `test_multi_project_isolation.py` and `components.test.tsx` verifying zero demo project creation, exact 2-project database state, and dropdown option deduplication.
+  - All tests passing: 162 passed backend tests, 14 passed frontend tests, 0 ruff errors, 0 mypy errors, 8/8 `scripts/verify_docs.py` checks.

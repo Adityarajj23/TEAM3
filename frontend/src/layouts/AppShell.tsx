@@ -431,7 +431,6 @@ export function AppShell() {
               value={projectId ? String(projectId) : "ALL"}
               onValueChange={(val) => setProjectId(val === "ALL" ? null : Number(val))}
               options={projectOptions}
-              placeholder="All Project Workspaces"
               ariaLabel="Project Workspace"
               triggerClassName="w-40 sm:w-56 truncate"
             />

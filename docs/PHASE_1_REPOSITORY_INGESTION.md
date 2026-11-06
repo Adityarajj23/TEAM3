@@ -200,3 +200,4 @@ All quality and security checks pass with zero failures:
 - **Document Upload Interface (Phase 2)**: The architecture is prepared to ingest external PRD, SRS, and API specification files (`.pdf`, `.md`, `.json`, `.yaml`) and associate them with existing requirements without confusing source-inferred vs document-specified items. The frontend upload UI and backend document parser will be delivered in Phase 2.
 - **Autonomous Test Case Generation (Phase 3)**: Cureonix test cases will be generated in Phase 3 using the LLM generation pipeline grounded in the 23 discovered requirements.
 - **Execution Sandbox (Phase 4)**: The execution environment for Cureonix (FastAPI tests + Flutter integration tests) will be executed in a fail-closed bubblewrap sandbox in Phase 4.
+

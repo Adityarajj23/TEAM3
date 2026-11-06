@@ -622,3 +622,29 @@ TraceTest AI previously suffered from ingestion inaccuracies where imported repo
 - Generic repositories import with true architectural modules and grounded requirements.
 - Zero cross-project leakage or spurious environment injection.
 - Complete data integrity preserved across all existing and imported projects.
+
+
+---
+
+## ADR-034: Removal of Legacy Demo Workspaces and Project Selector Deduplication
+
+### Status
+Accepted
+
+### Context
+TraceTest AI retained unwanted demo/sample projects (`DF-PAY`, `DF-WFM`, `DF-LVE`, `DF-BEN`, `OCTO`, `SMPL`) in the application database and project switcher. `DF-*` projects were automatically recreated on startup whenever `ensure_identity()` ran in `backend/app/seed/seed.py`. In addition, the workspace selector dropdown in `frontend/src/layouts/AppShell.tsx` rendered duplicate "All Project Workspaces" entries due to overlapping `placeholder` and `options` elements.
+
+### Decision
+1. In `backend/app/seed/seed.py`, permanently remove `DAYFORCE_PROJECTS`, `_ensure_dayforce_projects()`, and its invocation inside `ensure_identity()`. Prevent automatic re-creation of demo projects on startup, migrations, or initialization.
+2. In `var/tracetest.db`, remove all 6 legacy demo projects (`DF-PAY`, `DF-WFM`, `DF-LVE`, `DF-BEN`, `OCTO`, `SMPL`) and clean up their associated modules (15), environments (12), integrations (6), memberships (18), and orphaned requirements/clauses (7/10).
+3. Strictly preserve the two real target projects: `ECHO` (EchoBox: 21 reqs, 21 tests, 9 executions, 7 defects) and `CUREON` (Cureonix: 23 reqs, 0 tests, 0 executions, 0 defects).
+4. In `frontend/src/components/ui/CustomSelect.tsx`, prevent duplicate placeholder option rendering when an option matching the placeholder already exists in `options`.
+5. In `frontend/src/layouts/AppShell.tsx`, omit `placeholder="All Project Workspaces"` on the workspace selector since `"ALL"` is already in `projectOptions`.
+6. In `frontend/src/pages/DashboardPage.tsx`, remove hardcoded Dayforce architecture cards.
+7. In `frontend/index.html`, update document title to "TraceTest AI — Enterprise Quality Engineering Platform".
+8. Author automated tests in `backend/tests/test_multi_project_isolation.py` and `frontend/tests/components.test.tsx` verifying zero demo project creation, exact 2-project database state, and project dropdown deduplication.
+
+### Consequences
+- Normal application contains solely `ECHO` and `CUREON` project workspaces.
+- Starting, refreshing, or reinitialising the backend leaves the database strictly populated with real projects.
+- Project workspace selector dropdown presents exactly one "All Project Workspaces" option followed by real projects.

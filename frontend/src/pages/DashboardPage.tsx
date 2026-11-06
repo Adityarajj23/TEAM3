@@ -59,7 +59,6 @@ const axis = { fontSize: 11, fill: "#64748B" };
 
 function ProjectOnboardingHub({ current }: { current?: any }) {
   const nav = useNavigate();
-  const isDayforce = Boolean(current?.key?.startsWith("DF") || current?.name?.toLowerCase().includes("dayforce"));
   const isEcho = Boolean(current?.key === "ECHO" || current?.name?.toLowerCase().includes("echobox"));
 
   return (
@@ -177,7 +176,7 @@ function ProjectOnboardingHub({ current }: { current?: any }) {
           <div className="flex items-center gap-2">
             <BookOpen className="h-4 w-4 text-[#3067DB]" />
             <h3 className="text-xs font-semibold text-slate-900">
-              {isEcho ? "EchoBox Target Architecture Components" : isDayforce ? "Dayforce Active Verification Domains" : (current ? `${current.name} Verification Modules` : "Target System Modules")}
+              {isEcho ? "EchoBox Target Architecture Components" : (current ? `${current.name} Verification Modules` : "Target System Modules")}
             </h3>
           </div>
           <Link to="/projects" className="text-xs font-medium text-[#3067DB] hover:underline">
@@ -208,33 +207,6 @@ function ProjectOnboardingHub({ current }: { current?: any }) {
               <span className="font-semibold text-slate-800 block">ECHO-MOD: Moderation & Export</span>
               <span className="text-[11px] text-slate-500 block mt-1">
                 Content filtering, room closing, CSV/JSON export, soft-delete archival.
-              </span>
-            </div>
-          </div>
-        ) : isDayforce ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-            <div className="rounded border border-slate-200 p-3 bg-slate-50/50">
-              <span className="font-semibold text-slate-800 block">DF-PAY: Payroll</span>
-              <span className="text-[11px] text-slate-500 block mt-1">
-                Gross-to-net, FLSA overtime thresholds, statutory penny rounding, shift differentials.
-              </span>
-            </div>
-            <div className="rounded border border-slate-200 p-3 bg-slate-50/50">
-              <span className="font-semibold text-slate-800 block">DF-WFM: Workforce Mgmt</span>
-              <span className="text-[11px] text-slate-500 block mt-1">
-                Electronic punch pairing, meal break compliance (30 min / 5 hr), rest intervals.
-              </span>
-            </div>
-            <div className="rounded border border-slate-200 p-3 bg-slate-50/50">
-              <span className="font-semibold text-slate-800 block">DF-LVE: Absence & Leave</span>
-              <span className="text-[11px] text-slate-500 block mt-1">
-                Pay-period accrual rates, annual carryover caps, forfeiture boundaries, payouts.
-              </span>
-            </div>
-            <div className="rounded border border-slate-200 p-3 bg-slate-50/50">
-              <span className="font-semibold text-slate-800 block">DF-BEN: Benefits & Eligibility</span>
-              <span className="text-[11px] text-slate-500 block mt-1">
-                Full-time hours threshold (≥30 hr), contractor exclusions, enrollment windows.
               </span>
             </div>
           </div>
