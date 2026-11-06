@@ -11,7 +11,7 @@ def test_session_cookie_flags(app):
     c = TestClient(app)
     r = c.post("/api/v1/auth/login", json={"email": "qa.engineer@northwind-hcm.example", "password": "test-qa-password-12"})
     cookie = r.headers.get("set-cookie", "").lower()
-    assert "httponly" in cookie and "samesite=lax" in cookie
+    assert "httponly" in cookie and "samesite=strict" in cookie
     assert "password" not in r.text.lower()
 
 

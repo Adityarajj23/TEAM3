@@ -1,6 +1,7 @@
 """Application configuration loaded from environment variables."""
 from __future__ import annotations
 
+import os
 from functools import lru_cache
 from pathlib import Path
 
@@ -19,6 +20,9 @@ class Settings(BaseSettings):
     session_hours: int = Field(12, alias="TRACETEST_SESSION_HOURS")
     cookie_secure: bool = Field(False, alias="TRACETEST_COOKIE_SECURE")
     cors_origins: str = Field("http://localhost:5173", alias="TRACETEST_CORS_ORIGINS")
+    bind_host: str = Field("127.0.0.1", alias="TRACETEST_HOST")
+    bind_port: int = Field(8000, alias="TRACETEST_PORT")
+    allowed_hosts: str = Field("localhost,127.0.0.1,[::1],testserver", alias="TRACETEST_ALLOWED_HOSTS")
     seed_on_startup: bool = Field(False, alias="TRACETEST_SEED_ON_STARTUP")
     rate_limit_per_minute: int = Field(600, alias="TRACETEST_RATE_LIMIT_PER_MINUTE")
     single_operator: bool = Field(True, alias="TRACETEST_SINGLE_OPERATOR")
@@ -111,10 +115,42 @@ class Settings(BaseSettings):
     def is_dev(self) -> bool:
         return self.app_env in ("development", "test")
 
+    def validate_security_invariants(self) -> None:
+        """Enforce strict environment and security boundaries."""
+        if self.app_env == "production" and self.secret_key in ("change-me-in-env", "test-secret", ""):
+            raise ValueError(
+                "Production mode requires an explicit TRACETEST_SECRET_KEY. Cannot run with default or empty key."
+            )
+        if self.single_operator:
+            loopback = {"127.0.0.1", "::1", "localhost", "testserver"}
+            host = self.bind_host.strip().lower()
+            if host not in loopback:
+                raise ValueError(
+                    f"TRACETEST_SINGLE_OPERATOR is enabled but TRACETEST_HOST is '{self.bind_host}'. "
+                    f"Single-operator mode allows loopback binding only (127.0.0.1, ::1, localhost) "
+                    f"to prevent exposing an unauthenticated administrative API to the local network or internet."
+                )
+
 
 @lru_cache
 def get_settings() -> Settings:
     s = Settings()
     for d in (s.data_dir, s.artifacts_dir, s.uploads_dir, s.backups_dir):
         d.mkdir(parents=True, exist_ok=True)
+    if s.app_env != "production" and s.secret_key == "change-me-in-env":
+        secret_file = s.data_dir / ".secret_key"
+        if secret_file.exists():
+            content = secret_file.read_text().strip()
+            if content:
+                s.secret_key = content
+        if s.secret_key == "change-me-in-env":
+            import secrets
+            token = secrets.token_hex(32)
+            flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
+            fd = os.open(str(secret_file), flags, 0o600)
+            with os.fdopen(fd, "w") as f:
+                f.write(token)
+            s.secret_key = token
+    if s.app_env != "test":
+        s.validate_security_invariants()
     return s

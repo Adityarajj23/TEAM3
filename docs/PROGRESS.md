@@ -148,7 +148,22 @@ Ran comparative evaluation with `backend/evals/echobox_scenarios.json`:
 
 ---
 
-## 6. Deliverables & Documentation Sign-Off
+---
+
+## 7. Production Hardening & Remediation Ledger
+
+### 7.1 P0 Findings Remediation
+- **P0-1: Auto-Admin Access & Insecure Single-Operator Bypass**:
+  - **Status**: FIXED (`backend/app/api/deps.py`, `backend/app/api/routers/auth.py`, `backend/app/core/config.py`, `backend/app/main.py`).
+  - **Actions**:
+    1. Refactored `deps.py` to completely eliminate synthetic `dummy_session = UserSession(id=0)` and the `sess.id != 0` CSRF skip.
+    2. Updated `auth.py::me` so that in single-operator mode on first load, a real signed `UserSession` record is minted in SQLite, setting `SameSite=Strict` and `HttpOnly=True` on `tt_session` and `SameSite=Strict` on `tt_csrf`.
+    3. Added `Host` header validation middleware rejecting unallowed hosts (400 Bad Request) to defeat DNS rebinding.
+    4. Added `Origin` header validation middleware on state-changing methods (`POST`, `PUT`, `PATCH`, `DELETE`) rejecting untrusted cross-origin requests with 403 Forbidden.
+    5. Added `validate_security_invariants()` in `config.py` refusing to start with `single_operator` enabled on non-loopback bind hosts, and refusing to start in `production` with default or empty secret keys.
+    6. Updated documentation and run commands from `0.0.0.0` to `127.0.0.1`.
+    7. Added 6 comprehensive automated regression tests in `backend/tests/test_p0_security_fixes.py`.
+
 
 All 26 technical and user documents are present, detailed, and mutually consistent in `docs/`:
 

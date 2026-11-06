@@ -22,9 +22,12 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    from app.core.config import get_settings
+    get_settings().validate_security_invariants()
     from app.db.init_db import initialise
     initialise()
     yield
+
 
 
 app = FastAPI(title="TraceTest AI", version="1.0.0", lifespan=lifespan,
@@ -45,6 +48,50 @@ async def platform_middleware(request: Request, call_next):
     request.state.trace_id = trace_id
     token = current_trace_id.set(trace_id)
     try:
+        # 1. Host header validation to prevent DNS rebinding attacks
+        raw_host = request.headers.get("host", "").strip()
+        if raw_host:
+            if raw_host.startswith("["):
+                host_name = raw_host.split("]")[0] + "]"
+            else:
+                host_name = raw_host.split(":")[0]
+            s = get_settings()
+            allowed = {h.strip().lower() for h in s.allowed_hosts.split(",") if h.strip()}
+            allowed |= {"localhost", "127.0.0.1", "[::1]", "::1", "testserver"}
+            if host_name.lower() not in allowed:
+                return JSONResponse(
+                    status_code=400,
+                    content={"error": {
+                        "code": "invalid_host",
+                        "message": f"Host '{host_name}' is not allowed",
+                        "details": None,
+                        "trace_id": trace_id,
+                    }},
+                )
+
+        # 2. Origin validation on state-changing requests (defeats CSRF / cross-site requests)
+        if request.method in ("POST", "PUT", "PATCH", "DELETE"):
+            origin = request.headers.get("origin")
+            if origin:
+                clean_origin = origin.strip().rstrip("/").lower()
+                s = get_settings()
+                allowed_origins = {o.strip().rstrip("/").lower() for o in s.cors_origins.split(",") if o.strip()}
+                allowed_origins |= {
+                    "http://localhost:5173", "http://127.0.0.1:5173",
+                    "http://localhost:8000", "http://127.0.0.1:8000",
+                    "http://testserver", "https://testserver"
+                }
+                if clean_origin not in allowed_origins:
+                    return JSONResponse(
+                        status_code=403,
+                        content={"error": {
+                            "code": "cross_origin_rejected",
+                            "message": f"Cross-origin request from '{origin}' rejected",
+                            "details": None,
+                            "trace_id": trace_id,
+                        }},
+                    )
+
         if request.url.path.startswith("/api/") and not request.url.path.endswith("/events"):
             ident = request.cookies.get("tt_session") or (request.client.host if request.client else "anon")
             limit = get_settings().rate_limit_per_minute

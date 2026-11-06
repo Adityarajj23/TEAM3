@@ -34,35 +34,16 @@ class Principal:
 
 
 def current_principal(request: Request, db: Session = Depends(get_db)) -> Principal:
-    s = get_settings()
     token = request.cookies.get(SESSION_COOKIE)
     if not token:
-        if s.single_operator and s.app_env != "test":
-            dev_user = db.execute(select(User).where(User.email == s.dev_email.lower())).scalar_one_or_none()
-            if not dev_user:
-                dev_user = db.execute(select(User)).scalars().first()
-            if dev_user and dev_user.is_active:
-                roles = {ur.role.name for ur in dev_user.roles} | {"admin", "qa_engineer", "reviewer"}
-                request.state.user_id = dev_user.id
-                dummy_session = UserSession(id=0, user_id=dev_user.id, csrf_token="operator-csrf", token_hash="none")
-                return Principal(dev_user, roles, dummy_session)
         raise AppError(401, "unauthenticated", "Sign in required")
     sess = db.execute(select(UserSession).where(UserSession.token_hash == hash_token(token))).scalar_one_or_none()
     if sess is None or sess.revoked or sess.expires_at < utcnow():
-        if s.single_operator and s.app_env != "test":
-            dev_user = db.execute(select(User).where(User.email == s.dev_email.lower())).scalar_one_or_none()
-            if not dev_user:
-                dev_user = db.execute(select(User)).scalars().first()
-            if dev_user and dev_user.is_active:
-                roles = {ur.role.name for ur in dev_user.roles} | {"admin", "qa_engineer", "reviewer"}
-                request.state.user_id = dev_user.id
-                dummy_session = UserSession(id=0, user_id=dev_user.id, csrf_token="operator-csrf", token_hash="none")
-                return Principal(dev_user, roles, dummy_session)
         raise AppError(401, "unauthenticated", "Session expired")
     user = db.get(User, sess.user_id)
     if user is None or not user.is_active:
         raise AppError(401, "unauthenticated", "Account disabled")
-    if sess.id != 0 and request.method not in ("GET", "HEAD", "OPTIONS"):
+    if request.method not in ("GET", "HEAD", "OPTIONS"):
         header = request.headers.get(CSRF_HEADER, "")
         if not header or not constant_eq(header, sess.csrf_token):
             raise AppError(403, "csrf_failed", "Missing or invalid CSRF token")

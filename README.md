@@ -146,8 +146,8 @@ pip install -r backend/requirements.txt
 make db-upgrade
 make seed
 
-# Start FastAPI server
-PYTHONPATH=backend uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+# Start FastAPI server (binds strictly to loopback 127.0.0.1)
+PYTHONPATH=backend uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
 ### 3. Frontend Initialization

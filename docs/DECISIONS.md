@@ -176,3 +176,24 @@ Package a dual-build reference Human Capital Management system (`reference_hcm`)
 ### Consequences
 - Empirically validates that TraceTest AI detects real faults in v1.0 and verifies real fixes in v1.1.
 - Provides consistent ground-truth for regression testing and CI verification.
+
+---
+
+## ADR-011: Strict Loopback Binding, Host/Origin Validation, and Elimination of Single-Operator Bypass
+
+### Context
+Prior implementations permitted unauthenticated requests in single-operator mode to synthesize a temporary `UserSession(id=0)` with all administrative roles, bypassing CSRF verification. Furthermore, documentation previously advised binding to `0.0.0.0`, which risked exposing an unauthenticated administrative API to the local network or internet.
+
+### Decision
+1. Default bind host is strictly `127.0.0.1`. If `TRACETEST_SINGLE_OPERATOR` is true, binding to non-loopback hosts (`0.0.0.0` or external IPs) is explicitly rejected at startup.
+2. In single-operator mode, the first page load (`GET /api/v1/auth/me`) mints a real signed local session cookie in SQLite with `SameSite=Strict` and `HttpOnly=True`, along with a matching `SameSite=Strict` CSRF cookie.
+3. Completely remove synthetic `id=0` sessions. All state-changing requests (`POST`, `PUT`, `PATCH`, `DELETE`) require a valid session cookie and matching `X-CSRF-Token`.
+4. Validate `Host` header against `localhost`, `127.0.0.1`, `[::1]`, and configured allowlists to defeat DNS rebinding.
+5. Validate `Origin` header on state-changing requests to reject untrusted cross-origin requests with HTTP 403.
+6. Refuse to start in production mode if the default `secret_key` (`change-me-in-env`) is detected; in development, auto-generate a cryptographically secure random token persisted to `data_dir / ".secret_key"` (mode 0600).
+
+### Consequences
+- Eliminates cross-site request forgery and DNS rebinding attack vectors against the local developer instance.
+- Fully prevents LAN/WAN exposure of single-operator administrative operations.
+- Guarantees complete audit traceability: all operations are tied to a persistent session record in the database.
+

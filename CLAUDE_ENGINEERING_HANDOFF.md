@@ -567,8 +567,8 @@ npm run build
 cd ..
 
 # 5. Start Application Servers
-# Terminal 1: Backend
-PYTHONPATH=backend uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+# Terminal 1: Backend (binds strictly to loopback 127.0.0.1)
+PYTHONPATH=backend uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 
 # Terminal 2: Frontend
 cd frontend && npm run dev

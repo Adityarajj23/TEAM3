@@ -57,9 +57,9 @@ def login(body: LoginIn, request: Request, response: Response, db: Session = Dep
     audit.record(db, user.id, "auth.login", "user", user.id, user.email)
     db.commit()
     max_age = s.session_hours * 3600
-    response.set_cookie(SESSION_COOKIE, token, httponly=True, samesite="lax", secure=s.cookie_secure,
+    response.set_cookie(SESSION_COOKIE, token, httponly=True, samesite="strict", secure=s.cookie_secure,
                         max_age=max_age, path="/")
-    response.set_cookie(CSRF_COOKIE, csrf, httponly=False, samesite="lax", secure=s.cookie_secure,
+    response.set_cookie(CSRF_COOKIE, csrf, httponly=False, samesite="strict", secure=s.cookie_secure,
                         max_age=max_age, path="/")
     return _me(db, user, {r.role.name for r in user.roles}, csrf)
 
@@ -97,9 +97,9 @@ def me(request: Request, response: Response, db: Session = Depends(get_db)):
                                    expires_at=utcnow() + timedelta(hours=s.session_hours)))
                 db.commit()
                 max_age = s.session_hours * 3600
-                response.set_cookie(SESSION_COOKIE, token, httponly=True, samesite="lax", secure=s.cookie_secure,
+                response.set_cookie(SESSION_COOKIE, token, httponly=True, samesite="strict", secure=s.cookie_secure,
                                     max_age=max_age, path="/")
-                response.set_cookie(CSRF_COOKIE, csrf, httponly=False, samesite="lax", secure=s.cookie_secure,
+                response.set_cookie(CSRF_COOKIE, csrf, httponly=False, samesite="strict", secure=s.cookie_secure,
                                     max_age=max_age, path="/")
                 roles = {ur.role.name for ur in dev_user.roles} | {"admin", "qa_engineer", "reviewer"}
                 out = _me(db, dev_user, roles, csrf)
