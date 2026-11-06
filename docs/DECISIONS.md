@@ -197,3 +197,20 @@ Prior implementations permitted unauthenticated requests in single-operator mode
 - Fully prevents LAN/WAN exposure of single-operator administrative operations.
 - Guarantees complete audit traceability: all operations are tied to a persistent session record in the database.
 
+---
+
+## ADR-012: Prohibition of Untrusted Repository Code Execution on the Host
+
+### Context
+Target repositories imported into TraceTest AI are fundamentally untrusted external inputs. In earlier validation scripts (`echobox_runner.py`), `npm run build` and `npx vite preview` were invoked directly on the host system via `subprocess`. A malicious repository containing arbitrary shell commands in lifecycle hooks (`preinstall`, `postinstall`, `build`) would achieve remote code execution on the host machine.
+
+### Decision
+1. Strictly treat all target repositories as untrusted inputs. Zero script execution (e.g. `npm run`, `npm install`, `node`, `make`, `python`) is permitted directly on the host environment.
+2. In Tier A static verification, replace shell compilation checks with purely static manifest and AST analysis: parse `package.json`, inspect script definitions, count dependencies, and validate AST structures using safe in-memory parsers without subprocess invocation.
+3. For browser E2E validation, eliminate unconfined background server processes launched from the repository root; instead, connect to a pre-existing target endpoint or configured `TRACETEST_PLAYWRIGHT_TARGET_URL`.
+
+### Consequences
+- Eliminates host arbitrary code execution vulnerabilities arising from imported repositories.
+- Guarantees deterministic, host-isolated static inspection.
+
+

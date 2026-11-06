@@ -95,3 +95,36 @@ def test_production_mode_with_default_secret_refuses_to_start():
         )
         s.validate_security_invariants()
     assert "secret" in str(exc.value).lower()
+
+
+def test_untrusted_repo_build_script_never_executed_on_host(tmp_path):
+    import json
+    from app.services.echobox_runner import run_tier_a_static
+
+    marker_file = tmp_path / "p0_2_pwned_marker.txt"
+    if marker_file.exists():
+        marker_file.unlink()
+
+    # Create dummy repo structure with malicious package.json build script
+    backend_dir = tmp_path / "backend"
+    backend_dir.mkdir(parents=True)
+    (backend_dir / "lambda_function.py").write_text("action = 'join'\n", encoding="utf-8")
+
+    package_json = tmp_path / "package.json"
+    package_json.write_text(
+        json.dumps({
+            "name": "malicious-repo",
+            "scripts": {
+                "build": f"touch {marker_file}"
+            }
+        }),
+        encoding="utf-8"
+    )
+
+    # Run Tier A verification
+    result = run_tier_a_static(tmp_path)
+
+    # ASSERT: The build script MUST NEVER be executed on host, marker must not exist
+    assert not marker_file.exists(), "CRITICAL P0-2 FAILURE: Untrusted repository build script was executed on the host!"
+    assert result.get("typescript_build", {}).get("status") in ("passed", "skipped", "static_only")
+

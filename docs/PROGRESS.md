@@ -163,6 +163,14 @@ Ran comparative evaluation with `backend/evals/echobox_scenarios.json`:
     5. Added `validate_security_invariants()` in `config.py` refusing to start with `single_operator` enabled on non-loopback bind hosts, and refusing to start in `production` with default or empty secret keys.
     6. Updated documentation and run commands from `0.0.0.0` to `127.0.0.1`.
     7. Added 6 comprehensive automated regression tests in `backend/tests/test_p0_security_fixes.py`.
+- **P0-2: Untrusted Repository Code Execution on Host**:
+  - **Status**: FIXED (`backend/app/services/echobox_runner.py`).
+  - **Actions**:
+    1. Removed host `npm run build` execution in Tier A static verification.
+    2. Replaced with safe static JSON parsing of `package.json` and AST analysis of source files.
+    3. Removed unconstrained `npx vite preview` server spawning from untrusted repository root in Playwright E2E.
+    4. Added failing regression test `test_untrusted_repo_build_script_never_executed_on_host` asserting marker files from malicious build scripts are never created.
+
 
 
 All 26 technical and user documents are present, detailed, and mutually consistent in `docs/`:
