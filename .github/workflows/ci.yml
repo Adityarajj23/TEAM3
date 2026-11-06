@@ -13,7 +13,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        with: { python-version: "3.12", cache: pip, cache-dependency-path: backend/requirements-dev.txt }
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements-dev.txt
       - run: pip install -r backend/requirements-dev.txt
       - name: Dependency vulnerability check
         run: pip-audit -r backend/requirements.txt || true
@@ -29,14 +32,19 @@ jobs:
         run: python scripts/verify_docs.py
       - uses: actions/upload-artifact@v4
         if: always()
-        with: { name: backend-junit, path: artifacts/backend-junit.xml }
+        with:
+          name: backend-junit
+          path: artifacts/backend-junit.xml
 
   frontend:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: "22", cache: npm, cache-dependency-path: frontend/package-lock.json }
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
       - run: cd frontend && npm ci
       - name: Dependency audit
         run: cd frontend && npm audit --audit-level=high || true
@@ -58,7 +66,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        with: { python-version: "3.12", cache: pip, cache-dependency-path: backend/requirements.txt }
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
       - run: pip install -r backend/requirements.txt
       - name: Initialise workspace and export approved tests
         run: |
@@ -75,4 +86,6 @@ jobs:
           TRACETEST_CI_TOKEN: ${{ secrets.TRACETEST_CI_TOKEN }}
         run: python scripts/ci_report.py artifacts/hcm-${{ matrix.hcm_version }}.xml PAY ${{ matrix.hcm_version }}
       - uses: actions/upload-artifact@v4
-        with: { name: hcm-${{ matrix.hcm_version }}-junit, path: artifacts/hcm-${{ matrix.hcm_version }}.xml }
+        with:
+          name: hcm-${{ matrix.hcm_version }}-junit
+          path: artifacts/hcm-${{ matrix.hcm_version }}.xml
