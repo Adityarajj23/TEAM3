@@ -240,6 +240,7 @@ class SuiteTestCase(Base):
 
 class TestCase(Base):
     __tablename__ = "test_cases"
+    __test__ = False
     id: Mapped[int] = mapped_column(primary_key=True)
     key: Mapped[str] = mapped_column(String(40), unique=True, index=True)  # TC-PAY-0001
     project_id: Mapped[int] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), index=True)

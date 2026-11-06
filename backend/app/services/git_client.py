@@ -144,3 +144,4 @@ def fetch_and_snapshot(
     new_sha = r_remote.stdout.strip() if r_remote.returncode == 0 else curr_sha
     has_changed = bool(new_sha and new_sha != curr_sha)
     return new_sha, has_changed
+

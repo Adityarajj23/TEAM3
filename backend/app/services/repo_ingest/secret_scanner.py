@@ -36,3 +36,4 @@ def scan_for_secrets(repo_path: Path) -> list[dict[str, Any]]:
             except Exception:
                 pass
     return findings
+

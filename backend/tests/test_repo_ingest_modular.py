@@ -63,3 +63,4 @@ def test_ast_analyzer_discovers_structure():
         assert "React" in res.frameworks
         assert "Vite" in res.frameworks
         assert any(ep["url"] == "/health" for ep in res.endpoints_found)
+
