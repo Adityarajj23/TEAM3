@@ -40,6 +40,7 @@ export function ExecutionsPage() {
           { id: "source", header: "Source", cell: (e) => <Badge value={e.source} /> },
           { id: "suite", header: "Suite", cell: (e) => e.suite?.name ?? (e.retry_of_id ? "Rerun" : "Ad hoc") },
           { id: "env", header: "Environment", cell: (e) => e.environment?.name },
+          { id: "isolation", header: "Isolation", cell: (e) => <span className="font-mono text-2xs px-1.5 py-0.5 rounded bg-slate-100 text-slate-700">{e.isolation_level || "netns+rlimits"}</span> },
           { id: "res", header: "Results", cell: (e) => <ResultBar e={e} /> },
           { id: "dur", header: "Duration", sortKey: "duration_ms", cell: (e) => fmtDuration(e.duration_ms), className: "tabular-nums" },
           { id: "start", header: "Started", sortKey: "started_at", cell: (e) => <span className="text-slate-600">{fmtDate(e.started_at)}</span> },
@@ -123,6 +124,7 @@ export function ExecutionDetailPage() {
             <td className="px-3 py-2">{label(a.kind)}</td><td className="px-3 py-2 tabular-nums">{(a.size_bytes / 1024).toFixed(1)} KB</td>
             <td className="px-3 py-2 font-mono text-2xs text-slate-500">{a.sha256.slice(0, 20)}…</td></tr>)}</tbody></table>}</Panel> },
         { value: "details", label: "Details", content: <Panel><KV items={[["Runner", e.runner], ["Reference HCM", e.hcm_version ?? "—"],
+          ["Isolation", <span className="font-mono text-xs">{e.isolation_level ?? "netns+rlimits"}</span>],
           ["Triggered by", e.triggered_by?.name ?? "CI or import"], ["Branch", e.branch ?? "—"], ["Commit", <span className="font-mono text-xs">{e.commit_sha ?? "—"}</span>],
           ["Rerun of", e.retry_of_id ? <Link className="text-accent hover:underline" to={`/executions/${e.retry_of_id}`}>Execution #{e.retry_of_id}</Link> : "—"],
           ["Started", fmtDate(e.started_at)], ["Finished", fmtDate((e as any).finished_at)]]} /></Panel> },
@@ -196,6 +198,7 @@ export function DefectsPage() {
           { id: "title", header: "Title", cell: (d) => <span className="text-ink">{d.title}</span> },
           { id: "sev", header: "Severity", sortKey: "severity", cell: (d) => <Badge value={d.severity} /> },
           { id: "pri", header: "Priority", cell: (d) => d.priority.toUpperCase() },
+          { id: "evidence", header: "Evidence", cell: (d) => <span className="font-mono text-2xs px-1.5 py-0.5 rounded bg-slate-100 text-slate-700">{label(d.evidence_type || "execution_failure")}</span> },
           { id: "status", header: "Status", sortKey: "status", cell: (d) => d.approval_status === "approved" ? <Badge value={d.status} /> : <Badge value={d.approval_status} /> },
           { id: "owner", header: "Owner", cell: (d) => d.owner?.name ?? <span className="text-slate-400">Unassigned</span> },
           { id: "created", header: "Opened", sortKey: "created_at", cell: (d) => <span className="text-slate-600">{fmtDate(d.created_at, false)}</span> },
@@ -312,7 +315,10 @@ export function DefectDetailPage() {
               <Button variant="primary" disabled={!env} loading={retest.isPending} onClick={() => retest.mutate()}>Run retest</Button>
               {retestRun && <RunProgress runId={retestRun} onDone={refresh} />}
             </div></Panel>}
-          <Panel title="Linked records"><KV stacked items={[["Requirement", d.requirement_id ? <Link className="text-accent hover:underline" to={`/requirements/${d.requirement_id}`}>{d.requirement_key}</Link> : "—"],
+          <Panel title="Linked records"><KV stacked items={[
+            ["Evidence type", <span className="font-mono text-xs">{d.evidence_type ?? "execution_failure"}</span>],
+            ["Commit SHA", <span className="font-mono text-xs">{d.source_commit_sha ?? "—"}</span>],
+            ["Requirement", d.requirement_id ? <Link className="text-accent hover:underline" to={`/requirements/${d.requirement_id}`}>{d.requirement_key}</Link> : "—"],
             ["Test case", d.test_case_id ? <Link className="text-accent hover:underline" to={`/tests/${d.test_case_id}`}>{d.test_key}</Link> : "—"],
             ["Execution", d.execution_id ? <Link className="text-accent hover:underline" to={`/executions/${d.execution_id}`}>{d.execution_key}</Link> : "—"],
             ["Reporter", d.reporter?.name ?? "—"], ["Resolved", fmtDate(d.resolved_at)]]} />

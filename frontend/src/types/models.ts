@@ -34,7 +34,7 @@ export interface Suite { id: number; key: string; project_id: number; module: Mo
   priority: string; test_count: number | null; tests?: TestCase[]; executions?: Execution[];
   coverage?: { requirements: number; clauses: number; covered: number } }
 export interface Execution { id: number; key: string; project_id: number; suite: { id: number; key: string; name: string } | null;
-  environment: Environment | null; source: string; runner: string; status: string; hcm_version: string | null; total: number;
+  environment: Environment | null; source: string; runner: string; status: string; isolation_level?: string; hcm_version: string | null; total: number;
   passed: number; failed: number; errored: number; skipped: number; duration_ms: number; commit_sha: string | null;
   branch: string | null; retry_of_id: number | null; run_id: number | null; triggered_by: UserRef | null;
   started_at: string | null; finished_at: string | null; results?: ExecResult[];
@@ -43,7 +43,7 @@ export interface ExecResult { id: number; execution_id: number; test_case_id: nu
   test_case_version: number; script_hash: string | null; status: string; duration_ms: number; message: string;
   stack_trace: string; stdout: string; failure_analysis: Record<string, any> | null }
 export interface Defect { id: number; key: string; project_id: number; title: string; severity: string; priority: string;
-  status: string; approval_status: string; owner: UserRef | null; test_case_id: number | null; requirement_id: number | null;
+  status: string; approval_status: string; evidence_type?: string; source_commit_sha?: string | null; owner: UserRef | null; test_case_id: number | null; requirement_id: number | null;
   execution_id: number | null; github_issue_url: string | null; github_issue_state: string | null; created_at: string;
   updated_at: string; resolved_at: string | null; description?: string; expected_result?: string; actual_result?: string;
   reproduction_steps?: string; error_log?: string; stack_trace?: string; ai_analysis?: Record<string, any> | null;

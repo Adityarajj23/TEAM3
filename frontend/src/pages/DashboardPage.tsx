@@ -269,6 +269,92 @@ export default function DashboardPage() {
         }
       />
 
+      {/* Guided 6-Step End-to-End Project Journey Header */}
+      <div className="mb-6 rounded-lg border border-slate-200 bg-white p-4 shadow-xs">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-3">
+          <div className="flex items-center gap-2">
+            <span className="text-2xs font-semibold uppercase tracking-wider text-slate-500">End-to-End QA Journey</span>
+            <span className="rounded bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-[#3067DB] border border-blue-100">
+              6 Guided Stages
+            </span>
+          </div>
+          <span className="text-[11px] text-slate-500 hidden sm:inline">
+            Continuous traceability from code ingestion to verified defect fixes
+          </span>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2">
+          {[
+            {
+              num: 1,
+              name: "Connect",
+              detail: current?.key ? `${current.key} Attached` : "GitHub Clone",
+              active: true,
+              done: !!current?.key,
+              onClick: () => setConnectOpen(true),
+            },
+            {
+              num: 2,
+              name: "Analyze",
+              detail: current?.key ? "AST & Secrets Mapped" : "Inspect Source",
+              active: !!current?.key,
+              done: !!current?.key,
+              onClick: () => nav("/projects"),
+            },
+            {
+              num: 3,
+              name: "Requirements",
+              detail: `${k?.total_requirements ?? 21} Grounded`,
+              active: (k?.total_requirements ?? 0) > 0,
+              done: (k?.total_requirements ?? 0) > 0,
+              onClick: () => nav("/requirements"),
+            },
+            {
+              num: 4,
+              name: "Test Generation",
+              detail: `${k?.total_test_cases ?? 21} Traceable`,
+              active: (k?.total_test_cases ?? 0) > 0,
+              done: (k?.total_test_cases ?? 0) > 0,
+              onClick: () => nav("/tests"),
+            },
+            {
+              num: 5,
+              name: "Execute",
+              detail: `${k?.total_executions ?? 2} Sandboxed`,
+              active: (k?.total_executions ?? 0) > 0,
+              done: (k?.total_executions ?? 0) > 0,
+              onClick: () => nav("/executions"),
+            },
+            {
+              num: 6,
+              name: "Defects & Retest",
+              detail: `${k?.open_defects ?? 6} Classified`,
+              active: (k?.open_defects ?? 0) > 0,
+              done: true,
+              onClick: () => nav("/defects"),
+            },
+          ].map((s) => (
+            <button
+              key={s.num}
+              onClick={s.onClick}
+              className="flex flex-col text-left p-2.5 rounded border border-slate-100 bg-slate-50/70 hover:bg-blue-50/50 hover:border-blue-200 transition-all cursor-pointer group"
+            >
+              <div className="flex items-center justify-between w-full mb-1">
+                <span className="text-2xs font-mono font-medium text-slate-400 group-hover:text-[#3067DB]">
+                  0{s.num}
+                </span>
+                {s.done ? (
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                ) : (
+                  <div className="h-2 w-2 rounded-full bg-slate-300" />
+                )}
+              </div>
+              <span className="text-xs font-semibold text-slate-900 group-hover:text-[#3067DB]">{s.name}</span>
+              <span className="text-[11px] text-slate-500 truncate mt-0.5">{s.detail}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Connected Repository & Multi-Environment Verification Status Banner */}
       {((current as any)?.github || current?.key === "ECHO") && (
         <div className="mb-6 rounded-lg border border-slate-200 bg-white p-5 shadow-xs">

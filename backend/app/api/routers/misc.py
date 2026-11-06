@@ -394,12 +394,14 @@ def health(db: Session = Depends(get_db)):
 @router.get("/config", tags=["health"])
 def config(p: Principal = Depends(current_principal), db: Session = Depends(get_db)):
     s = get_settings()
+    from app.execution.sandbox import detect_isolation_level
     counts = {name: db.scalar(select(func.count()).select_from(model)) for name, model in
               (("requirements", Requirement), ("test_cases", TestCase), ("executions", Execution), ("defects", Defect))}
-    return {"environment": s.app_env, "llm": provider_status(), "github_configured": github.configured(),
+    iso = detect_isolation_level()
+    return {"environment": s.app_env, "isolation_level": iso, "llm": provider_status(), "github_configured": github.configured(),
             "playwright_target_url": s.playwright_target_url, "data_dir": str(s.data_dir) if p.is_admin else None,
             "sandbox": {"timeout_seconds": s.exec_timeout_seconds, "memory_mb": s.exec_memory_mb,
-                        "max_output_bytes": s.exec_max_output_bytes}, "counts": counts}
+                        "max_output_bytes": s.exec_max_output_bytes, "isolation_level": iso}, "counts": counts}
 
 
 class TestConnectionIn(BaseModel):

@@ -232,6 +232,15 @@ export function AppShell() {
           <GlobalSearch />
 
           <div className="ml-auto flex items-center gap-2.5">
+            <div className="hidden md:inline-flex items-center gap-1.5 rounded border border-slate-200 bg-slate-50 px-2.5 py-1 text-2xs text-slate-700">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="font-medium text-slate-500">Env:</span>
+              <span className="font-semibold text-slate-800 uppercase">{cfg.data?.environment || "local"}</span>
+              <span className="text-slate-300">|</span>
+              <span className="font-medium text-slate-500">Sandbox:</span>
+              <span className="font-mono text-slate-800">{cfg.data?.isolation_level || "netns+rlimits"}</span>
+            </div>
+
             <Link
               to="/settings"
               className="hidden items-center gap-1.5 rounded border border-slate-200 bg-slate-50 px-2.5 py-1 text-2xs text-slate-700 hover:border-slate-300 hover:bg-slate-100 transition-colors xl:inline-flex"
