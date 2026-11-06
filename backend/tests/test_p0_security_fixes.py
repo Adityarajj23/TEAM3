@@ -1,12 +1,10 @@
 """Regression tests for P0-1: auto-admin access, CSRF bypass, bind host, Host/Origin validation."""
 from __future__ import annotations
 
-import os
 import pytest
 from fastapi.testclient import TestClient
 
 from app.core.config import Settings
-from app.main import app as fastapi_app
 
 
 def test_cross_origin_post_rejected(app):
@@ -99,6 +97,7 @@ def test_production_mode_with_default_secret_refuses_to_start():
 
 def test_untrusted_repo_build_script_never_executed_on_host(tmp_path):
     import json
+
     from app.services.echobox_runner import run_tier_a_static
 
     marker_file = tmp_path / "p0_2_pwned_marker.txt"
@@ -179,7 +178,8 @@ def test_validate_git_ref_rejects_options_and_traversal():
 
 def test_git_client_token_never_in_argv_or_config(tmp_path, monkeypatch):
     import subprocess
-    from app.services.git_client import run_hardened_git, clone_repository
+
+    from app.services.git_client import run_hardened_git
 
     secret_token = "ghp_SUPERSECRETTOKEN1234567890123456"
     recorded_cmds = []
@@ -231,7 +231,7 @@ def test_ast_validator_rejects_known_escape_attempts():
 
 
 def test_sandbox_environment_redacts_host_secrets(monkeypatch):
-    from app.execution.sandbox import run_pytest, ScriptSpec
+    from app.execution.sandbox import ScriptSpec, run_pytest
 
     # Inject simulated secrets into the host environment
     monkeypatch.setenv("GROQ_API_KEY", "gsk_live_secret_key_12345")

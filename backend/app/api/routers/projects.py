@@ -145,7 +145,7 @@ def import_repository(body: RepoImportIn, p: Principal = Depends(require("projec
     else:
         pkey = body.project_key or repo_name[:6].upper()
         pname = body.project_name or f"{repo_name.replace('-', ' ').title()} Service"
-        proj = ingest_generic_project(db, p.id, target_dir, pkey, pname, body.repo_url, branch, analysis.commit_sha)
+        proj = ingest_generic_project(db, p.id, target_dir, pkey, pname, body.repo_url, branch, pinned_commit or analysis.commit_sha)
 
     return {
         "ok": True,

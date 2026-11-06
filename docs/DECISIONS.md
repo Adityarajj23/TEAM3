@@ -258,6 +258,25 @@ The `echobox_harness` originally relied on an in-memory Python simulation (`Memo
 - Honest and auditable separation of documented specifications from inferred heuristics, and execution failures from static analysis findings.
 - Zero cloud or host credential leaks in LLM traces or prompt logs.
 
+---
+
+## ADR-016: Service Modularization, SQLite Concurrency Discipline, and Cross-Project Isolation Boundaries
+
+### Context
+`repo_ingest.py` had expanded to over 2,000 lines, bundling URL validation, secret scanning, AST analysis, EchoBox test synthesis, and generic README parsing into a single monolithic file. In addition, background task crashes could leave runs in an unresumable running state, SQLite concurrency limits required empirical validation against thread pools, and multi-tenant project isolation required explicit endpoint-level regression guarantees.
+
+### Decision
+1. Modularize `repo_ingest` into a clean package under `app/services/repo_ingest/`: `url_validator.py`, `secret_scanner.py`, `ast_analyzer.py`, `echobox_derivation.py`, and `generic_derivation.py`. Re-export all public symbols via `__init__.py` for 100% backward compatibility.
+2. Maintain SQLite WAL mode with `busy_timeout=10000`, short atomic transactions, and connection pre-ping. Verify that concurrent multi-threaded writes execute cleanly without `database is locked` errors.
+3. Ensure startup reconciliation (`recover_interrupted()`) reliably marks orphaned `running` or `queued` tasks as `interrupted` with explanatory diagnostics.
+4. Enforce project authorization boundaries across all entity endpoints (`requirements`, `test-cases`, `defects`, `executions`) returning 404 (NotFound) on cross-project ID guessing attempts by non-admin users.
+
+### Consequences
+- Clean separation of concerns and maintainability across ingestion pipelines.
+- Full resilience to application restarts without dangling jobs.
+- Mathematically verified tenant isolation preventing data leakage between independent repositories.
+
+
 
 
 

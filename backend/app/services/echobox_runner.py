@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import ast
 import json
-import subprocess
 import time
 import urllib.error
 import urllib.request
@@ -16,7 +15,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.config import REPO_ROOT
+from app.core.config import REPO_ROOT, get_settings
 from app.db.base import session_scope, utcnow
 from app.db.models import (
     Defect,

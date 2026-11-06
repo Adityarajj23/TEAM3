@@ -179,8 +179,40 @@ Ran comparative evaluation with `backend/evals/echobox_scenarios.json`:
     2. Applied automatic pre-flight redaction to `system` and `user` prompt inputs in `generate()` before sending requests to external LLM providers.
     3. Added regression tests verifying secrets are replaced with `[REDACTED_SECRET]`.
 
-### 7.3 Verification Status
-- Pytest suite: 94 passed, 1 xfailed (strict xfail for DEF-ECHO-006 against real unpatched Lambda) in 14.57s.
+### 7.3 P2 Findings Remediation (Reliability, Modularity & Concurrency)
+- **P2-1: Background Task Startup Reconciliation**:
+  - **Status**: FIXED (`backend/app/services/tasks.py`, `backend/app/db/init_db.py`).
+  - **Actions**:
+    1. Ensured `recover_interrupted()` runs on every application startup, querying for orphaned runs and executions in `running` or `queued` state.
+    2. Marked orphaned runs as `interrupted` with explicit diagnostic messages and timestamps.
+    3. Added automated regression test `test_background_task_startup_reconciliation` verifying orphaned runs and executions are cleanly reconciled.
+- **P2-2: SQLite Concurrency Discipline & Busy Timeout**:
+  - **Status**: VERIFIED & TESTED (`backend/app/db/base.py`, `backend/tests/test_p2_reliability.py`).
+  - **Actions**:
+    1. Validated SQLite WAL mode configuration, `PRAGMA busy_timeout=10000`, `PRAGMA synchronous=NORMAL`, and connection pool pre-ping.
+    2. Added automated concurrency test `test_sqlite_concurrency_busy_timeout` executing 30 parallel concurrent transactions across 8 threads without any database locking errors.
+- **P2-3: Multi-Project Endpoint Isolation & ID Guessing Defense**:
+  - **Status**: VERIFIED & TESTED (`backend/app/api/deps.py`, `backend/tests/test_p2_reliability.py`).
+  - **Actions**:
+    1. Confirmed `accessible_project_ids` and `check_entity_project` strictly enforce project tenancy for non-admin users.
+    2. Added automated regression test `test_cross_project_isolation_endpoint_guessing` asserting that non-admin members receive 404 (NotFound) when attempting to access requirements, test cases, defects, or project-scoped lists of other projects.
+- **P2-4: Ingestion Service Modularization**:
+  - **Status**: FIXED (`backend/app/services/repo_ingest/`).
+  - **Actions**:
+    1. Refactored the monolithic 2,070-line `repo_ingest.py` into 5 focused submodules under `backend/app/services/repo_ingest/`:
+       - `url_validator.py`: `validate_github_url`, `validate_git_ref`
+       - `secret_scanner.py`: `scan_for_secrets`
+       - `ast_analyzer.py`: `RepoAnalysisResult`, `analyze_repository`
+       - `echobox_derivation.py`: `ingest_echobox_project` and test script generators
+       - `generic_derivation.py`: `ingest_generic_project`
+    2. Maintained 100% backward compatibility via re-exports in `__init__.py`.
+    3. Added dedicated unit test suite `test_repo_ingest_modular.py` testing each submodule independently.
+
+### 7.4 Verification Ledger
+- Backend Pytest: **102 passed, 1 xfailed** (strict xfail for DEF-ECHO-006 against real unpatched Lambda) in 14.41s.
+- Ruff Linter: **All checks passed** (0 errors).
+- Mypy Static Type Checker: **Success: no issues found in 70 source files**.
+
 
 
 

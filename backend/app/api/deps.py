@@ -7,7 +7,6 @@ from fastapi import Depends, Query, Request
 from sqlalchemy import Select, asc, desc, func, select
 from sqlalchemy.orm import Session
 
-from app.core.config import get_settings
 from app.core.errors import AppError, Forbidden, NotFound
 from app.core.security import CSRF_HEADER, SESSION_COOKIE, constant_eq, hash_token
 from app.db.base import get_db, utcnow
