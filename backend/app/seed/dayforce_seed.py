@@ -14,32 +14,26 @@ Initializes:
 from __future__ import annotations
 
 import hashlib
-import json
 import logging
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any
 
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.db.base import session_scope, utcnow
 from app.db.models import (
     AcceptanceCriterion,
     BusinessScenario,
     Defect,
     Document,
-    DocumentProcessingJob,
     Environment,
     Execution,
     ExecutionResult,
-    ExtractedContent,
     Module,
     Organisation,
     Project,
     ProjectContext,
-    ProjectMember,
     ProjectRole,
     Requirement,
     RequirementClarification,
@@ -47,7 +41,7 @@ from app.db.models import (
     TestCase,
     User,
 )
-from app.services.document_processor import process_document, save_document_file, validate_file_upload
+from app.services.document_processor import process_document, validate_file_upload
 
 log = logging.getLogger("tracetest.seed.dayforce")
 
@@ -297,7 +291,7 @@ def ensure_dayforce_project(db: Session, force_reseed: bool = False) -> Project:
     existing_docs = {d.filename: d for d in db.execute(select(Document).where(Document.project_id == proj.id)).scalars().all()}
 
     ingested_docs = []
-    for fname, disp_name, purpose, ver, d_type, owner, d_date, rel_mod, prio in doc_specs:
+    for fname, disp_name, purpose, ver, _d_type, owner, d_date, rel_mod, prio in doc_specs:
         src_path = sample_dir / fname
         if not src_path.exists():
             log.warning("Sample document %s not found on disk at %s", fname, src_path)
@@ -527,7 +521,6 @@ def ensure_dayforce_project(db: Session, force_reseed: bool = False) -> Project:
 
     # 1 Contradiction: Overtime Multiplier Rate (1.5x vs 2.0x)
     r_standard = day_reqs.get("Standard Weekly Overtime Calculation")
-    r_sunday = day_reqs.get("Sunday & Holiday Premium Overtime (2.0x)")
     contra = RequirementClarification(
         project_id=proj.id,
         requirement_id=r_standard.id if r_standard else None,

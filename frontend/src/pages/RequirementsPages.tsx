@@ -27,9 +27,6 @@ const reqSchema = z.object({
 
 export function RequirementsPage() {
   const { projectId, current } = useProjects();
-  if (projectId && current?.project_type === "requirements_based") {
-    return <RequirementsManagementView projectId={projectId} current={current} />;
-  }
   const st = useListState(["project_id", "status", "priority", "category"], { sort: "updated_at" });
   const pid = st.filters.project_id || (projectId ? String(projectId) : "");
   const params = { ...st.params, ...(pid ? { project_id: pid } : {}) };
@@ -37,6 +34,10 @@ export function RequirementsPage() {
   const nav = useNavigate();
   const { can } = useAuth();
   const [mode, setMode] = useState<"create" | "upload" | null>(null);
+
+  if (projectId && current?.project_type === "requirements_based") {
+    return <RequirementsManagementView projectId={projectId} current={current} />;
+  }
   return (
     <>
       <PageHeader title="Requirements" subtitle="Business requirements, decomposed into atomic clauses that tests and acceptance criteria cite."

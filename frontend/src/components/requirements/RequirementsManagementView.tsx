@@ -51,9 +51,9 @@ export function RequirementsManagementView({ projectId, current }: RequirementsM
     queryFn: () => api.get<any[]>(`/projects/${projectId}/clarifications`),
   });
 
-  const docs = docsQ.data || [];
-  const reqs = reqsQ.data?.items || [];
-  const clars = clarsQ.data || [];
+  const docs = useMemo(() => docsQ.data || [], [docsQ.data]);
+  const reqs = useMemo(() => reqsQ.data?.items || [], [reqsQ.data?.items]);
+  const clars = useMemo(() => clarsQ.data || [], [clarsQ.data]);
 
   // Tab State
   const [activeTab, setActiveTab] = useState<"intake" | "extracted" | "insights" | "clarifications" | "traceability">("intake");

@@ -12,7 +12,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.errors import BadRequest
-from app.db.base import utcnow
 from app.db.models import (
     BusinessScenario,
     Document,
@@ -202,7 +201,7 @@ def detect_contradictions_across_requirements(
         ),
     ]
 
-    for topic, pattern, q_tmpl, impact, resolution in extractors:
+    for _topic, pattern, q_tmpl, impact, resolution in extractors:
         matches = []
         for r in reqs:
             full_txt = f"{r.title} {r.evidence_excerpt or ''} {r.related_scenario or ''}"
@@ -453,7 +452,7 @@ def analyze_and_extract_project_requirements(
             proj,
             title=title,
             description=sc_text,
-            business_objective=f"Provided in Project Business Scenarios",
+            business_objective="Provided in Project Business Scenarios",
             category=category,
             priority=priority,
             related_scenario=f"Business Scenario #{sc_idx}",

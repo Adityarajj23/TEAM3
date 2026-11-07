@@ -71,7 +71,7 @@ export function TestRunsManagementView({ projectId, current }: TestRunsManagemen
     queryFn: () => api.get<Page<Execution>>("/executions", { project_id: projectId, page_size: 200 }),
   });
 
-  const execs = q.data?.items || [];
+  const execs = useMemo(() => q.data?.items || [], [q.data?.items]);
 
   // Tab state
   const [activeTab, setActiveTab] = useState<"all" | "validation" | "simulation" | "external">("all");

@@ -8,7 +8,6 @@ import csv
 import hashlib
 import io
 import logging
-import os
 import re
 from pathlib import Path
 from typing import Any
@@ -325,7 +324,7 @@ def parse_markdown(file_path: Path) -> dict[str, Any]:
     for idx, line in enumerate(lines, start=1):
         line_s = line.strip()
         if line_s.startswith("#"):
-            if cur_lines and any(l.strip() for l in cur_lines):
+            if cur_lines and any(ln.strip() for ln in cur_lines):
                 items.append({
                     "content_type": "section",
                     "content": "\n".join(cur_lines).strip(),
@@ -347,7 +346,7 @@ def parse_markdown(file_path: Path) -> dict[str, Any]:
         else:
             cur_lines.append(line)
 
-    if cur_lines and any(l.strip() for l in cur_lines):
+    if cur_lines and any(ln.strip() for ln in cur_lines):
         items.append({
             "content_type": "section",
             "content": "\n".join(cur_lines).strip(),
@@ -380,7 +379,7 @@ def parse_txt(file_path: Path) -> dict[str, Any]:
         line_s = line.strip()
         # Heuristic for section titles: numbered or uppercase short lines
         if re.match(r"^(\d+(\.\d+)*\.?|[A-Z]\.)\s+[A-Za-z0-9\s_-]{3,80}$", line_s):
-            if cur_lines and any(l.strip() for l in cur_lines):
+            if cur_lines and any(ln.strip() for ln in cur_lines):
                 items.append({
                     "content_type": "section",
                     "content": "\n".join(cur_lines).strip(),
@@ -401,7 +400,7 @@ def parse_txt(file_path: Path) -> dict[str, Any]:
         else:
             cur_lines.append(line)
 
-    if cur_lines and any(l.strip() for l in cur_lines):
+    if cur_lines and any(ln.strip() for ln in cur_lines):
         items.append({
             "content_type": "section",
             "content": "\n".join(cur_lines).strip(),

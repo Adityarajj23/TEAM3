@@ -9,10 +9,11 @@ Verifies:
 - MD: Markdown headings, code blocks, sections
 - Edge cases: Empty files, unsupported extensions, oversized files, directory traversal attempts
 """
-import io
 from pathlib import Path
+
 import pytest
-from app.core.errors import AppError, BadRequest
+
+from app.core.errors import AppError
 from app.services.document_processor import (
     ALLOWED_EXTENSIONS,
     MAX_FILE_SIZE_BYTES,

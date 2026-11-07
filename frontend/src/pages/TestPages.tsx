@@ -75,13 +75,14 @@ function Filters({ st }: { st: ReturnType<typeof useListState> }) {
 
 export function TestsPage() {
   const { projectId, current } = useProjects();
-  if (projectId && current?.project_type === "requirements_based") {
-    return <TestCasesManagementView projectId={projectId} current={current} />;
-  }
   const { st, q } = useTestList(false);
   const nav = useNavigate();
   const { can } = useAuth();
   const [create, setCreate] = useState(false);
+
+  if (projectId && current?.project_type === "requirements_based") {
+    return <TestCasesManagementView projectId={projectId} current={current} />;
+  }
   return (
     <>
       <PageHeader title="Test Management" subtitle="Test cases traced to requirement clauses, validated deterministically before review."
@@ -365,7 +366,7 @@ export function TestDetailPage() {
                   className="w-full text-xs text-accent hover:bg-accent/10 border border-dashed border-accent/40"
                   onClick={() => setComment(`Approved based on LLM-as-a-Judge audit: verified verbatim against clause ${t.clause_keys.join(', ')} with ${Math.round(t.confidence * 100)}% grounding consensus.`)}
                 >
-                  Use Judge Recommendation in Comment
+                  ✨ Auto-populate Reviewer Note
                 </Button>
               )}
             </div>

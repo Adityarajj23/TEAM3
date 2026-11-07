@@ -329,7 +329,7 @@ def run_behaviour_simulation(
 
     log_lines = [
         f"=== [SIMULATION] BEHAVIOUR SIMULATION RUN: {run_key} ===",
-        f"NOTICE: THIS RUN IS A DETERMINISTIC BEHAVIOUR SIMULATION, NOT REAL PRODUCTION CODE EXECUTION.",
+        "NOTICE: THIS RUN IS A DETERMINISTIC BEHAVIOUR SIMULATION, NOT REAL PRODUCTION CODE EXECUTION.",
         f"Simulation Model: {model.name} (v{model.version})",
         f"Project: {proj.name} ({proj.key})",
         f"Timestamp: {start_time.isoformat()}",

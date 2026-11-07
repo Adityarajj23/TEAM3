@@ -40,7 +40,7 @@ export function TestCasesManagementView({ projectId, current }: TestCasesManagem
     queryFn: () => api.get<Page<TestCase>>("/tests", { project_id: projectId, page_size: 200 }),
   });
 
-  const tests = q.data?.items || [];
+  const tests = useMemo(() => q.data?.items || [], [q.data?.items]);
 
   // Tab state
   const [activeTab, setActiveTab] = useState<"cases" | "by_req" | "by_category" | "coverage" | "validation" | "history">("cases");

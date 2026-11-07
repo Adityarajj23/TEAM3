@@ -2032,6 +2032,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tests/{test_id}/run-sandbox": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run Sandbox Test
+         * @description Run an automated pytest test case directly in the Reference HCM sandbox.
+         */
+        post: operations["run_sandbox_test_api_v1_tests__test_id__run_sandbox_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tests/{test_id}/validate": {
         parameters: {
             query?: never;
@@ -7361,6 +7381,37 @@ export interface operations {
                 "application/json": components["schemas"]["ReviewIn"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    run_sandbox_test_api_v1_tests__test_id__run_sandbox_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                test_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {

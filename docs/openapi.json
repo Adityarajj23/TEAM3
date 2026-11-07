@@ -8929,6 +8929,47 @@
     ]
    }
   },
+  "/api/v1/tests/{test_id}/run-sandbox": {
+   "post": {
+    "description": "Run an automated pytest test case directly in the Reference HCM sandbox.",
+    "operationId": "run_sandbox_test_api_v1_tests__test_id__run_sandbox_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "test_id",
+      "required": true,
+      "schema": {
+       "title": "Test Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Run Sandbox Test",
+    "tags": [
+     "test cases"
+    ]
+   }
+  },
   "/api/v1/tests/{test_id}/validate": {
    "post": {
     "operationId": "validate_specification_api_v1_tests__test_id__validate_post",

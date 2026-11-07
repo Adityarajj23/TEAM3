@@ -17,15 +17,16 @@ import { cn, fmtDate, fmtDuration, label } from "@/utils/format";
 
 export function ExecutionsPage() {
   const { projectId, current } = useProjects();
-  if (projectId && current?.project_type === "requirements_based") {
-    return <TestRunsManagementView projectId={projectId} current={current} />;
-  }
   const st = useListState(["project_id", "status", "source", "suite_id"], { sort: "started_at" });
   const pid = st.filters.project_id || (projectId ? String(projectId) : "");
   const params = { ...st.params, ...(pid ? { project_id: pid } : {}) };
   const q = useQuery({ queryKey: ["executions", params], queryFn: () => api.get<Page<Execution>>("/executions", params),
     refetchInterval: (qq) => qq.state.data?.items.some((e) => ["queued", "running"].includes(e.status)) ? 2000 : false });
   const nav = useNavigate();
+
+  if (projectId && current?.project_type === "requirements_based") {
+    return <TestRunsManagementView projectId={projectId} current={current} />;
+  }
   return (
     <>
       <PageHeader title="Test Executions" subtitle="Every run of approved tests, with the exact script hashes and environment used."
