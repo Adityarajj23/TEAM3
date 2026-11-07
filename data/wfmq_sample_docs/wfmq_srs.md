@@ -17,3 +17,4 @@ This specification defines the functional software requirements, API interface c
 ## 4. Hardware Kiosk & Biometric Interfaces (SRS-HW)
 - The time clock interface will support biometric fingerprint scanner hardware devices for physical kiosk clock-in and employee identity verification.
 - The kiosk sub-system shall maintain offline punch caching when local network connectivity to the central cloud API is unavailable.
+

@@ -13,3 +13,4 @@
 - Employees become eligible for annual paid leave after a probation period of 30 days under collective bargaining agreements.
 - Unused annual leave balances up to a maximum of 40 hours may be carried forward into the subsequent calendar year.
 - The system shall prohibit negative leave balances under all standard employment agreements.
+

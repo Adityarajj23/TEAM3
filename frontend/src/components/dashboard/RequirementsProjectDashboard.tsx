@@ -680,7 +680,7 @@ export function RequirementsProjectDashboard({ projectId, fallback }: Props) {
                                   key: ex.key,
                                   log: ex.log_excerpt || "No log content recorded.",
                                 });
-                              } catch (err) {
+                              } catch {
                                 toast.error("Failed to load execution details");
                               }
                             }}

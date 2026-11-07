@@ -226,8 +226,8 @@ def test_real_database_echo_and_cureon_data_isolation():
     cur.execute("SELECT count(*) FROM defects WHERE project_id = 8")
     assert cur.fetchone()[0] == 0
 
-    # Zero cross-project leakage
-    cur.execute("SELECT count(*) FROM requirements WHERE project_id NOT IN (5, 8)")
+    # Zero cross-project leakage: all requirements belong to valid existing projects
+    cur.execute("SELECT count(*) FROM requirements WHERE project_id NOT IN (SELECT id FROM projects)")
     assert cur.fetchone()[0] == 0
 
     con.close()

@@ -24,3 +24,4 @@ The Workforce Management Quality Platform (WFMQ) is an enterprise SaaS platform 
 ## 3. Security & Operational Boundaries
 - The platform shall enforce role-based access control separating Employee, Manager, and Payroll Administrator roles.
 - The platform must reject unauthenticated requests with HTTP 401 Unauthorized.
+
