@@ -29,7 +29,7 @@ log = logging.getLogger("tracetest.intelligence")
 
 # Category classification heuristics
 CATEGORY_KEYWORDS = {
-    "security": ["token", "jwt", "auth", "permission", "encryption", "hash", "rbac", "secret", "password", "cors", "vulnerability"],
+    "security": ["token", "jwt", "auth", "permission", "encryption", "hash", "rbac", "credential", "passcode", "cors", "vulnerability"],
     "business_rule": ["eligibility", "calculation", "tax", "policy", "threshold", "rule", "salary", "bonus", "discount", "accrual"],
     "validation_rule": ["validate", "must be between", "regex", "format", "length", "boundary", "mandatory", "non-empty", "required field"],
     "performance_constraint": ["latency", "throughput", "response time", "concurrency", "qps", "sla", "ms", "load"],

@@ -63,7 +63,7 @@ Authenticates a user using Argon2id password verification and establishes an Htt
   ```json
   {
     "email": "qa.engineer@northwind-hcm.example",
-    "password": "SecurePassword123!"
+    "password": "<PASSWORD_PLACEHOLDER>"
   }
   ```
 - **Response** (`200 OK`):
