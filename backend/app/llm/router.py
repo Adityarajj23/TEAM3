@@ -113,7 +113,18 @@ def provider_chain() -> list[LLMProvider]:
     s = get_settings()
     if s.llm_mode == "mock":
         return [_mock_override or MockProvider()]
-    return [p for p in (GeminiProvider(s), GroqProvider(s), OllamaProvider(s)) if p.configured()]
+    configured: dict[str, LLMProvider] = {}
+    groq = GroqProvider(s)
+    if groq.configured():
+        configured["groq"] = groq
+    gemini = GeminiProvider(s)
+    if gemini.configured():
+        configured["gemini"] = gemini
+    ollama = OllamaProvider(s)
+    if ollama.configured():
+        configured["ollama"] = ollama
+    order = [s.primary_provider] + [p for p in ["groq", "ollama", "gemini"] if p != s.primary_provider]
+    return [configured[p] for p in order if p in configured]
 
 
 def provider_status() -> dict:
@@ -150,17 +161,20 @@ def _extract_json(text: str) -> object:
 
 
 def _trace(run_id, provider, model, task, phash, status, latency, attempt, comp: Completion | None, error=None):
-    from app.db.base import session_scope
-    from app.db.models import ProviderTrace
-    with session_scope() as db:
-        db.add(ProviderTrace(run_id=run_id, provider=provider, model=model,
-                             slot_id=comp.slot_id if comp else None,
-                             task=task, prompt_hash=phash,
-                             status=status, latency_ms=latency, attempt=attempt,
-                             input_tokens=comp.input_tokens if comp else None,
-                             output_tokens=comp.output_tokens if comp else None,
-                             error=(error or "")[:2000] or None,
-                             response_text=(comp.text[:4000] if comp else None)))
+    try:
+        from app.db.base import session_scope
+        from app.db.models import ProviderTrace
+        with session_scope() as db:
+            db.add(ProviderTrace(run_id=run_id, provider=provider, model=model,
+                                 slot_id=comp.slot_id if comp else None,
+                                 task=task, prompt_hash=phash,
+                                 status=status, latency_ms=latency, attempt=attempt,
+                                 input_tokens=comp.input_tokens if comp else None,
+                                 output_tokens=comp.output_tokens if comp else None,
+                                 error=(error or "")[:2000] or None,
+                                 response_text=(comp.text[:4000] if comp else None)))
+    except Exception:
+        pass
 
 
 def _cache_get(phash: str, task: str):
