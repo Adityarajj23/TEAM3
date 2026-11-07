@@ -92,6 +92,12 @@ def upgrade() -> None:
         batch_op.add_column(sa.Column('extraction_provenance', sa.String(length=30), nullable=False, server_default='explicit_documented'))
         batch_op.add_column(sa.Column('review_status', sa.String(length=30), nullable=False, server_default='pending_review'))
 
+    # Add FK and index for requirements.document_id using batch mode
+    with op.batch_alter_table('requirements', schema=None) as batch_op:
+        batch_op.create_index('ix_requirements_document_id', ['document_id'])
+        batch_op.create_foreign_key('fk_requirements_document_id_documents', 'documents', ['document_id'], ['id'], ondelete='SET NULL')
+
+
     # 6. Alter acceptance_criteria table
     with op.batch_alter_table('acceptance_criteria', schema=None) as batch_op:
         batch_op.add_column(sa.Column('actor', sa.String(length=100), nullable=True))
@@ -112,10 +118,14 @@ def upgrade() -> None:
     with op.batch_alter_table('executions', schema=None) as batch_op:
         batch_op.add_column(sa.Column('model_id', sa.Integer(), nullable=True))
         batch_op.add_column(sa.Column('execution_type', sa.String(length=30), nullable=False, server_default='simulation'))
+    # Add FK for executions.model_id
+    op.create_foreign_key('fk_executions_model_id_simulation_models', 'executions', 'simulation_models', ['model_id'], ['id'], ondelete='SET NULL')
 
 
 def downgrade() -> None:
     with op.batch_alter_table('executions', schema=None) as batch_op:
+        # Drop FK for executions.model_id
+        op.drop_constraint('fk_executions_model_id_simulation_models', 'executions', type_='foreignkey')
         batch_op.drop_column('execution_type')
         batch_op.drop_column('model_id')
 
@@ -142,6 +152,9 @@ def downgrade() -> None:
         batch_op.drop_column('source_page')
         batch_op.drop_column('source_section')
         batch_op.drop_column('document_id')
+        # Drop index and FK for requirements.document_id
+        op.drop_index('ix_requirements_document_id', table_name='requirements')
+        op.drop_constraint('fk_requirements_document_id_documents', 'requirements', type_='foreignkey')
 
     with op.batch_alter_table('projects', schema=None) as batch_op:
         batch_op.drop_column('explicit_exclusions')
