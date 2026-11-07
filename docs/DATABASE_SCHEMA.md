@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-TraceTest AI uses SQLite 3 operating with Write-Ahead Logging (`WAL`), immediate transaction locks, strict foreign key constraints, and 64-bit integer primary keys managed through SQLAlchemy 2.0 ORM. All 43 database tables are fully normalized, indexed for high-concurrency read operations, and audited with append-only logs.
+TraceTest AI uses SQLite 3 operating with Write-Ahead Logging (`WAL`), immediate transaction locks, strict foreign key constraints, and 64-bit integer primary keys managed through SQLAlchemy 2.0 ORM. All 44 database tables are fully normalized, indexed for high-concurrency read operations, and audited with append-only logs.
 
 ---
 
@@ -72,7 +72,8 @@ erDiagram
 14. **`environments`**: Target systems under test (`id`, `project_id`, `name`, `kind`, `base_url`, `hcm_version`, `is_default`).
 15. **`documents`**: Ingested product & specification documents (`id`, `project_id`, `filename`, `display_name`, `file_path`, `file_type`, `document_type`, `file_size_bytes`, `purpose`, `description`, `version`, `owner`, `document_date`, `related_module`, `priority`, `processing_instructions`, `checksum`, `status`, `upload_status`, `extraction_status`, `error_message`, `extracted_text`, `metadata_json`, `created_at`, `updated_at`).
 16. **`document_processing_jobs`**: Document extraction & ingestion job tracking (`id`, `document_id`, `project_id`, `job_status`, `processing_stage`, `started_at`, `completed_at`, `error_message`, `retry_count`, `extracted_content_reference`).
-17. **`simulation_models`**: Behavior simulation models (`id`, `project_id`, `name`, `version`, `domain`, `definition_json`, `status`, `created_at`, `updated_at`).
+17. **`extracted_contents`**: Granular extracted sections, tables, and page items from uploaded documents (`id`, `document_id`, `content_type`, `content`, `source_page`, `source_section`, `source_location`, `metadata_json`, `created_at`).
+18. **`simulation_models`**: Behavior simulation models (`id`, `project_id`, `name`, `version`, `domain`, `definition_json`, `status`, `created_at`, `updated_at`).
 18. **`integrations`**: External connectors e.g. GitHub (`id`, `project_id`, `kind`, `status`, `config`, `created_at`).
 19. **`integration_events`**: Audit trail of incoming webhooks and sync events (`id`, `integration_id`, `event_type`, `payload`, `created_at`).
 

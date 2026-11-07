@@ -159,6 +159,81 @@ def detect_ambiguities_and_clarifications(
     return clarifications
 
 
+def detect_contradictions_across_requirements(
+    db: Session,
+    project_id: int,
+) -> list[RequirementClarification]:
+    """Scan all project requirements to identify conflicting policies, rates, and thresholds across documents."""
+    reqs = db.execute(
+        select(Requirement).where(Requirement.project_id == project_id)
+    ).scalars().all()
+
+    existing_clars = db.execute(
+        select(RequirementClarification).where(
+            RequirementClarification.project_id == project_id,
+            RequirementClarification.type.in_(["contradiction", "conflict"]),
+        )
+    ).scalars().all()
+    existing_questions = {c.question for c in existing_clars}
+
+    new_contradictions: list[RequirementClarification] = []
+
+    extractors = [
+        (
+            "Overtime Multiplier Rate",
+            re.compile(r"overtime.*?(?:rate|multiplier|paid at|calculated at|rate is)?.*?(\d+(?:\.\d+)?)\s*x", re.IGNORECASE),
+            "Document contradiction on Overtime Rate: '{r1_key}' specifies {val1}x regular pay whereas '{r2_key}' specifies {val2}x regular pay. Which multiplier should the payroll calculation engine enforce?",
+            "Contradicting multiplier rates lead to erroneous gross pay calculation and non-compliant audit runs.",
+            "Confirm authoritative overtime multiplier (e.g. 1.5x FLSA vs 2.0x weekend rate) with payroll stakeholders.",
+        ),
+        (
+            "Leave Eligibility / Probation Period",
+            re.compile(r"(?:probation(?:ary)?|eligib(?:ility|le)|waiting).*?(\d+)\s*days?", re.IGNORECASE),
+            "Document contradiction on Leave Eligibility: '{r1_key}' requires {val1} days whereas '{r2_key}' requires {val2} days. What is the authoritative probation threshold?",
+            "Conflicting waiting periods lead to premature leave approvals or wrongful leave request rejections.",
+            "Confirm standard probationary period with HR policy documentation.",
+        ),
+        (
+            "Session Inactivity Timeout",
+            re.compile(r"(?:session|inactivity|idle).*?(\d+)\s*(?:minutes?|mins?)", re.IGNORECASE),
+            "Document contradiction on Session Inactivity Timeout: '{r1_key}' specifies {val1} minutes whereas '{r2_key}' specifies {val2} minutes. What is the required timeout threshold?",
+            "Varying session lifetimes compromise security boundaries and create inconsistent logout behavior.",
+            "Establish unified idle session timeout across all product tiers.",
+        ),
+    ]
+
+    for topic, pattern, q_tmpl, impact, resolution in extractors:
+        matches = []
+        for r in reqs:
+            full_txt = f"{r.title} {r.evidence_excerpt or ''} {r.related_scenario or ''}"
+            m = pattern.search(full_txt)
+            if m:
+                matches.append((r, m.group(1)))
+
+        for i in range(len(matches)):
+            for j in range(i + 1, len(matches)):
+                r1, v1 = matches[i]
+                r2, v2 = matches[j]
+                if v1 != v2:
+                    q = q_tmpl.format(r1_key=r1.key, val1=v1, r2_key=r2.key, val2=v2)
+                    if q not in existing_questions:
+                        c = RequirementClarification(
+                            project_id=project_id,
+                            requirement_id=r1.id,
+                            type="contradiction",
+                            question=q,
+                            context=f"Discrepancy detected between {r1.key} (citing {v1}) and {r2.key} (citing {v2}).",
+                            impact=impact,
+                            suggested_resolution=resolution,
+                            status="open",
+                        )
+                        db.add(c)
+                        new_contradictions.append(c)
+                        existing_questions.add(q)
+
+    return new_contradictions
+
+
 def analyze_and_extract_project_requirements(
     db: Session,
     project_id: int,
@@ -436,6 +511,10 @@ def analyze_and_extract_project_requirements(
             )
             existing_req_titles.add(inferred_title.lower())
             created_requirements.append(req)
+
+    # 4. Multi-document Contradiction & Conflict Detection
+    contradictions = detect_contradictions_across_requirements(db, project_id)
+    new_clarifications.extend(contradictions)
 
     db.commit()
 

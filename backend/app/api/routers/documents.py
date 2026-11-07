@@ -18,7 +18,7 @@ from app.api.deps import (
 )
 from app.core.errors import BadRequest, NotFound
 from app.db.base import get_db, utcnow
-from app.db.models import Document, DocumentProcessingJob, Project, Requirement
+from app.db.models import Document, DocumentProcessingJob, ExtractedContent, Project, Requirement
 from app.services import audit
 from app.services.document_processor import (
     process_document,
@@ -365,6 +365,27 @@ def download_document(
         filename=doc.display_name or doc.filename,
         media_type=media_type,
     )
+
+
+@router.get("/documents/{document_id}/extracted-content")
+def get_document_extracted_content(
+    document_id: int,
+    db: Session = Depends(get_db),
+    p: Principal = Depends(current_principal),
+):
+    doc = db.get(Document, document_id)
+    if not doc:
+        raise NotFound(f"Document {document_id} not found")
+    if doc.project_id is not None:
+        get_project_checked(db, p, doc.project_id)
+
+    items = db.execute(
+        select(ExtractedContent)
+        .where(ExtractedContent.document_id == document_id)
+        .order_by(ExtractedContent.id.asc())
+    ).scalars().all()
+
+    return [S.extracted_content(it) for it in items]
 
 
 @router.post("/documents/{document_id}/process")

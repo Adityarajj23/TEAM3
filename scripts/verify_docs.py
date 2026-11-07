@@ -4,7 +4,7 @@
 Verifies:
 1. All technical documentation files exist and have valid internal markdown links.
 2. API Reference documents match FastAPI openapi.json routes and actual app.routes.
-3. Database documentation matches SQLAlchemy DB models (all 43 tables).
+3. Database documentation matches SQLAlchemy DB models (all 44 tables).
 4. System security invariants (127.0.0.1 bind, fail-closed sandbox, askpass git).
 5. Zero credentials/secrets leaked across markdown files and git repository.
 """
@@ -219,8 +219,8 @@ def verify_documented_counts() -> list[str]:
         models_py = (REPO_ROOT / "backend" / "app" / "db" / "models.py").read_text(encoding="utf-8", errors="ignore")
         actual_tables = len(set(re.findall(r'__tablename__\s*=\s*["\']([^"\']+)["\']', models_py)))
 
-    if actual_tables != 43:
-        errors.append(f"SQLAlchemy Base table count changed to {actual_tables}, expected 43")
+    if actual_tables != 44:
+        errors.append(f"SQLAlchemy Base table count changed to {actual_tables}, expected 44")
 
     # 2. Verify Reference HCM faults
     hcm_v1_files = list((REPO_ROOT / "reference_hcm" / "v1_0").glob("*.py"))
@@ -276,14 +276,14 @@ def main() -> int:
     else:
         print("  PASS: API reference covers all OpenAPI paths.")
 
-    print("[4/8] Verifying database schema documentation (SQLAlchemy 43 tables)...")
+    print("[4/8] Verifying database schema documentation (SQLAlchemy 44 tables)...")
     d_errs = verify_database_schema_coverage()
     if d_errs:
         all_errors.extend(d_errs)
         for e in d_errs:
             print(f"  FAIL: {e}")
     else:
-        print("  PASS: Database schema documents all 43 SQLAlchemy models.")
+        print("  PASS: Database schema documents all 44 SQLAlchemy models.")
 
     print("[5/8] Validating security invariants (loopback bind, network isolation)...")
     sec_errs = verify_security_invariants()

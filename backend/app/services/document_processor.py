@@ -13,12 +13,13 @@ import re
 from pathlib import Path
 from typing import Any
 
+from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.errors import BadRequest
 from app.db.base import utcnow
-from app.db.models import Document, DocumentProcessingJob
+from app.db.models import Document, DocumentProcessingJob, ExtractedContent
 
 log = logging.getLogger("tracetest.documents")
 
@@ -89,6 +90,7 @@ def parse_pdf(file_path: Path) -> dict[str, Any]:
     reader = PdfReader(str(file_path))
     pages_text: list[str] = []
     sections: list[dict[str, Any]] = []
+    items: list[dict[str, Any]] = []
     warnings: list[str] = []
 
     current_section = "General"
@@ -109,6 +111,15 @@ def parse_pdf(file_path: Path) -> dict[str, Any]:
                         "level": line.count(".") + 1 if "." in line else 1,
                         "line": line_idx + 1,
                     })
+            if txt.strip():
+                items.append({
+                    "content_type": "text",
+                    "content": txt.strip(),
+                    "source_page": page_idx,
+                    "source_section": current_section,
+                    "source_location": f"Page {page_idx}",
+                    "metadata": {"line_count": len(lines)},
+                })
         except Exception as e:
             warnings.append(f"Failed to extract text from page {page_idx}: {e}")
 
@@ -118,6 +129,7 @@ def parse_pdf(file_path: Path) -> dict[str, Any]:
         "sections": sections,
         "tables": [],
         "pages_count": len(reader.pages),
+        "items": items,
         "warnings": warnings,
     }
 
@@ -129,14 +141,29 @@ def parse_docx(file_path: Path) -> dict[str, Any]:
     paragraphs_text: list[str] = []
     sections: list[dict[str, Any]] = []
     tables_data: list[dict[str, Any]] = []
+    items: list[dict[str, Any]] = []
     warnings: list[str] = []
+
+    cur_sec = "General"
+    cur_buf: list[str] = []
 
     for p_idx, p in enumerate(doc.paragraphs, start=1):
         txt = p.text.strip()
         if not txt:
             continue
-        paragraphs_text.append(txt)
         if p.style.name.startswith("Heading"):
+            if cur_buf:
+                items.append({
+                    "content_type": "section",
+                    "content": "\n".join(cur_buf).strip(),
+                    "source_page": None,
+                    "source_section": cur_sec,
+                    "source_location": f"Paragraphs {max(1, p_idx - len(cur_buf))}-{p_idx - 1}",
+                    "metadata": {},
+                })
+                cur_buf = []
+            cur_sec = txt
+            paragraphs_text.append(txt)
             try:
                 level = int(p.style.name.replace("Heading", "").strip())
             except ValueError:
@@ -146,6 +173,19 @@ def parse_docx(file_path: Path) -> dict[str, Any]:
                 "level": level,
                 "page": f"Paragraph {p_idx}",
             })
+        else:
+            cur_buf.append(txt)
+            paragraphs_text.append(txt)
+
+    if cur_buf:
+        items.append({
+            "content_type": "section",
+            "content": "\n".join(cur_buf).strip(),
+            "source_page": None,
+            "source_section": cur_sec,
+            "source_location": "Body",
+            "metadata": {},
+        })
 
     # Extract tables
     for t_idx, table in enumerate(doc.tables, start=1):
@@ -161,15 +201,23 @@ def parse_docx(file_path: Path) -> dict[str, Any]:
                 "rows_count": len(data),
                 "sample_rows": data[:10],
             })
-            # Also append textual representation
             table_repr = f"\n[Table {t_idx}]\n" + " | ".join(headers) + "\n"
             table_repr += "\n".join(" | ".join(r) for r in data[:20])
             paragraphs_text.append(table_repr)
+            items.append({
+                "content_type": "table",
+                "content": table_repr.strip(),
+                "source_page": None,
+                "source_section": "Table",
+                "source_location": f"Table {t_idx}",
+                "metadata": {"headers": headers, "rows_count": len(data)},
+            })
 
     return {
         "extracted_text": "\n\n".join(paragraphs_text),
         "sections": sections,
         "tables": tables_data,
+        "items": items,
         "warnings": warnings,
     }
 
@@ -181,6 +229,7 @@ def parse_xlsx(file_path: Path) -> dict[str, Any]:
     sheets_text: list[str] = []
     sections: list[dict[str, Any]] = []
     tables_data: list[dict[str, Any]] = []
+    items: list[dict[str, Any]] = []
     warnings: list[str] = []
 
     for sheet_name in wb.sheetnames:
@@ -209,10 +258,20 @@ def parse_xlsx(file_path: Path) -> dict[str, Any]:
             text_block += "\n".join(" | ".join(r) for r in data)
             sheets_text.append(text_block)
 
+            items.append({
+                "content_type": "table",
+                "content": text_block.strip(),
+                "source_page": None,
+                "source_section": f"Sheet: {sheet_name}",
+                "source_location": f"Sheet {sheet_name}",
+                "metadata": {"sheet_name": sheet_name, "headers": headers, "rows_count": len(data)},
+            })
+
     return {
         "extracted_text": "\n\n".join(sheets_text),
         "sections": sections,
         "tables": tables_data,
+        "items": items,
         "sheets_count": len(wb.sheetnames),
         "warnings": warnings,
     }
@@ -223,13 +282,22 @@ def parse_csv(file_path: Path) -> dict[str, Any]:
     reader = csv.reader(io.StringIO(raw))
     rows = list(reader)
     if not rows:
-        return {"extracted_text": "", "sections": [], "tables": [], "warnings": ["Empty CSV file"]}
+        return {"extracted_text": "", "sections": [], "tables": [], "items": [], "warnings": ["Empty CSV file"]}
 
     headers = rows[0]
     data = rows[1:]
     text_block = f"--- [CSV Table: {file_path.name}] ---\n"
     text_block += " | ".join(headers) + "\n"
     text_block += "\n".join(" | ".join(r) for r in data)
+
+    items = [{
+        "content_type": "table",
+        "content": text_block.strip(),
+        "source_page": 1,
+        "source_section": file_path.name,
+        "source_location": f"CSV Table: {file_path.name}",
+        "metadata": {"headers": headers, "rows_count": len(data)},
+    }]
 
     return {
         "extracted_text": text_block,
@@ -239,6 +307,7 @@ def parse_csv(file_path: Path) -> dict[str, Any]:
             "rows_count": len(data),
             "sample_rows": data[:10],
         }],
+        "items": items,
         "warnings": [],
     }
 
@@ -247,23 +316,52 @@ def parse_markdown(file_path: Path) -> dict[str, Any]:
     text = file_path.read_text(encoding="utf-8", errors="replace")
     lines = text.splitlines()
     sections: list[dict[str, Any]] = []
+    items: list[dict[str, Any]] = []
+
+    cur_title = "Overview"
+    cur_lines: list[str] = []
+    start_line = 1
 
     for idx, line in enumerate(lines, start=1):
         line_s = line.strip()
         if line_s.startswith("#"):
+            if cur_lines and any(l.strip() for l in cur_lines):
+                items.append({
+                    "content_type": "section",
+                    "content": "\n".join(cur_lines).strip(),
+                    "source_page": None,
+                    "source_section": cur_title,
+                    "source_location": f"Lines {start_line}-{idx - 1}",
+                    "metadata": {},
+                })
+                cur_lines = []
             hashes = len(line_s) - len(line_s.lstrip("#"))
-            title = line_s.lstrip("#").strip()
+            cur_title = line_s.lstrip("#").strip()
+            start_line = idx
             sections.append({
-                "title": title,
+                "title": cur_title,
                 "level": hashes,
                 "page": f"Line {idx}",
                 "line": idx,
             })
+        else:
+            cur_lines.append(line)
+
+    if cur_lines and any(l.strip() for l in cur_lines):
+        items.append({
+            "content_type": "section",
+            "content": "\n".join(cur_lines).strip(),
+            "source_page": None,
+            "source_section": cur_title,
+            "source_location": f"Lines {start_line}-{len(lines)}",
+            "metadata": {},
+        })
 
     return {
         "extracted_text": text,
         "sections": sections,
         "tables": [],
+        "items": items,
         "warnings": [],
     }
 
@@ -272,22 +370,52 @@ def parse_txt(file_path: Path) -> dict[str, Any]:
     text = file_path.read_text(encoding="utf-8", errors="replace")
     lines = text.splitlines()
     sections: list[dict[str, Any]] = []
+    items: list[dict[str, Any]] = []
+
+    cur_title = "General"
+    cur_lines: list[str] = []
+    start_line = 1
 
     for idx, line in enumerate(lines, start=1):
         line_s = line.strip()
         # Heuristic for section titles: numbered or uppercase short lines
         if re.match(r"^(\d+(\.\d+)*|[A-Z]\.)\s+[A-Za-z0-9\s_-]{3,80}$", line_s):
+            if cur_lines and any(l.strip() for l in cur_lines):
+                items.append({
+                    "content_type": "section",
+                    "content": "\n".join(cur_lines).strip(),
+                    "source_page": None,
+                    "source_section": cur_title,
+                    "source_location": f"Lines {start_line}-{idx - 1}",
+                    "metadata": {},
+                })
+                cur_lines = []
+            cur_title = line_s
+            start_line = idx
             sections.append({
                 "title": line_s,
                 "level": line_s.count(".") + 1 if "." in line_s else 1,
                 "page": f"Line {idx}",
                 "line": idx,
             })
+        else:
+            cur_lines.append(line)
+
+    if cur_lines and any(l.strip() for l in cur_lines):
+        items.append({
+            "content_type": "section",
+            "content": "\n".join(cur_lines).strip(),
+            "source_page": None,
+            "source_section": cur_title,
+            "source_location": f"Lines {start_line}-{len(lines)}",
+            "metadata": {},
+        })
 
     return {
         "extracted_text": text,
         "sections": sections,
         "tables": [],
+        "items": items,
         "warnings": [],
     }
 
@@ -360,6 +488,34 @@ def process_document(db: Session, document_id: int) -> Document:
             "extracted_chars": len(doc.extracted_text),
             "processed_at": utcnow().isoformat(),
         }
+
+        # Clear existing extracted content records and persist newly parsed items
+        db.execute(delete(ExtractedContent).where(ExtractedContent.document_id == doc.id))
+        content_items = parsed.get("items", [])
+        if not content_items and doc.extracted_text:
+            content_items = [{
+                "content_type": "text",
+                "content": doc.extracted_text,
+                "source_page": 1,
+                "source_section": "Document Content",
+                "source_location": "Full Document",
+                "metadata": {},
+            }]
+
+        for it in content_items:
+            content_str = str(it.get("content", "")).strip()
+            if content_str:
+                ec = ExtractedContent(
+                    document_id=doc.id,
+                    content_type=it.get("content_type", "text"),
+                    content=content_str,
+                    source_page=it.get("source_page"),
+                    source_section=str(it.get("source_section", ""))[:250],
+                    source_location=str(it.get("source_location", ""))[:250],
+                    metadata_json=it.get("metadata", {}),
+                )
+                db.add(ec)
+
         doc.status = "completed"
         doc.upload_status = "completed"
         doc.extraction_status = "extracted"

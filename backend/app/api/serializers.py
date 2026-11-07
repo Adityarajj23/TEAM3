@@ -156,6 +156,20 @@ def document_processing_job(j: m.DocumentProcessingJob) -> dict:
     }
 
 
+def extracted_content(ec: m.ExtractedContent) -> dict:
+    return {
+        "id": ec.id,
+        "document_id": ec.document_id,
+        "content_type": ec.content_type,
+        "content": ec.content,
+        "source_page": ec.source_page,
+        "source_section": ec.source_section,
+        "source_location": ec.source_location,
+        "metadata": ec.metadata_json or {},
+        "created_at": iso(ec.created_at),
+    }
+
+
 def requirement_clarification(c: m.RequirementClarification) -> dict:
     return {
         "id": c.id,

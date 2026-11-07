@@ -243,6 +243,19 @@ class DocumentProcessingJob(Base):
     created_at: Mapped[datetime] = _ts()
 
 
+class ExtractedContent(Base):
+    __tablename__ = "extracted_contents"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    document_id: Mapped[int] = mapped_column(ForeignKey("documents.id", ondelete="CASCADE"), index=True)
+    content_type: Mapped[str] = mapped_column(String(50), default="text")  # text | table | section | header | list
+    content: Mapped[str] = mapped_column(Text, default="")
+    source_page: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    source_section: Mapped[str] = mapped_column(String(255), default="")
+    source_location: Mapped[str] = mapped_column(String(255), default="")
+    metadata_json: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = _ts()
+
+
 class Requirement(Base):
     __tablename__ = "requirements"
     id: Mapped[int] = mapped_column(primary_key=True)

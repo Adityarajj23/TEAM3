@@ -3740,6 +3740,46 @@
     ]
    }
   },
+  "/api/v1/documents/{document_id}/extracted-content": {
+   "get": {
+    "operationId": "get_document_extracted_content_api_v1_documents__document_id__extracted_content_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "document_id",
+      "required": true,
+      "schema": {
+       "title": "Document Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get Document Extracted Content",
+    "tags": [
+     "documents"
+    ]
+   }
+  },
   "/api/v1/documents/{document_id}/jobs": {
    "get": {
     "operationId": "list_document_jobs_api_v1_documents__document_id__jobs_get",

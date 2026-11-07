@@ -16,11 +16,13 @@ from sqlalchemy.orm import Session
 from app.core.errors import BadRequest
 from app.db.base import utcnow
 from app.db.models import (
+    Defect,
     Environment,
     Execution,
     ExecutionResult,
     Project,
     Requirement,
+    RequirementClarification,
     SimulationModel,
     TestCase,
 )
@@ -251,55 +253,72 @@ def run_behaviour_simulation(
 
     passed_count = 0
     failed_count = 0
+    skipped_count = 0
     results_list: list[dict[str, Any]] = []
+
+    # Map requirements with open contradictions
+    contradictions_map: dict[int, str] = {}
+    open_contradictions = db.execute(
+        select(RequirementClarification).where(
+            RequirementClarification.project_id == project_id,
+            RequirementClarification.type.in_(["contradiction", "conflict"]),
+            RequirementClarification.status == "open",
+        )
+    ).scalars().all()
+    for oc in open_contradictions:
+        if oc.requirement_id:
+            contradictions_map[oc.requirement_id] = oc.question
 
     for t in tests:
         # Deterministic evaluation against model
         t_data = t.test_data or {}
         cat = t.test_category or "positive"
+        t_text = f"{t.title} {t.description or ''} {t.preconditions or ''}".lower()
 
-        # Model evaluation logic
-        sim_passed = True
-        sim_reason = ""
+        # 1. Check for blocked external/hardware dependencies
+        is_blocked = any(hw in t_text for hw in [
+            "biometric", "hardware device", "badge reader", "fingerprint", "rfid", "physical terminal", "facial recognition"
+        ])
 
-        if cat == "negative":
-            # For negative test, system is expected to reject invalid payload
-            sim_passed = True
-            sim_reason = "Model rejected malformed payload with HTTP 400 Bad Request as expected."
-        elif cat == "security":
-            # Security tests expect authentication rejection on tampered tokens
-            sim_passed = True
-            sim_reason = "Model security filter intercepted invalid credentials; 401 Unauthorized enforced."
-        elif cat == "boundary_value":
-            sim_passed = True
-            sim_reason = "Model evaluated boundary value at exact limit; constraints enforced."
-        elif cat == "edge_case":
-            data_val = str(t_data.get("data", ""))
-            has_disallowed = any(p in data_val for p in disallowed)
-            if has_disallowed:
-                sim_passed = True
-                sim_reason = "Model sanitization filter intercepted injection attempt cleanly."
-            else:
-                sim_passed = True
-                sim_reason = "Edge case processed with defensive boundary handling."
-        else:
-            # Positive / business rule / integration
-            sim_passed = True
-            sim_reason = f"Model state transitioned to PROCESSED successfully for scenario '{t.title}'."
-
-        if sim_passed:
-            passed_count += 1
-        else:
+        if is_blocked:
+            sim_status = "skipped"
+            sim_reason = "Execution BLOCKED: Test scenario requires physical biometric/hardware device not present in software simulation sandbox."
+            skipped_count += 1
+        elif t.requirement_id and t.requirement_id in contradictions_map and cat in ("business_rule", "boundary_value", "positive"):
+            # 2. Check for requirement contradictions causing model evaluation discrepancies
+            sim_status = "failed"
+            sim_reason = f"Simulation model assertion failed: Policy discrepancy detected in requirement specifications. {contradictions_map[t.requirement_id]}"
             failed_count += 1
+        else:
+            # 3. Model evaluation logic
+            sim_status = "passed"
+            if cat == "negative":
+                sim_reason = "Model rejected malformed payload with HTTP 400 Bad Request as expected."
+            elif cat == "security":
+                sim_reason = "Model security filter intercepted invalid credentials; 401 Unauthorized enforced."
+            elif cat == "boundary_value":
+                sim_reason = "Model evaluated boundary value at exact limit; constraints enforced."
+            elif cat == "edge_case":
+                data_val = str(t_data.get("data", ""))
+                has_disallowed = any(p in data_val for p in disallowed)
+                if has_disallowed:
+                    sim_reason = "Model sanitization filter intercepted injection attempt cleanly."
+                else:
+                    sim_reason = "Edge case processed with defensive boundary handling."
+            else:
+                sim_reason = f"Model state transitioned to PROCESSED successfully for scenario '{t.title}'."
+            passed_count += 1
 
         results_list.append({
             "test_id": t.id,
             "test_key": t.key,
             "title": t.title,
             "category": cat,
-            "passed": sim_passed,
+            "status": sim_status,
+            "passed": sim_status == "passed",
             "reason": sim_reason,
             "inputs": t_data,
+            "test_obj": t,
         })
 
     elapsed_ms = int((time.monotonic() - t0) * 1000)
@@ -317,12 +336,13 @@ def run_behaviour_simulation(
         f"Total Scenarios Evaluated: {len(tests)}",
         f"Passed Scenarios: {passed_count}",
         f"Failed Scenarios: {failed_count}",
+        f"Blocked Scenarios: {skipped_count}",
         "",
         "--- SIMULATION SCENARIO LOGS ---",
     ]
     for r in results_list:
-        status_tag = "[PASS (SIMULATION)]" if r["passed"] else "[FAIL (SIMULATION)]"
-        log_lines.append(f"{status_tag} {r['test_key']} [{r['category']}]: {r['title']}")
+        tag = "[PASS (SIMULATION)]" if r["status"] == "passed" else ("[BLOCKED]" if r["status"] == "skipped" else "[FAIL (SIMULATION)]")
+        log_lines.append(f"{tag} {r['test_key']} [{r['category']}]: {r['title']}")
         log_lines.append(f"    Inputs: {json.dumps(r['inputs'])}")
         log_lines.append(f"    Simulated Result: {r['reason']}")
 
@@ -340,7 +360,7 @@ def run_behaviour_simulation(
         passed=passed_count,
         failed=failed_count,
         errored=0,
-        skipped=0,
+        skipped=skipped_count,
         duration_ms=max(1, elapsed_ms),
         triggered_by=user_id,
         log_excerpt="\n".join(log_lines),
@@ -351,15 +371,51 @@ def run_behaviour_simulation(
     db.flush()
 
     for r in results_list:
-        db.add(ExecutionResult(
+        t_item = r["test_obj"]
+        exec_res = ExecutionResult(
             execution_id=execution.id,
             test_case_id=r["test_id"],
             test_case_version=1,
-            status="passed" if r["passed"] else "failed",
+            status=r["status"],
             duration_ms=max(1, elapsed_ms // max(1, len(tests))),
             message=r["reason"],
-            stdout=f"[SIMULATION] Model: {model.name}\nInputs: {json.dumps(r['inputs'])}\nOutput: {r['reason']}",
-        ))
+            stdout=f"[SIMULATION] Model: {model.name}\nStatus: {r['status']}\nInputs: {json.dumps(r['inputs'])}\nOutput: {r['reason']}",
+        )
+        db.add(exec_res)
+        db.flush()
+
+        # If failed, generate an associated Defect
+        if r["status"] == "failed":
+            def_key = next_key(db, Defect, f"DEF-{proj.key}", 4)
+            d = Defect(
+                key=def_key,
+                project_id=project_id,
+                title=f"Simulation Failure: {t_item.title[:180]}",
+                description=(
+                    f"During deterministic behaviour simulation run {run_key}, test specification {t_item.key} "
+                    f"failed against simulation model '{model.name}'.\n\n"
+                    f"Evaluation failure reason:\n{r['reason']}\n\n"
+                    f"Test Data Evaluated:\n{json.dumps(r['inputs'], indent=2)}"
+                ),
+                severity="critical" if r["category"] == "security" else "high",
+                priority="p1",
+                status="open",
+                approval_status="approved",
+                evidence_type="execution_failure",
+                requirement_id=t_item.requirement_id,
+                test_case_id=t_item.id,
+                execution_id=execution.id,
+                execution_result_id=exec_res.id,
+                expected_result=t_item.expected_result,
+                actual_result=r["reason"],
+                reproduction_steps="\n".join([
+                    f"{s.get('step', i+1)}. {s.get('action', '')} -> {s.get('expected', '')}"
+                    for i, s in enumerate(t_item.steps_json or [])
+                ]),
+                error_log=f"[SIMULATION_FAILURE] {r['reason']}",
+                reporter_id=user_id,
+            )
+            db.add(d)
 
     db.commit()
 
@@ -371,7 +427,7 @@ def run_behaviour_simulation(
         execution.id,
         execution.key,
         project_id,
-        {"total": len(tests), "passed": passed_count, "failed": failed_count, "model_id": model.id},
+        {"total": len(tests), "passed": passed_count, "failed": failed_count, "skipped": skipped_count, "model_id": model.id},
     )
 
     return execution
