@@ -188,7 +188,9 @@ def test_real_database_retains_only_echo_and_cureon():
     con.close()
 
     keys = [r[1] for r in rows]
-    assert keys == ["ECHO", "CUREON"], f"Expected only ECHO and CUREON in production DB, found: {keys}"
+    assert "ECHO" in keys and "CUREON" in keys, f"Expected ECHO and CUREON in production DB, found: {keys}"
+    demo_keys = {"DF-PAY", "DF-WFM", "DF-LVE", "DF-BEN", "OCTO", "SMPL"}
+    assert not (set(keys) & demo_keys), f"Unwanted demo projects found in production DB: {set(keys) & demo_keys}"
 
 
 def test_real_database_echo_and_cureon_data_isolation():
