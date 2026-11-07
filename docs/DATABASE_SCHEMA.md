@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-TraceTest AI uses SQLite 3 operating with Write-Ahead Logging (`WAL`), immediate transaction locks, strict foreign key constraints, and 64-bit integer primary keys managed through SQLAlchemy 2.0 ORM. All 39 database tables are fully normalized, indexed for high-concurrency read operations, and audited with append-only logs.
+TraceTest AI uses SQLite 3 operating with Write-Ahead Logging (`WAL`), immediate transaction locks, strict foreign key constraints, and 64-bit integer primary keys managed through SQLAlchemy 2.0 ORM. All 43 database tables are fully normalized, indexed for high-concurrency read operations, and audited with append-only logs.
 
 ---
 
@@ -64,13 +64,17 @@ erDiagram
 8. **`notifications`**: User alerts and notifications (`id`, `user_id`, `title`, `body`, `link`, `read`, `created_at`).
 
 ### 3.2 Projects & Environment Domain
-9. **`projects`**: Project workspaces (`id`, `key`, `name`, `description`, `status`, `project_type`, `business_domain`, `product_type`, `target_users_and_roles`, `objectives`, `business_scenarios`, `functional_expectations`, `non_functional_expectations`, `constraints_and_assumptions`, `explicit_exclusions`, `organisation_id`, `owner_id`).
-10. **`modules`**: Functional domain areas (`id`, `project_id`, `code`, `name`, `description`).
-11. **`environments`**: Target systems under test (`id`, `project_id`, `name`, `kind`, `base_url`, `hcm_version`, `is_default`).
-12. **`documents`**: Ingested product & specification documents (`id`, `project_id`, `filename`, `file_path`, `file_type`, `file_size_bytes`, `purpose`, `description`, `status`, `error_message`, `extracted_text`, `metadata_json`, `created_at`, `updated_at`).
-13. **`simulation_models`**: Behavior simulation models (`id`, `project_id`, `name`, `version`, `domain`, `definition_json`, `status`, `created_at`, `updated_at`).
-14. **`integrations`**: External connectors e.g. GitHub (`id`, `project_id`, `kind`, `status`, `config`, `created_at`).
-15. **`integration_events`**: Audit trail of incoming webhooks and sync events (`id`, `integration_id`, `event_type`, `payload`, `created_at`).
+9. **`projects`**: Project workspaces (`id`, `key`, `name`, `description`, `status`, `project_type`, `business_domain`, `product_type`, `business_goal`, `owner_name`, `team`, `version`, `environment_name`, `target_users_and_roles`, `objectives`, `business_scenarios`, `functional_expectations`, `non_functional_expectations`, `constraints_and_assumptions`, `explicit_exclusions`, `organisation_id`, `owner_id`).
+10. **`project_contexts`**: Deep product & business context (`id`, `project_id`, `product_overview`, `problem_statement`, `target_users`, `product_modules`, `architecture_context`, `technical_stack`, `external_integrations`, `business_rules`, `security_expectations`, `privacy_requirements`, `performance_expectations`, `availability_expectations`, `regulatory_standards`, `assumptions`, `exclusions`, `dependencies`, `additional_context`).
+11. **`project_roles`**: User roles and access restrictions (`id`, `project_id`, `role_name`, `description`, `permissions`, `responsibilities`, `restrictions`).
+12. **`business_scenarios`**: Structured business scenarios (`id`, `project_id`, `title`, `description`, `actor`, `preconditions`, `expected_outcome`, `business_rules`, `module`).
+13. **`modules`**: Functional domain areas (`id`, `project_id`, `code`, `name`, `description`).
+14. **`environments`**: Target systems under test (`id`, `project_id`, `name`, `kind`, `base_url`, `hcm_version`, `is_default`).
+15. **`documents`**: Ingested product & specification documents (`id`, `project_id`, `filename`, `display_name`, `file_path`, `file_type`, `document_type`, `file_size_bytes`, `purpose`, `description`, `version`, `owner`, `document_date`, `related_module`, `priority`, `processing_instructions`, `checksum`, `status`, `upload_status`, `extraction_status`, `error_message`, `extracted_text`, `metadata_json`, `created_at`, `updated_at`).
+16. **`document_processing_jobs`**: Document extraction & ingestion job tracking (`id`, `document_id`, `project_id`, `job_status`, `processing_stage`, `started_at`, `completed_at`, `error_message`, `retry_count`, `extracted_content_reference`).
+17. **`simulation_models`**: Behavior simulation models (`id`, `project_id`, `name`, `version`, `domain`, `definition_json`, `status`, `created_at`, `updated_at`).
+18. **`integrations`**: External connectors e.g. GitHub (`id`, `project_id`, `kind`, `status`, `config`, `created_at`).
+19. **`integration_events`**: Audit trail of incoming webhooks and sync events (`id`, `integration_id`, `event_type`, `payload`, `created_at`).
 
 ### 3.3 Requirements Engineering Domain
 16. **`requirements`**: Master requirement records (`id`, `key`, `project_id`, `module_id`, `document_id`, `title`, `category`, `priority`, `status`, `origin`, `source_commit_sha`, `source_section`, `source_page`, `evidence_excerpt`, `related_scenario`, `dependencies`, `extraction_provenance`, `review_status`, `confidence`, `current_version`).

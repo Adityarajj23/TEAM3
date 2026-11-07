@@ -36,6 +36,11 @@ def project(p: m.Project) -> dict:
         "project_type": getattr(p, "project_type", "requirements_based") or "requirements_based",
         "business_domain": getattr(p, "business_domain", "") or "",
         "product_type": getattr(p, "product_type", "") or "",
+        "business_goal": getattr(p, "business_goal", "") or "",
+        "owner_name": getattr(p, "owner_name", "") or "",
+        "team": getattr(p, "team", "") or "",
+        "version": getattr(p, "version", "1.0.0") or "1.0.0",
+        "environment_name": getattr(p, "environment_name", "") or "",
         "target_users_and_roles": getattr(p, "target_users_and_roles", []) or [],
         "objectives": getattr(p, "objectives", []) or [],
         "business_scenarios": getattr(p, "business_scenarios", []) or [],
@@ -49,21 +54,105 @@ def project(p: m.Project) -> dict:
     }
 
 
-def document(d: m.Document) -> dict:
+def project_context(c: m.ProjectContext) -> dict:
+    return {
+        "id": c.id,
+        "project_id": c.project_id,
+        "product_overview": c.product_overview,
+        "problem_statement": c.problem_statement,
+        "target_users": c.target_users or [],
+        "product_modules": c.product_modules or [],
+        "architecture_context": c.architecture_context,
+        "technical_stack": c.technical_stack or {},
+        "external_integrations": c.external_integrations or [],
+        "business_rules": c.business_rules or [],
+        "security_expectations": c.security_expectations,
+        "privacy_requirements": c.privacy_requirements,
+        "performance_expectations": c.performance_expectations,
+        "availability_expectations": c.availability_expectations,
+        "regulatory_standards": c.regulatory_standards or [],
+        "assumptions": c.assumptions or [],
+        "exclusions": c.exclusions or [],
+        "dependencies": c.dependencies or [],
+        "additional_context": c.additional_context,
+        "created_at": iso(c.created_at),
+        "updated_at": iso(c.updated_at),
+    }
+
+
+def project_role(r: m.ProjectRole) -> dict:
+    return {
+        "id": r.id,
+        "project_id": r.project_id,
+        "role_name": r.role_name,
+        "description": r.description,
+        "permissions": r.permissions or [],
+        "responsibilities": r.responsibilities,
+        "restrictions": r.restrictions,
+        "created_at": iso(r.created_at),
+    }
+
+
+def business_scenario(s: m.BusinessScenario) -> dict:
+    return {
+        "id": s.id,
+        "project_id": s.project_id,
+        "title": s.title,
+        "description": s.description,
+        "actor": s.actor,
+        "preconditions": s.preconditions,
+        "expected_outcome": s.expected_outcome,
+        "business_rules": s.business_rules,
+        "module": s.module,
+        "created_at": iso(s.created_at),
+    }
+
+
+def document(d: m.Document, requirements_count: int = 0) -> dict:
     return {
         "id": d.id,
         "project_id": d.project_id,
         "filename": d.filename,
+        "original_filename": d.filename,
+        "display_name": getattr(d, "display_name", "") or d.filename,
         "file_type": d.file_type,
+        "document_type": getattr(d, "document_type", d.purpose) or d.purpose,
         "file_size_bytes": d.file_size_bytes,
         "purpose": d.purpose,
         "description": d.description,
+        "version": getattr(d, "version", "1.0") or "1.0",
+        "owner": getattr(d, "owner", "") or "",
+        "document_date": getattr(d, "document_date", "") or "",
+        "related_module": getattr(d, "related_module", "") or "",
+        "priority": getattr(d, "priority", "medium") or "medium",
+        "processing_instructions": getattr(d, "processing_instructions", "") or "",
+        "checksum": getattr(d, "checksum", "") or "",
         "status": d.status,
+        "upload_status": getattr(d, "upload_status", d.status) or d.status,
+        "extraction_status": getattr(d, "extraction_status", "uploaded") or "uploaded",
         "error_message": d.error_message,
         "extracted_text_preview": (d.extracted_text or "")[:500],
+        "requirements_count": requirements_count,
         "metadata": d.metadata_json or {},
         "created_at": iso(d.created_at),
         "updated_at": iso(d.updated_at),
+    }
+
+
+def document_processing_job(j: m.DocumentProcessingJob) -> dict:
+    return {
+        "id": j.id,
+        "document_id": j.document_id,
+        "project_id": j.project_id,
+        "job_status": j.job_status,
+        "status": j.job_status,
+        "processing_stage": j.processing_stage,
+        "started_at": iso(j.started_at) if j.started_at else None,
+        "completed_at": iso(j.completed_at) if j.completed_at else None,
+        "error_message": j.error_message,
+        "retry_count": j.retry_count,
+        "extracted_content_reference": j.extracted_content_reference or {},
+        "created_at": iso(j.created_at),
     }
 
 

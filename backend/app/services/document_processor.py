@@ -5,6 +5,7 @@ Supports PDF, DOCX, XLSX, TXT, Markdown, and CSV with page, section, and sheet p
 from __future__ import annotations
 
 import csv
+import hashlib
 import io
 import logging
 import os
@@ -17,7 +18,7 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.core.errors import BadRequest
 from app.db.base import utcnow
-from app.db.models import Document
+from app.db.models import Document, DocumentProcessingJob
 
 log = logging.getLogger("tracetest.documents")
 
@@ -34,9 +35,10 @@ ALLOWED_EXTENSIONS = {
 MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024  # 25 MB
 
 
-def get_documents_storage_dir(project_id: int) -> Path:
+def get_documents_storage_dir(project_id: int | None = None) -> Path:
     settings = get_settings()
-    base_dir = settings.data_dir / "documents" / str(project_id)
+    sub = str(project_id) if project_id is not None else "drafts"
+    base_dir = settings.data_dir / "documents" / sub
     base_dir.mkdir(parents=True, exist_ok=True)
     return base_dir
 
@@ -67,7 +69,7 @@ def validate_file_upload(filename: str, content: bytes) -> tuple[str, str, int]:
     return safe_name, file_type, size
 
 
-def save_document_file(project_id: int, doc_id: int, filename: str, content: bytes) -> Path:
+def save_document_file(project_id: int | None, doc_id: int, filename: str, content: bytes) -> tuple[Path, str]:
     storage_dir = get_documents_storage_dir(project_id)
     safe_name = f"{doc_id}_{filename}"
     target_path = storage_dir / safe_name
@@ -77,7 +79,8 @@ def save_document_file(project_id: int, doc_id: int, filename: str, content: byt
         raise BadRequest("Invalid file path resolution detected")
 
     target_path.write_bytes(content)
-    return target_path
+    checksum = hashlib.sha256(content).hexdigest()
+    return target_path, checksum
 
 
 def parse_pdf(file_path: Path) -> dict[str, Any]:
@@ -309,25 +312,44 @@ def extract_document_content(file_path: Path, file_type: str) -> dict[str, Any]:
 
 
 def process_document(db: Session, document_id: int) -> Document:
-    """Process uploaded document, extract text and metadata, update database record."""
+    """Process uploaded document, extract text and metadata, update database record and job history."""
     doc = db.get(Document, document_id)
     if not doc:
         raise BadRequest(f"Document {document_id} not found")
 
+    job = DocumentProcessingJob(
+        document_id=doc.id,
+        project_id=doc.project_id,
+        job_status="processing",
+        processing_stage="validation",
+        started_at=utcnow(),
+        retry_count=getattr(doc, "metadata_json", {}).get("retry_count", 0),
+    )
+    db.add(job)
+    db.flush()
+
     file_path = Path(doc.file_path)
     if not file_path.exists():
         doc.status = "failed"
+        doc.upload_status = "failed"
+        doc.extraction_status = "failed"
         doc.error_message = f"Stored file not found at {file_path}"
         doc.updated_at = utcnow()
+        job.job_status = "failed"
+        job.completed_at = utcnow()
+        job.error_message = doc.error_message
         db.commit()
         return doc
 
     doc.status = "processing"
+    doc.extraction_status = "processing"
     doc.updated_at = utcnow()
     db.commit()
 
     try:
+        job.processing_stage = "parsing"
         parsed = extract_document_content(file_path, doc.file_type)
+        job.processing_stage = "text_extraction"
         doc.extracted_text = parsed.get("extracted_text", "")
         doc.metadata_json = {
             "sections": parsed.get("sections", []),
@@ -339,8 +361,19 @@ def process_document(db: Session, document_id: int) -> Document:
             "processed_at": utcnow().isoformat(),
         }
         doc.status = "completed"
+        doc.upload_status = "completed"
+        doc.extraction_status = "extracted"
         doc.error_message = None
         doc.updated_at = utcnow()
+
+        job.job_status = "completed"
+        job.processing_stage = "completed"
+        job.completed_at = utcnow()
+        job.extracted_content_reference = {
+            "pages_count": parsed.get("pages_count"),
+            "sections_count": len(parsed.get("sections", [])),
+            "chars_count": len(doc.extracted_text),
+        }
         db.commit()
         db.refresh(doc)
         log.info("Document %d ('%s') processed successfully (%d chars extracted)",
@@ -349,8 +382,13 @@ def process_document(db: Session, document_id: int) -> Document:
     except Exception as e:
         log.exception("Failed to process document %d: %s", document_id, e)
         doc.status = "failed"
+        doc.extraction_status = "failed"
         doc.error_message = str(e)
         doc.updated_at = utcnow()
+
+        job.job_status = "failed"
+        job.completed_at = utcnow()
+        job.error_message = str(e)
         db.commit()
         db.refresh(doc)
         return doc

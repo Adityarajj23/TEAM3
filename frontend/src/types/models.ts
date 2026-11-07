@@ -11,8 +11,14 @@ export interface Project { id: number; key: string; name: string; description: s
   project_type?: "code_based" | "requirements_based";
   business_domain?: string | null;
   product_type?: string | null;
+  business_goal?: string | null;
+  owner_name?: string | null;
+  team?: string | null;
+  version?: string | null;
+  environment_name?: string | null;
   regulatory_standard?: string | null;
   default_language?: string | null;
+  target_users_and_roles?: string[];
   business_scenarios?: string[];
   functional_expectations?: string[];
   constraints_and_assumptions?: string[];
@@ -234,18 +240,31 @@ export interface Document {
   id: number;
   project_id: number;
   filename: string;
-  original_name: string;
+  display_name?: string;
+  original_name?: string;
   file_type: string;
+  document_type?: string;
   purpose: string;
   description: string | null;
+  version?: string;
+  owner?: string;
+  document_date?: string;
+  related_module?: string;
+  priority?: string;
+  processing_instructions?: string;
+  checksum?: string;
   size_bytes: number;
-  status: "uploaded" | "processing" | "completed" | "failed";
+  status: "uploaded" | "queued" | "processing" | "completed" | "failed";
+  upload_status?: string;
+  extraction_status?: string;
   error_message: string | null;
   extracted_text: string | null;
-  sections: { title: string; content: string; page?: number; level?: number }[];
-  metadata_json: Record<string, any>;
+  sections?: { title: string; content: string; page?: number; level?: number }[];
+  metadata_json?: Record<string, any>;
+  requirements_count?: number;
   created_at: string;
-  processed_at: string | null;
+  updated_at?: string;
+  processed_at?: string | null;
 }
 
 export interface RequirementClarification {

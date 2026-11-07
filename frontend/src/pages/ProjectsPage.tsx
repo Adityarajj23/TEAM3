@@ -7,6 +7,7 @@ import { useToast } from "@/components/Toast";
 import { Badge, Button, Dialog, ErrorState, Field, Input, PageHeader, Select, Textarea } from "@/components/ui";
 import { ProductionProjectDashboard } from "@/components/dashboard/ProductionProjectDashboard";
 import { RequirementsProjectDashboard } from "@/components/dashboard/RequirementsProjectDashboard";
+import { ProjectCreationWizard } from "@/components/projects/ProjectCreationWizard";
 import { useAuth } from "@/hooks/useAuth";
 import { useListState } from "@/hooks/useListState";
 import { useProjects } from "@/hooks/useProjects";
@@ -105,7 +106,7 @@ export function ProjectsPage() {
           { id: "def", header: "Open defects", cell: (p) => p.stats.open_defects, className: "tabular-nums" },
         ]}
       />
-      <ProjectDialog open={open} onOpenChange={setOpen} />
+      <ProjectCreationWizard open={open} onOpenChange={setOpen} />
       <ConnectRepoDialog open={repoOpen} onOpenChange={setRepoOpen} />
     </>
   );
@@ -481,7 +482,7 @@ export function ConnectRepoDialog({ open, onOpenChange }: { open: boolean; onOpe
   );
 }
 
-function ProjectDialog({ open, onOpenChange, project }: { open: boolean; onOpenChange: (o: boolean) => void; project?: Project }) {
+export function ProjectDialog({ open, onOpenChange, project }: { open: boolean; onOpenChange: (o: boolean) => void; project?: Project }) {
   const qc = useQueryClient();
   const toast = useToast();
   const [f, setF] = useState({

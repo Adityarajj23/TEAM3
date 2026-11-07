@@ -25,6 +25,10 @@ class Principal:
         return self.user.id
 
     @property
+    def email(self) -> str:
+        return self.user.email
+
+    @property
     def is_admin(self) -> bool:
         return "admin" in self.roles
 

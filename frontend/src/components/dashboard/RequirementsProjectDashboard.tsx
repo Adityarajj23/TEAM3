@@ -52,7 +52,7 @@ export function RequirementsProjectDashboard({ projectId, fallback }: Props) {
   const qc = useQueryClient();
   const toast = useToast();
 
-  const [activeTab, setActiveTab] = useState<"runs" | "documents" | "clarifications" | "traceability" | "reports">("runs");
+  const [activeTab, setActiveTab] = useState<"runs" | "documents" | "clarifications" | "traceability" | "reports" | "context">("runs");
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
   const [docPreviewOpen, setDocPreviewOpen] = useState(false);
@@ -71,6 +71,34 @@ export function RequirementsProjectDashboard({ projectId, fallback }: Props) {
     queryKey: ["project_documents", projectId],
     queryFn: () => api.get<Document[]>(`/projects/${projectId}/documents`),
     enabled: activeTab === "documents" || activeTab === "runs" || uploadModalOpen,
+  });
+
+  const contextQuery = useQuery({
+    queryKey: ["project_context", projectId],
+    queryFn: () => api.get<any>(`/projects/${projectId}/context`),
+    enabled: activeTab === "context",
+  });
+
+  const rolesQuery = useQuery({
+    queryKey: ["project_roles", projectId],
+    queryFn: () => api.get<any[]>(`/projects/${projectId}/roles`),
+    enabled: activeTab === "context",
+  });
+
+  const scenariosQuery = useQuery({
+    queryKey: ["project_scenarios", projectId],
+    queryFn: () => api.get<any[]>(`/projects/${projectId}/scenarios`),
+    enabled: activeTab === "context",
+  });
+
+  const retryDocMutation = useMutation({
+    mutationFn: (docId: number) => api.post(`/documents/${docId}/retry`),
+    onSuccess: () => {
+      toast.ok("Document extraction retry queued");
+      qc.invalidateQueries({ queryKey: ["project_documents", projectId] });
+      qc.invalidateQueries({ queryKey: ["requirements_dashboard", projectId] });
+    },
+    onError: (err: any) => toast.error(err?.message || "Failed to retry document"),
   });
 
   const clarsQuery = useQuery({
@@ -522,6 +550,17 @@ export function RequirementsProjectDashboard({ projectId, fallback }: Props) {
             Traceability Matrix
           </button>
           <button
+            onClick={() => setActiveTab("context")}
+            className={cn(
+              "pb-3 border-b-2 transition-colors",
+              activeTab === "context"
+                ? "border-[#3067DB] text-[#3067DB]"
+                : "border-transparent text-slate-500 hover:text-slate-800"
+            )}
+          >
+            Context & Roles
+          </button>
+          <button
             onClick={() => setActiveTab("reports")}
             className={cn(
               "pb-3 border-b-2 transition-colors",
@@ -696,11 +735,11 @@ export function RequirementsProjectDashboard({ projectId, fallback }: Props) {
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50 text-slate-500 font-semibold uppercase text-2xs tracking-wider">
                     <th className="py-2.5 px-4">Document</th>
-                    <th className="py-2.5 px-4">Format</th>
-                    <th className="py-2.5 px-4">Purpose</th>
+                    <th className="py-2.5 px-4">Classification</th>
+                    <th className="py-2.5 px-4">Priority</th>
                     <th className="py-2.5 px-4">Status</th>
                     <th className="py-2.5 px-4">Size</th>
-                    <th className="py-2.5 px-4">Uploaded</th>
+                    <th className="py-2.5 px-4">Checksum / Version</th>
                     <th className="py-2.5 px-4 text-right">Actions</th>
                   </tr>
                 </thead>
@@ -716,14 +755,34 @@ export function RequirementsProjectDashboard({ projectId, fallback }: Props) {
                           {(doc.file_type === "md" || doc.file_type === "txt") && (
                             <FileCode className="h-4 w-4 text-slate-500 shrink-0" />
                           )}
-                          <span className="truncate max-w-xs" title={doc.filename}>{doc.filename}</span>
+                          <div>
+                            <span className="font-semibold text-slate-900 block truncate max-w-xs" title={doc.display_name || doc.filename}>
+                              {doc.display_name || doc.filename}
+                            </span>
+                            {doc.display_name && doc.display_name !== doc.filename && (
+                              <span className="font-mono text-3xs text-slate-400 block truncate max-w-xs">{doc.filename}</span>
+                            )}
+                          </div>
                         </div>
                         {doc.description && <p className="text-2xs text-slate-500 mt-0.5">{doc.description}</p>}
                       </td>
-                      <td className="py-3 px-4 font-mono uppercase text-2xs text-slate-600">{doc.file_type}</td>
                       <td className="py-3 px-4">
                         <span className="px-2 py-0.5 rounded text-2xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
-                          {PURPOSE_LABELS[doc.purpose] ? doc.purpose.toUpperCase() : doc.purpose}
+                          {doc.document_type ? doc.document_type.toUpperCase() : (PURPOSE_LABELS[doc.purpose] ? doc.purpose.toUpperCase() : doc.purpose)}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span
+                          className={cn(
+                            "px-2 py-0.5 rounded text-2xs font-medium uppercase",
+                            doc.priority === "critical"
+                              ? "bg-red-50 text-red-700 border border-red-200 font-bold"
+                              : doc.priority === "high"
+                              ? "bg-orange-50 text-orange-700 border border-orange-200"
+                              : "bg-slate-100 text-slate-600 border border-slate-200"
+                          )}
+                        >
+                          {doc.priority || "medium"}
                         </span>
                       </td>
                       <td className="py-3 px-4">
@@ -744,8 +803,29 @@ export function RequirementsProjectDashboard({ projectId, fallback }: Props) {
                       <td className="py-3 px-4 text-slate-500 tabular-nums">
                         {Math.round(doc.size_bytes / 1024)} KB
                       </td>
-                      <td className="py-3 px-4 text-slate-500">{fmtDate(doc.created_at)}</td>
-                      <td className="py-3 px-4 text-right space-x-2">
+                      <td className="py-3 px-4">
+                        <div className="font-mono text-3xs text-slate-500">
+                          v{doc.version || "1.0"}
+                        </div>
+                        {doc.checksum && (
+                          <div className="font-mono text-3xs text-slate-400 truncate max-w-[120px]" title={doc.checksum}>
+                            {doc.checksum.slice(0, 12)}...
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-right space-x-1.5">
+                        {doc.status === "failed" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            loading={retryDocMutation.isPending}
+                            onClick={() => retryDocMutation.mutate(doc.id)}
+                            className="text-2xs h-7 px-2 text-blue-600 border-blue-200 hover:bg-blue-50"
+                          >
+                            <RefreshCw className="h-3 w-3 mr-1" />
+                            Retry
+                          </Button>
+                        )}
                         <Button
                           size="sm"
                           variant="outline"
@@ -987,6 +1067,177 @@ export function RequirementsProjectDashboard({ projectId, fallback }: Props) {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* TAB: CONTEXT & ROLES */}
+      {activeTab === "context" && (
+        <div className="space-y-4">
+          <div className="bg-white rounded-lg border border-slate-200 p-6 shadow-xs space-y-6">
+            <div className="border-b border-slate-100 pb-4">
+              <h3 className="text-base font-bold text-slate-900">Project Context, Roles & Business Scenarios</h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Foundational architecture, domain constraints, custom roles, and business scenarios grounding LLM intelligence.
+              </p>
+            </div>
+
+            {contextQuery.isLoading ? (
+              <div className="py-12 text-center text-slate-500 text-xs">
+                <RefreshCw className="h-5 w-5 animate-spin mx-auto text-[#3067DB] mb-2" />
+                Loading project context...
+              </div>
+            ) : (
+              <div className="space-y-6 text-xs">
+                {/* Section 1: Product Overview & Problem Statement */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-4 rounded-lg bg-slate-50 border border-slate-200/80 space-y-2">
+                    <span className="font-semibold text-slate-700 block uppercase text-2xs tracking-wider">Product Overview</span>
+                    <p className="text-slate-800 leading-relaxed whitespace-pre-wrap">
+                      {contextQuery.data?.product_overview || project.description || "No overview recorded."}
+                    </p>
+                  </div>
+                  <div className="p-4 rounded-lg bg-slate-50 border border-slate-200/80 space-y-2">
+                    <span className="font-semibold text-slate-700 block uppercase text-2xs tracking-wider">Problem Statement</span>
+                    <p className="text-slate-800 leading-relaxed whitespace-pre-wrap">
+                      {contextQuery.data?.problem_statement || "No specific problem statement provided."}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Section 2: Personas, Modules & Standards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-4 rounded-lg border border-slate-200 bg-white space-y-2">
+                    <span className="font-semibold text-slate-700 block uppercase text-2xs tracking-wider">Target Personas</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(contextQuery.data?.target_users && contextQuery.data.target_users.length > 0
+                        ? contextQuery.data.target_users
+                        : project.target_users_and_roles || []
+                      ).map((u: string, idx: number) => (
+                        <span key={idx} className="px-2 py-0.5 rounded text-2xs font-medium bg-blue-50 text-[#3067DB] border border-blue-200">
+                          {u}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-lg border border-slate-200 bg-white space-y-2">
+                    <span className="font-semibold text-slate-700 block uppercase text-2xs tracking-wider">In-Scope Modules</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(contextQuery.data?.product_modules || []).map((m: string, idx: number) => (
+                        <span key={idx} className="px-2 py-0.5 rounded text-2xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                          {m}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-lg border border-slate-200 bg-white space-y-2">
+                    <span className="font-semibold text-slate-700 block uppercase text-2xs tracking-wider">Regulatory Standards</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(contextQuery.data?.regulatory_standards || []).map((std: string, idx: number) => (
+                        <span key={idx} className="px-2 py-0.5 rounded text-2xs font-medium bg-emerald-50 text-emerald-800 border border-emerald-200">
+                          {std}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section 3: Business Rules */}
+                <div className="p-4 rounded-lg border border-slate-200 bg-white space-y-3">
+                  <span className="font-semibold text-slate-700 block uppercase text-2xs tracking-wider">
+                    Core Business Rules & Invariants ({contextQuery.data?.business_rules?.length || 0})
+                  </span>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {(contextQuery.data?.business_rules || []).map((rule: string, idx: number) => (
+                      <div key={idx} className="p-2.5 rounded bg-slate-50 border border-slate-200 text-slate-800 flex items-start gap-2">
+                        <span className="font-mono text-2xs font-bold text-slate-400 mt-0.5">#{idx + 1}</span>
+                        <span>{rule}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Section 4: Roles Matrix */}
+                <div className="space-y-3">
+                  <h4 className="font-semibold text-slate-900 text-xs uppercase tracking-wider">
+                    Project Roles Matrix ({rolesQuery.data?.length || 0})
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {(rolesQuery.data || []).map((r: any) => (
+                      <div key={r.id} className="p-3.5 rounded-lg border border-slate-200 bg-slate-50/50 space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-slate-900 text-xs">{r.role_name}</span>
+                          <span className="text-2xs text-slate-500 font-mono">ID: {r.id}</span>
+                        </div>
+                        <p className="text-2xs text-slate-600">{r.description}</p>
+                        {r.permissions && r.permissions.length > 0 && (
+                          <div className="flex flex-wrap gap-1 pt-1">
+                            {r.permissions.map((p: string, pIdx: number) => (
+                              <span key={pIdx} className="font-mono text-3xs px-1.5 py-0.5 rounded bg-white text-slate-700 border border-slate-200">
+                                {p}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        <div className="text-2xs pt-1 grid grid-cols-2 gap-2 text-slate-600 border-t border-slate-200/60 mt-2">
+                          <div>
+                            <span className="font-semibold block text-slate-500">Responsibilities:</span>
+                            {r.responsibilities || "N/A"}
+                          </div>
+                          <div>
+                            <span className="font-semibold block text-slate-500">Restrictions:</span>
+                            <span className="text-red-700">{r.restrictions || "N/A"}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Section 5: Business Scenarios */}
+                <div className="space-y-3">
+                  <h4 className="font-semibold text-slate-900 text-xs uppercase tracking-wider">
+                    Primary Business Scenarios ({scenariosQuery.data?.length || 0})
+                  </h4>
+                  <div className="space-y-3">
+                    {(scenariosQuery.data || []).map((sc: any, idx: number) => (
+                      <div key={sc.id} className="p-4 rounded-lg border border-slate-200 bg-white space-y-2 shadow-2xs">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-2xs font-bold px-1.5 py-0.5 rounded bg-blue-50 text-[#3067DB] border border-blue-200">
+                              #{idx + 1}
+                            </span>
+                            <span className="font-bold text-slate-900 text-xs">{sc.title}</span>
+                          </div>
+                          {sc.module && (
+                            <span className="text-2xs px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-medium">
+                              {sc.module}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-700 leading-relaxed">{sc.description}</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-100 text-2xs">
+                          <div>
+                            <span className="font-semibold text-slate-500 block">Actor:</span>
+                            <span className="text-slate-800">{sc.actor || "User"}</span>
+                          </div>
+                          <div>
+                            <span className="font-semibold text-slate-500 block">Preconditions:</span>
+                            <span className="text-slate-800">{sc.preconditions || "None"}</span>
+                          </div>
+                          <div>
+                            <span className="font-semibold text-slate-500 block">Expected Outcome:</span>
+                            <span className="text-slate-800">{sc.expected_outcome || "Completed"}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
           </div>

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from datetime import datetime
+from typing import Any
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
@@ -22,12 +23,16 @@ from app.api.deps import (
 from app.core.errors import BadRequest, Conflict, NotFound
 from app.db.base import get_db, utcnow
 from app.db.models import (
+    BusinessScenario,
     Defect,
+    Document,
     Environment,
     Module,
     Organisation,
     Project,
+    ProjectContext,
     ProjectMember,
+    ProjectRole,
     Requirement,
     TestCase,
     TestSuite,
@@ -35,6 +40,7 @@ from app.db.models import (
 )
 from app.services import audit
 from app.services.analytics import coverage_by_project
+from app.services.requirement_intelligence import analyze_and_extract_project_requirements
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -70,6 +76,55 @@ def list_projects(pp: PageParams = Depends(page_params), status: str | None = No
                     Project.key, lambda x: _with_stats(db, x))
 
 
+@router.get("/validate-key")
+def validate_project_key(key: str, db: Session = Depends(get_db)):
+    key_clean = key.strip().upper()
+    if not re.fullmatch(r"[A-Z0-9_-]{2,10}", key_clean):
+        return {"valid": False, "key": key_clean, "message": "Key must be 2–10 alphanumeric characters or hyphens/underscores."}
+    exists = db.execute(select(Project).where(Project.key == key_clean)).scalar_one_or_none()
+    if exists:
+        return {"valid": False, "key": key_clean, "message": f"Project key '{key_clean}' is already in use."}
+    return {"valid": True, "key": key_clean, "message": "Project key is available."}
+
+
+class ProjectRoleIn(BaseModel):
+    role_name: str
+    description: str = ""
+    permissions: list[str] = Field(default_factory=list)
+    responsibilities: str = ""
+    restrictions: str = ""
+
+
+class BusinessScenarioIn(BaseModel):
+    title: str
+    description: str
+    actor: str = ""
+    preconditions: str = ""
+    expected_outcome: str = ""
+    business_rules: str = ""
+    module: str = ""
+
+
+class ProjectContextIn(BaseModel):
+    product_overview: str = ""
+    problem_statement: str = ""
+    target_users: list[str] = Field(default_factory=list)
+    product_modules: list[str] = Field(default_factory=list)
+    architecture_context: str = ""
+    technical_stack: dict[str, Any] = Field(default_factory=dict)
+    external_integrations: list[str] = Field(default_factory=list)
+    business_rules: list[str] = Field(default_factory=list)
+    security_expectations: str = ""
+    privacy_requirements: str = ""
+    performance_expectations: str = ""
+    availability_expectations: str = ""
+    regulatory_standards: list[str] = Field(default_factory=list)
+    assumptions: list[str] = Field(default_factory=list)
+    exclusions: list[str] = Field(default_factory=list)
+    dependencies: list[str] = Field(default_factory=list)
+    additional_context: str = ""
+
+
 class ProjectIn(BaseModel):
     key: str = Field(min_length=2, max_length=10)
     name: str = Field(min_length=3, max_length=200)
@@ -77,6 +132,12 @@ class ProjectIn(BaseModel):
     project_type: str = Field(default="requirements_based")
     business_domain: str = ""
     product_type: str = ""
+    business_goal: str = ""
+    owner_name: str = ""
+    team: str = ""
+    version: str = "1.0.0"
+    environment_name: str = ""
+    status: str = "active"
     target_users_and_roles: list[str] = Field(default_factory=list)
     objectives: list[str] = Field(default_factory=list)
     business_scenarios: list[str] = Field(default_factory=list)
@@ -84,6 +145,14 @@ class ProjectIn(BaseModel):
     non_functional_expectations: list[str] = Field(default_factory=list)
     constraints_and_assumptions: list[str] = Field(default_factory=list)
     explicit_exclusions: list[str] = Field(default_factory=list)
+    context: ProjectContextIn | None = None
+    roles: list[ProjectRoleIn] = Field(default_factory=list)
+    scenarios: list[BusinessScenarioIn] = Field(default_factory=list)
+    document_ids: list[int] = Field(default_factory=list)
+    auto_extract: bool = False
+
+
+ProjectIn.model_rebuild()
 
 
 @router.post("", status_code=201)
@@ -101,6 +170,11 @@ def create_project(body: ProjectIn, p: Principal = Depends(require("project.admi
         project_type=body.project_type,
         business_domain=body.business_domain,
         product_type=body.product_type,
+        business_goal=body.business_goal,
+        owner_name=body.owner_name or (p.user.full_name or p.email if hasattr(p, "user") else ""),
+        team=body.team,
+        version=body.version or "1.0.0",
+        environment_name=body.environment_name,
         target_users_and_roles=body.target_users_and_roles,
         objectives=body.objectives,
         business_scenarios=body.business_scenarios,
@@ -114,7 +188,64 @@ def create_project(body: ProjectIn, p: Principal = Depends(require("project.admi
     db.add(proj)
     db.flush()
     db.add(ProjectMember(project_id=proj.id, user_id=p.id, project_role="owner"))
-    # Only Dayforce HCM projects get Reference HCM environments
+
+    # 1. Persist ProjectContext if provided
+    if body.context:
+        ctx = ProjectContext(
+            project_id=proj.id,
+            product_overview=body.context.product_overview,
+            problem_statement=body.context.problem_statement,
+            target_users=body.context.target_users,
+            product_modules=body.context.product_modules,
+            architecture_context=body.context.architecture_context,
+            technical_stack=body.context.technical_stack,
+            external_integrations=body.context.external_integrations,
+            business_rules=body.context.business_rules,
+            security_expectations=body.context.security_expectations,
+            privacy_requirements=body.context.privacy_requirements,
+            performance_expectations=body.context.performance_expectations,
+            availability_expectations=body.context.availability_expectations,
+            regulatory_standards=body.context.regulatory_standards,
+            assumptions=body.context.assumptions,
+            exclusions=body.context.exclusions,
+            dependencies=body.context.dependencies,
+            additional_context=body.context.additional_context,
+        )
+        db.add(ctx)
+
+    # 2. Persist ProjectRoles if provided
+    for r in body.roles:
+        db.add(ProjectRole(
+            project_id=proj.id,
+            role_name=r.role_name,
+            description=r.description,
+            permissions=r.permissions,
+            responsibilities=r.responsibilities,
+            restrictions=r.restrictions,
+        ))
+
+    # 3. Persist BusinessScenarios if provided
+    for sc in body.scenarios:
+        db.add(BusinessScenario(
+            project_id=proj.id,
+            title=sc.title,
+            description=sc.description,
+            actor=sc.actor,
+            preconditions=sc.preconditions,
+            expected_outcome=sc.expected_outcome,
+            business_rules=sc.business_rules,
+            module=sc.module,
+        ))
+
+    # 4. Associate uploaded draft documents if provided
+    if body.document_ids:
+        docs_to_link = db.execute(
+            select(Document).where(Document.id.in_(body.document_ids))
+        ).scalars().all()
+        for d in docs_to_link:
+            d.project_id = proj.id
+
+    # 5. Environment configuration
     if key.startswith("DF") or "dayforce" in body.name.lower():
         db.add(Environment(project_id=proj.id, name="QA — Reference HCM 1.0", kind="reference_hcm", hcm_version="1.0", is_default=True))
         db.add(Environment(project_id=proj.id, name="Fix candidate — Reference HCM 1.1", kind="reference_hcm", hcm_version="1.1"))
@@ -122,9 +253,163 @@ def create_project(body: ProjectIn, p: Principal = Depends(require("project.admi
         db.add(Environment(project_id=proj.id, name=f"{body.name} Simulation Engine", kind="simulation", is_default=True))
     else:
         db.add(Environment(project_id=proj.id, name=f"{body.name} Local Sandbox", kind="simulation", is_default=True))
+
+    db.flush()
+
+    # 6. Trigger initial grounded requirements extraction for requirements-based projects if explicitly requested
+    if body.project_type == "requirements_based" and body.auto_extract:
+        try:
+            analyze_and_extract_project_requirements(db, proj.id, p.id)
+        except Exception:
+            pass  # Non-fatal if extraction encounters minor warnings
+
     audit.record(db, p.id, "project.created", "project", proj.id, proj.key, proj.id)
     db.commit()
     return _with_stats(db, proj)
+
+
+@router.get("/{project_id}/context")
+def get_project_context(project_id: int, p: Principal = Depends(current_principal), db: Session = Depends(get_db)):
+    get_project_checked(db, p, project_id)
+    ctx = db.execute(select(ProjectContext).where(ProjectContext.project_id == project_id)).scalar_one_or_none()
+    if not ctx:
+        return {"project_id": project_id, "has_context": False}
+    return S.project_context(ctx)
+
+
+@router.put("/{project_id}/context")
+def update_project_context(project_id: int, body: ProjectContextIn, p: Principal = Depends(require("project.admin")), db: Session = Depends(get_db)):
+    get_project_checked(db, p, project_id)
+    ctx = db.execute(select(ProjectContext).where(ProjectContext.project_id == project_id)).scalar_one_or_none()
+    if not ctx:
+        ctx = ProjectContext(project_id=project_id)
+        db.add(ctx)
+    ctx.product_overview = body.product_overview
+    ctx.problem_statement = body.problem_statement
+    ctx.target_users = body.target_users
+    ctx.product_modules = body.product_modules
+    ctx.architecture_context = body.architecture_context
+    ctx.technical_stack = body.technical_stack
+    ctx.external_integrations = body.external_integrations
+    ctx.business_rules = body.business_rules
+    ctx.security_expectations = body.security_expectations
+    ctx.privacy_requirements = body.privacy_requirements
+    ctx.performance_expectations = body.performance_expectations
+    ctx.availability_expectations = body.availability_expectations
+    ctx.regulatory_standards = body.regulatory_standards
+    ctx.assumptions = body.assumptions
+    ctx.exclusions = body.exclusions
+    ctx.dependencies = body.dependencies
+    ctx.additional_context = body.additional_context
+    ctx.updated_at = utcnow()
+    db.commit()
+    return S.project_context(ctx)
+
+
+@router.get("/{project_id}/roles")
+def list_project_roles(project_id: int, p: Principal = Depends(current_principal), db: Session = Depends(get_db)):
+    get_project_checked(db, p, project_id)
+    roles = db.execute(select(ProjectRole).where(ProjectRole.project_id == project_id).order_by(ProjectRole.role_name)).scalars().all()
+    return [S.project_role(r) for r in roles]
+
+
+@router.post("/{project_id}/roles", status_code=201)
+def add_project_role(project_id: int, body: ProjectRoleIn, p: Principal = Depends(require("project.admin")), db: Session = Depends(get_db)):
+    get_project_checked(db, p, project_id)
+    role = ProjectRole(
+        project_id=project_id,
+        role_name=body.role_name.strip(),
+        description=body.description.strip(),
+        permissions=body.permissions,
+        responsibilities=body.responsibilities.strip(),
+        restrictions=body.restrictions.strip(),
+    )
+    db.add(role)
+    db.commit()
+    db.refresh(role)
+    return S.project_role(role)
+
+
+@router.patch("/{project_id}/roles/{role_id}")
+def update_project_role(project_id: int, role_id: int, body: ProjectRoleIn, p: Principal = Depends(require("project.admin")), db: Session = Depends(get_db)):
+    get_project_checked(db, p, project_id)
+    role = db.get(ProjectRole, role_id)
+    if not role or role.project_id != project_id:
+        raise NotFound("Role not found")
+    role.role_name = body.role_name.strip()
+    role.description = body.description.strip()
+    role.permissions = body.permissions
+    role.responsibilities = body.responsibilities.strip()
+    role.restrictions = body.restrictions.strip()
+    db.commit()
+    db.refresh(role)
+    return S.project_role(role)
+
+
+@router.delete("/{project_id}/roles/{role_id}", status_code=204)
+def delete_project_role(project_id: int, role_id: int, p: Principal = Depends(require("project.admin")), db: Session = Depends(get_db)):
+    get_project_checked(db, p, project_id)
+    role = db.get(ProjectRole, role_id)
+    if not role or role.project_id != project_id:
+        raise NotFound("Role not found")
+    db.delete(role)
+    db.commit()
+    return None
+
+
+@router.get("/{project_id}/scenarios")
+def list_business_scenarios(project_id: int, p: Principal = Depends(current_principal), db: Session = Depends(get_db)):
+    get_project_checked(db, p, project_id)
+    scenarios = db.execute(select(BusinessScenario).where(BusinessScenario.project_id == project_id).order_by(BusinessScenario.created_at)).scalars().all()
+    return [S.business_scenario(s) for s in scenarios]
+
+
+@router.post("/{project_id}/scenarios", status_code=201)
+def add_business_scenario(project_id: int, body: BusinessScenarioIn, p: Principal = Depends(require("project.admin")), db: Session = Depends(get_db)):
+    get_project_checked(db, p, project_id)
+    sc = BusinessScenario(
+        project_id=project_id,
+        title=body.title.strip(),
+        description=body.description.strip(),
+        actor=body.actor.strip(),
+        preconditions=body.preconditions.strip(),
+        expected_outcome=body.expected_outcome.strip(),
+        business_rules=body.business_rules.strip(),
+        module=body.module.strip(),
+    )
+    db.add(sc)
+    db.commit()
+    db.refresh(sc)
+    return S.business_scenario(sc)
+
+
+@router.patch("/{project_id}/scenarios/{scenario_id}")
+def update_business_scenario(project_id: int, scenario_id: int, body: BusinessScenarioIn, p: Principal = Depends(require("project.admin")), db: Session = Depends(get_db)):
+    get_project_checked(db, p, project_id)
+    sc = db.get(BusinessScenario, scenario_id)
+    if not sc or sc.project_id != project_id:
+        raise NotFound("Scenario not found")
+    sc.title = body.title.strip()
+    sc.description = body.description.strip()
+    sc.actor = body.actor.strip()
+    sc.preconditions = body.preconditions.strip()
+    sc.expected_outcome = body.expected_outcome.strip()
+    sc.business_rules = body.business_rules.strip()
+    sc.module = body.module.strip()
+    db.commit()
+    db.refresh(sc)
+    return S.business_scenario(sc)
+
+
+@router.delete("/{project_id}/scenarios/{scenario_id}", status_code=204)
+def delete_business_scenario(project_id: int, scenario_id: int, p: Principal = Depends(require("project.admin")), db: Session = Depends(get_db)):
+    get_project_checked(db, p, project_id)
+    sc = db.get(BusinessScenario, scenario_id)
+    if not sc or sc.project_id != project_id:
+        raise NotFound("Scenario not found")
+    db.delete(sc)
+    db.commit()
+    return None
 
 
 class RepoImportIn(BaseModel):

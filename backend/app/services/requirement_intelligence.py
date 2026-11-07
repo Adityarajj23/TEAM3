@@ -13,7 +13,15 @@ from sqlalchemy.orm import Session
 
 from app.core.errors import BadRequest
 from app.db.base import utcnow
-from app.db.models import Document, Project, Requirement, RequirementClarification
+from app.db.models import (
+    BusinessScenario,
+    Document,
+    Project,
+    ProjectContext,
+    ProjectRole,
+    Requirement,
+    RequirementClarification,
+)
 from app.services import audit
 from app.services.requirements import create_requirement
 
@@ -75,38 +83,35 @@ def extract_requirements_from_text(text: str, source_doc: Document) -> list[dict
     current_section = "General Specification"
     current_page = "Page 1"
 
-    # Split text into chunks/sentences that look like requirements
-    buffer: list[str] = []
     for line in lines:
         if line.startswith("--- [Page ") or line.startswith("--- [Sheet: "):
             current_page = line.replace("---", "").strip()
+            continue
+        if line.startswith("#"):
+            current_section = line.lstrip("#").strip()
             continue
         if re.match(r"^(\d+(\.\d+)*|[A-Z]\.)\s+[A-Za-z0-9\s_-]{3,80}$", line):
             current_section = line
             continue
 
-        # Requirement indicator triggers
-        is_req = any(kw in line.lower() for kw in [
-            "shall", "must", "should", "will support", "required to", "endpoint:", "api:", "allows",
-            "enforces", "validates", "prohibits", "rejects", "returns status", "stores"
-        ])
-        if is_req and len(line) >= 20:
-            buffer.append(line)
-        elif buffer:
-            combined = " ".join(buffer)
-            extracted.append({
-                "raw_text": combined,
-                "section": current_section,
-                "page": current_page,
-            })
-            buffer = []
-
-    if buffer:
-        extracted.append({
-            "raw_text": " ".join(buffer),
-            "section": current_section,
-            "page": current_page,
-        })
+        # Split line into sentences if multiple sentences exist
+        sentences = re.split(r"(?<=[.!?])\s+", line)
+        for s in sentences:
+            s_clean = s.strip()
+            if not s_clean:
+                continue
+            is_req = any(kw in s_clean.lower() for kw in [
+                "shall", "must", "should", "will support", "required to", "endpoint:", "api:", "allows",
+                "enforces", "validates", "prohibits", "rejects", "returns status", "stores"
+            ])
+            if is_req and len(s_clean) >= 20:
+                clean_stmt = re.sub(r"^[-*•\d\.\)\s]+", "", s_clean).strip()
+                if len(clean_stmt) >= 15:
+                    extracted.append({
+                        "raw_text": clean_stmt,
+                        "section": current_section,
+                        "page": current_page,
+                    })
 
     return extracted
 
@@ -220,7 +225,144 @@ def analyze_and_extract_project_requirements(
                 db.add(clar_obj)
                 new_clarifications.append(clar_obj)
 
-    # 2. Extract from Manual Project Scenarios & Expectations (User Provided)
+    # 2. Extract from Structured Business Scenarios & Roles (User Provided)
+    db_scenarios = db.execute(
+        select(BusinessScenario).where(BusinessScenario.project_id == project_id)
+    ).scalars().all()
+    for sc in db_scenarios:
+        title = f"Scenario: {sc.title[:80].strip()}"
+        if title.lower() in existing_req_titles:
+            continue
+        body_parts = [sc.description]
+        if sc.actor:
+            body_parts.append(f"Actor: {sc.actor}.")
+        if sc.preconditions:
+            body_parts.append(f"Preconditions: {sc.preconditions}.")
+        if sc.expected_outcome:
+            body_parts.append(f"Expected Outcome: {sc.expected_outcome}.")
+        if sc.business_rules:
+            body_parts.append(f"Business Rules: {sc.business_rules}.")
+        desc = " ".join(body_parts)
+        category = classify_category(desc)
+        priority = classify_priority(desc)
+        req = create_requirement(
+            db,
+            proj,
+            title=title,
+            description=desc,
+            business_objective=f"Structured Business Scenario '{sc.title}'",
+            category=category,
+            priority=priority,
+            related_scenario=sc.title,
+            extraction_provenance="user_provided",
+            review_status="pending_review",
+            confidence=1.0,
+            author_id=author_id,
+        )
+        existing_req_titles.add(title.lower())
+        created_requirements.append(req)
+
+    db_roles = db.execute(
+        select(ProjectRole).where(ProjectRole.project_id == project_id)
+    ).scalars().all()
+    for r in db_roles:
+        title = f"Role Access Control: {r.role_name[:60].strip()}"
+        if title.lower() in existing_req_titles:
+            continue
+        perms_str = ", ".join(r.permissions) if isinstance(r.permissions, list) else str(r.permissions or "")
+        desc = (
+            f"The system shall enforce role boundaries for '{r.role_name}'. "
+            f"Description: {r.description or 'N/A'}. "
+            f"Allowed Permissions: {perms_str or 'Standard user permissions'}. "
+            f"Responsibilities: {r.responsibilities or 'N/A'}. "
+            f"Restrictions: {r.restrictions or 'N/A'}."
+        )
+        req = create_requirement(
+            db,
+            proj,
+            title=title,
+            description=desc,
+            business_objective=f"Role Authorization Specification for {r.role_name}",
+            category="permission_role",
+            priority="high",
+            extraction_provenance="user_provided",
+            review_status="pending_review",
+            confidence=1.0,
+            author_id=author_id,
+        )
+        existing_req_titles.add(title.lower())
+        created_requirements.append(req)
+
+    # 3. Extract from Project Context (Rules, Security, Compliance)
+    proj_ctx = db.execute(
+        select(ProjectContext).where(ProjectContext.project_id == project_id)
+    ).scalar_one_or_none()
+    if proj_ctx:
+        if proj_ctx.business_rules and isinstance(proj_ctx.business_rules, list):
+            for b_idx, brule in enumerate(proj_ctx.business_rules, start=1):
+                b_text = str(brule).strip()
+                if len(b_text) >= 10:
+                    title = f"Business Rule #{b_idx}: {b_text[:80].strip()}"
+                    if title.lower() not in existing_req_titles:
+                        req = create_requirement(
+                            db,
+                            proj,
+                            title=title,
+                            description=b_text,
+                            business_objective="Enterprise Business Rule from Project Context",
+                            category="business_rule",
+                            priority="high",
+                            extraction_provenance="user_provided",
+                            review_status="pending_review",
+                            confidence=1.0,
+                            author_id=author_id,
+                        )
+                        existing_req_titles.add(title.lower())
+                        created_requirements.append(req)
+
+        if proj_ctx.security_expectations and len(proj_ctx.security_expectations.strip()) >= 15:
+            title = "Project Security Specification"
+            if title.lower() not in existing_req_titles:
+                req = create_requirement(
+                    db,
+                    proj,
+                    title=title,
+                    description=proj_ctx.security_expectations.strip(),
+                    business_objective="Security and Data Protection Expectations",
+                    category="security",
+                    priority="critical",
+                    extraction_provenance="user_provided",
+                    review_status="pending_review",
+                    confidence=1.0,
+                    author_id=author_id,
+                )
+                existing_req_titles.add(title.lower())
+                created_requirements.append(req)
+
+        if proj_ctx.regulatory_standards and isinstance(proj_ctx.regulatory_standards, list):
+            for std in proj_ctx.regulatory_standards:
+                std_text = str(std).strip()
+                if len(std_text) >= 3:
+                    title = f"Compliance Standard: {std_text}"
+                    if title.lower() not in existing_req_titles:
+                        desc = f"The product must maintain demonstrable adherence to {std_text} regulatory and security guidelines."
+                        req = create_requirement(
+                            db,
+                            proj,
+                            title=title,
+                            description=desc,
+                            business_objective=f"Regulatory Governance for {std_text}",
+                            category="compliance",
+                            priority="high",
+                            extraction_provenance="user_provided",
+                            review_status="pending_review",
+                            confidence=1.0,
+                            author_id=author_id,
+                        )
+                        existing_req_titles.add(title.lower())
+                        created_requirements.append(req)
+
+    # 4. Extract from Manual Project Scenarios & Expectations JSON fields
     manual_scenarios = proj.business_scenarios or []
     for sc_idx, sc in enumerate(manual_scenarios, start=1):
         sc_text = sc if isinstance(sc, str) else str(sc)

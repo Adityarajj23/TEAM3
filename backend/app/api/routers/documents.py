@@ -1,11 +1,12 @@
-"""Documents API router: file upload, listing, details, download, and processing."""
+"""Documents API router: file upload, listing, details, download, metadata updates, and processing."""
 from __future__ import annotations
 
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, UploadFile
 from fastapi.responses import FileResponse
-from sqlalchemy import select
+from pydantic import BaseModel, Field
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.api import serializers as S
@@ -16,8 +17,8 @@ from app.api.deps import (
     require,
 )
 from app.core.errors import BadRequest, NotFound
-from app.db.base import get_db
-from app.db.models import Document, Project
+from app.db.base import get_db, utcnow
+from app.db.models import Document, DocumentProcessingJob, Project, Requirement
 from app.services import audit
 from app.services.document_processor import (
     process_document,
@@ -37,8 +38,22 @@ VALID_PURPOSES = {
     "business_rules": "Business Rules",
     "user_stories": "User Stories",
     "acceptance_criteria": "Acceptance Criteria",
+    "architecture": "Architecture Documentation",
+    "compliance": "Compliance Documentation",
     "other": "Other supporting documentation",
 }
+
+
+class DocumentUpdateIn(BaseModel):
+    display_name: str | None = None
+    document_type: str | None = None
+    description: str | None = None
+    version: str | None = None
+    owner: str | None = None
+    document_date: str | None = None
+    related_module: str | None = None
+    priority: str | None = None
+    processing_instructions: str | None = None
 
 
 @router.get("/projects/{project_id}/documents")
@@ -51,24 +66,41 @@ def list_project_documents(
     docs = db.execute(
         select(Document).where(Document.project_id == project_id).order_by(Document.created_at.desc())
     ).scalars().all()
-    return [S.document(d) for d in docs]
+
+    # Pre-fetch requirement counts per document
+    counts = dict(
+        db.execute(
+            select(Requirement.document_id, func.count(Requirement.id))
+            .where(Requirement.project_id == project_id, Requirement.document_id.isnot(None))
+            .group_by(Requirement.document_id)
+        ).all()
+    )
+
+    return [S.document(d, requirements_count=counts.get(d.id, 0)) for d in docs]
 
 
-@router.post("/projects/{project_id}/documents", status_code=201)
-async def upload_document(
-    project_id: int,
-    file: UploadFile = File(...),
-    purpose: str = Form(default="prd"),
-    description: str = Form(default=""),
-    auto_process: bool = Form(default=True),
-    p: Principal = Depends(require("requirement.write")),
-    db: Session = Depends(get_db),
+async def _do_upload_document(
+    project_id: int | None,
+    file: UploadFile,
+    display_name: str,
+    purpose: str,
+    document_type: str,
+    description: str,
+    version: str,
+    owner: str,
+    document_date: str,
+    related_module: str,
+    priority: str,
+    processing_instructions: str,
+    auto_process: bool,
+    p: Principal,
+    db: Session,
 ):
-    get_project_checked(db, p, project_id)
-    purpose_clean = purpose.lower().strip()
-    if purpose_clean not in VALID_PURPOSES:
-        valid_opts = ", ".join(sorted(VALID_PURPOSES.keys()))
-        raise BadRequest(f"Invalid purpose '{purpose}'. Allowed: {valid_opts}")
+    if project_id is not None:
+        get_project_checked(db, p, project_id)
+    doc_type = (document_type or purpose).lower().strip()
+    if doc_type not in VALID_PURPOSES:
+        doc_type = "prd"
 
     raw_bytes = await file.read()
     filename = file.filename or "uploaded_document"
@@ -77,20 +109,31 @@ async def upload_document(
     doc = Document(
         project_id=project_id,
         filename=safe_name,
+        display_name=display_name.strip() or safe_name,
         file_path="",  # Filled once doc.id is generated
         file_type=file_type,
+        document_type=doc_type,
         file_size_bytes=size,
-        purpose=purpose_clean,
+        purpose=doc_type,
         description=description.strip(),
+        version=version.strip() or "1.0",
+        owner=owner.strip(),
+        document_date=document_date.strip(),
+        related_module=related_module.strip(),
+        priority=priority.lower().strip() if priority.lower().strip() in ("critical", "high", "medium", "low") else "medium",
+        processing_instructions=processing_instructions.strip(),
         status="uploaded",
+        upload_status="uploaded",
+        extraction_status="queued" if auto_process else "uploaded",
         metadata_json={},
     )
     db.add(doc)
     db.flush()
 
-    # Save content to disk with doc.id prefix
-    saved_path = save_document_file(project_id, doc.id, safe_name, raw_bytes)
+    # Save content to disk with doc.id prefix and calculate SHA-256
+    saved_path, checksum = save_document_file(project_id, doc.id, safe_name, raw_bytes)
     doc.file_path = str(saved_path)
+    doc.checksum = checksum
     db.commit()
     db.refresh(doc)
 
@@ -99,7 +142,85 @@ async def upload_document(
     if auto_process:
         doc = process_document(db, doc.id)
 
-    return S.document(doc)
+    req_count = db.execute(
+        select(func.count(Requirement.id)).where(Requirement.document_id == doc.id)
+    ).scalar() or 0
+
+    return S.document(doc, requirements_count=req_count)
+
+
+@router.post("/projects/{project_id}/documents", status_code=201)
+async def upload_document(
+    project_id: int,
+    file: UploadFile = File(...),
+    display_name: str = Form(default=""),
+    purpose: str = Form(default="prd"),
+    document_type: str = Form(default=""),
+    description: str = Form(default=""),
+    version: str = Form(default="1.0"),
+    owner: str = Form(default=""),
+    document_date: str = Form(default=""),
+    related_module: str = Form(default=""),
+    priority: str = Form(default="medium"),
+    processing_instructions: str = Form(default=""),
+    auto_process: bool = Form(default=True),
+    p: Principal = Depends(require("requirement.write")),
+    db: Session = Depends(get_db),
+):
+    return await _do_upload_document(
+        project_id=project_id,
+        file=file,
+        display_name=display_name,
+        purpose=purpose,
+        document_type=document_type,
+        description=description,
+        version=version,
+        owner=owner,
+        document_date=document_date,
+        related_module=related_module,
+        priority=priority,
+        processing_instructions=processing_instructions,
+        auto_process=auto_process,
+        p=p,
+        db=db,
+    )
+
+
+@router.post("/documents", status_code=201)
+async def upload_document_standalone(
+    file: UploadFile = File(...),
+    project_id: int | None = Form(default=None),
+    display_name: str = Form(default=""),
+    purpose: str = Form(default="prd"),
+    document_type: str = Form(default=""),
+    description: str = Form(default=""),
+    version: str = Form(default="1.0"),
+    owner: str = Form(default=""),
+    document_date: str = Form(default=""),
+    related_module: str = Form(default=""),
+    priority: str = Form(default="medium"),
+    processing_instructions: str = Form(default=""),
+    auto_process: bool = Form(default=False),
+    p: Principal = Depends(require("requirement.write")),
+    db: Session = Depends(get_db),
+):
+    return await _do_upload_document(
+        project_id=project_id,
+        file=file,
+        display_name=display_name,
+        purpose=purpose,
+        document_type=document_type,
+        description=description,
+        version=version,
+        owner=owner,
+        document_date=document_date,
+        related_module=related_module,
+        priority=priority,
+        processing_instructions=processing_instructions,
+        auto_process=auto_process,
+        p=p,
+        db=db,
+    )
 
 
 @router.get("/documents/{document_id}")
@@ -113,11 +234,106 @@ def get_document_details(
         raise NotFound(f"Document {document_id} not found")
     get_project_checked(db, p, doc.project_id)
 
-    res = S.document(doc)
+    req_count = db.execute(
+        select(func.count(Requirement.id)).where(Requirement.document_id == doc.id)
+    ).scalar() or 0
+
+    res = S.document(doc, requirements_count=req_count)
     res["extracted_text"] = doc.extracted_text  # Return full extracted text in detail view
     res["sections"] = doc.metadata_json.get("sections", []) if doc.metadata_json else []
     res["tables"] = doc.metadata_json.get("tables", []) if doc.metadata_json else []
     return res
+
+
+@router.patch("/documents/{document_id}")
+def update_document_metadata(
+    document_id: int,
+    body: DocumentUpdateIn,
+    p: Principal = Depends(require("requirement.write")),
+    db: Session = Depends(get_db),
+):
+    doc = db.get(Document, document_id)
+    if not doc:
+        raise NotFound(f"Document {document_id} not found")
+    get_project_checked(db, p, doc.project_id)
+
+    if body.display_name is not None:
+        doc.display_name = body.display_name.strip()
+    if body.document_type is not None:
+        doc.document_type = body.document_type.lower().strip()
+        doc.purpose = doc.document_type
+    if body.description is not None:
+        doc.description = body.description.strip()
+    if body.version is not None:
+        doc.version = body.version.strip()
+    if body.owner is not None:
+        doc.owner = body.owner.strip()
+    if body.document_date is not None:
+        doc.document_date = body.document_date.strip()
+    if body.related_module is not None:
+        doc.related_module = body.related_module.strip()
+    if body.priority is not None:
+        doc.priority = body.priority.lower().strip()
+    if body.processing_instructions is not None:
+        doc.processing_instructions = body.processing_instructions.strip()
+
+    doc.updated_at = utcnow()
+    db.commit()
+    db.refresh(doc)
+
+    audit.record(db, p.id, "document.updated", "document", doc.id, doc.filename, doc.project_id)
+
+    req_count = db.execute(
+        select(func.count(Requirement.id)).where(Requirement.document_id == doc.id)
+    ).scalar() or 0
+    return S.document(doc, requirements_count=req_count)
+
+
+@router.post("/documents/{document_id}/retry")
+def retry_document_process(
+    document_id: int,
+    p: Principal = Depends(require("requirement.write")),
+    db: Session = Depends(get_db),
+):
+    doc = db.get(Document, document_id)
+    if not doc:
+        raise NotFound(f"Document {document_id} not found")
+    get_project_checked(db, p, doc.project_id)
+
+    # Increment retry count
+    meta = dict(doc.metadata_json or {})
+    meta["retry_count"] = meta.get("retry_count", 0) + 1
+    doc.metadata_json = meta
+    doc.upload_status = "queued"
+    doc.extraction_status = "queued"
+    db.commit()
+
+    updated_doc = process_document(db, doc.id)
+    audit.record(db, p.id, "document.retried", "document", doc.id, doc.filename, doc.project_id)
+
+    req_count = db.execute(
+        select(func.count(Requirement.id)).where(Requirement.document_id == doc.id)
+    ).scalar() or 0
+    return S.document(updated_doc, requirements_count=req_count)
+
+
+@router.get("/documents/{document_id}/jobs")
+def list_document_jobs(
+    document_id: int,
+    p: Principal = Depends(current_principal),
+    db: Session = Depends(get_db),
+):
+    doc = db.get(Document, document_id)
+    if not doc:
+        raise NotFound(f"Document {document_id} not found")
+    get_project_checked(db, p, doc.project_id)
+
+    jobs = db.execute(
+        select(DocumentProcessingJob)
+        .where(DocumentProcessingJob.document_id == document_id)
+        .order_by(DocumentProcessingJob.created_at.desc())
+    ).scalars().all()
+    return [S.document_processing_job(j) for j in jobs]
 
 
 @router.get("/documents/{document_id}/download")
@@ -146,7 +362,7 @@ def download_document(
     media_type = media_types.get(doc.file_type, "application/octet-stream")
     return FileResponse(
         path=str(target_path),
-        filename=doc.filename,
+        filename=doc.display_name or doc.filename,
         media_type=media_type,
     )
 
@@ -164,7 +380,11 @@ def trigger_document_process(
 
     updated_doc = process_document(db, doc.id)
     audit.record(db, p.id, "document.processed", "document", doc.id, doc.filename, doc.project_id)
-    return S.document(updated_doc)
+
+    req_count = db.execute(
+        select(func.count(Requirement.id)).where(Requirement.document_id == doc.id)
+    ).scalar() or 0
+    return S.document(updated_doc, requirements_count=req_count)
 
 
 @router.delete("/documents/{document_id}", status_code=204)

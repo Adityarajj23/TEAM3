@@ -17,11 +17,14 @@ from app.core.errors import BadRequest
 from app.db.models import (
     AcceptanceCriterion,
     AuditLog,
+    BusinessScenario,
     Defect,
     Document,
     Execution,
     ExecutionResult,
     Project,
+    ProjectContext,
+    ProjectRole,
     Requirement,
     RequirementClarification,
     TestCase,
@@ -42,9 +45,10 @@ def get_requirements_project_dashboard_data(db: Session, project_id: int) -> dic
     ).scalars().all()
 
     total_docs = len(docs)
-    completed_docs = sum(1 for d in docs if d.status == "completed")
-    processing_docs = sum(1 for d in docs if d.status in ("processing", "uploaded"))
-    failed_docs = sum(1 for d in docs if d.status == "failed")
+    completed_docs = sum(1 for d in docs if d.status == "completed" or getattr(d, "extraction_status", "") in ("extracted", "approved"))
+    processing_docs = sum(1 for d in docs if d.status == "processing" or getattr(d, "extraction_status", "") == "processing")
+    awaiting_review_docs = sum(1 for d in docs if getattr(d, "extraction_status", "") in ("review_required", "uploaded") or d.status == "uploaded")
+    failed_docs = sum(1 for d in docs if d.status == "failed" or getattr(d, "extraction_status", "") == "failed")
 
     doc_purposes: dict[str, int] = {}
     for d in docs:
@@ -144,15 +148,29 @@ def get_requirements_project_dashboard_data(db: Session, project_id: int) -> dic
         S.requirement_clarification(c) for c in clarifications if c.status == "open"
     ][:5]
 
+    db_roles = db.execute(select(ProjectRole).where(ProjectRole.project_id == project_id)).scalars().all()
+    db_scenarios = db.execute(select(BusinessScenario).where(BusinessScenario.project_id == project_id)).scalars().all()
+    proj_context = db.execute(select(ProjectContext).where(ProjectContext.project_id == project_id)).scalar_one_or_none()
+
     return {
         "project": S.project(proj),
         "documents_summary": {
             "total": total_docs,
             "completed": completed_docs,
+            "successfully_processed": completed_docs,
             "processing": processing_docs,
+            "awaiting_review": awaiting_review_docs,
             "failed": failed_docs,
             "by_purpose": doc_purposes,
             "latest_document": latest_doc,
+        },
+        "context_summary": {
+            "roles_count": len(db_roles),
+            "scenarios_count": len(db_scenarios),
+            "has_context": proj_context is not None,
+            "roles": [S.project_role(r) for r in db_roles],
+            "scenarios": [S.business_scenario(s) for s in db_scenarios],
+            "context": S.project_context(proj_context) if proj_context else None,
         },
         "requirements_summary": {
             "total": total_reqs,
