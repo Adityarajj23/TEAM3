@@ -17,10 +17,10 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (projectId && projects.length && !projects.some((p) => p.id === projectId)) setPid(null);
     if (!projectId && projects.length) {
-      const echo = projects.find((p) => p.key === "ECHO");
-      if (echo) {
-        setPid(echo.id);
-        try { localStorage.setItem(KEY, String(echo.id)); } catch { /* ignore */ }
+      const defaultProj = projects.find((p) => p.key === "DAYFORCE") || projects.find((p) => p.key === "ECHO");
+      if (defaultProj) {
+        setPid(defaultProj.id);
+        try { localStorage.setItem(KEY, String(defaultProj.id)); } catch { /* ignore */ }
       }
     }
   }, [projects, projectId]);

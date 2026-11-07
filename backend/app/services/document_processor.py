@@ -101,7 +101,7 @@ def parse_pdf(file_path: Path) -> dict[str, Any]:
             # Scan for headings
             lines = [ln.strip() for ln in txt.splitlines() if ln.strip()]
             for line_idx, line in enumerate(lines):
-                if re.match(r"^(\d+(\.\d+)*|[A-Z]\.)\s+[A-Za-z0-9\s_-]{3,80}$", line) or (
+                if re.match(r"^(\d+(\.\d+)*\.?|[A-Z]\.)\s+[A-Za-z0-9\s_-]{3,80}$", line) or (
                     len(line) < 60 and line.isupper() and len(line.split()) <= 6
                 ):
                     current_section = line
@@ -379,7 +379,7 @@ def parse_txt(file_path: Path) -> dict[str, Any]:
     for idx, line in enumerate(lines, start=1):
         line_s = line.strip()
         # Heuristic for section titles: numbered or uppercase short lines
-        if re.match(r"^(\d+(\.\d+)*|[A-Z]\.)\s+[A-Za-z0-9\s_-]{3,80}$", line_s):
+        if re.match(r"^(\d+(\.\d+)*\.?|[A-Z]\.)\s+[A-Za-z0-9\s_-]{3,80}$", line_s):
             if cur_lines and any(l.strip() for l in cur_lines):
                 items.append({
                     "content_type": "section",

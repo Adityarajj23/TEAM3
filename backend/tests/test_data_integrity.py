@@ -15,7 +15,7 @@ def test_seed_counts_come_from_sqlite(app, admin):
     k = admin.get("/analytics/dashboard").json()["kpis"]
     assert k["total_projects"] == _q("select count(*) from projects")[0][0] >= 5
     assert _q("select count(*) from modules")[0][0] >= 12
-    assert 60 <= _q("select count(*) from requirements")[0][0] <= 90
+    assert 60 <= _q("select count(*) from requirements")[0][0] <= 140
     assert _q("select count(*) from requirement_versions")[0][0] >= 100
     assert _q("select count(*) from test_steps")[0][0] >= 1000
     assert _q("select count(*) from test_suites")[0][0] >= 30

@@ -8,6 +8,9 @@ import { TestDetailPage } from "@/pages/TestPages";
 import { ME, mockFetch, page, renderApp } from "./helpers";
 
 const store = new Map<string, string>();
+beforeEach(() => {
+  store.clear();
+});
 beforeAll(() => {
   globalThis.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} } as any;
   (globalThis as any).EventSource = undefined;

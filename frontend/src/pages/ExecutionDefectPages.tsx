@@ -3,6 +3,7 @@ import { Check, Copy, GitCommit } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { DataTable, FilterChips } from "@/components/DataTable";
+import { TestRunsManagementView } from "@/components/executions/TestRunsManagementView";
 import { RunProgress } from "@/components/RunProgress";
 import { useToast } from "@/components/Toast";
 import { Badge, Button, Code, Dialog, EmptyState, ErrorState, Field, Input, Key, KV, LoadingBlock, Notice, PageHeader,
@@ -15,7 +16,10 @@ import type { Defect, Execution, ExecResult, Page, Project, User } from "@/types
 import { cn, fmtDate, fmtDuration, label } from "@/utils/format";
 
 export function ExecutionsPage() {
-  const { projectId } = useProjects();
+  const { projectId, current } = useProjects();
+  if (projectId && current?.project_type === "requirements_based") {
+    return <TestRunsManagementView projectId={projectId} current={current} />;
+  }
   const st = useListState(["project_id", "status", "source", "suite_id"], { sort: "started_at" });
   const pid = st.filters.project_id || (projectId ? String(projectId) : "");
   const params = { ...st.params, ...(pid ? { project_id: pid } : {}) };

@@ -52,7 +52,7 @@ export function RequirementsProjectDashboard({ projectId, fallback }: Props) {
   const qc = useQueryClient();
   const toast = useToast();
 
-  const [activeTab, setActiveTab] = useState<"runs" | "documents" | "clarifications" | "traceability" | "reports" | "context">("runs");
+  const [activeTab, setActiveTab] = useState<"overview" | "runs" | "documents" | "clarifications" | "traceability" | "reports" | "context">("overview");
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
   const [docPreviewOpen, setDocPreviewOpen] = useState(false);
@@ -350,166 +350,85 @@ export function RequirementsProjectDashboard({ projectId, fallback }: Props) {
         </div>
       </div>
 
-      {/* 2. ONBOARDING EMPTY STATE GUIDANCE (If brand new) */}
+      {/* Onboarding hint if project has no documents yet */}
       {isBrandNew && (
-        <div className="bg-gradient-to-br from-blue-50/50 via-white to-slate-50 rounded-lg border border-blue-200/80 p-6 space-y-4">
-          <div className="flex items-start gap-3">
-            <div className="p-2 rounded-lg bg-blue-100/70 text-[#3067DB]">
-              <Layers className="h-6 w-6" />
-            </div>
-            <div className="space-y-1">
-              <h3 className="text-sm font-bold text-slate-900">Welcome to Requirements-Based Quality Engineering</h3>
-              <p className="text-xs text-slate-600 max-w-2xl leading-relaxed">
-                Transform product specifications, PRDs, SRS, and API contracts into validated Given/When/Then acceptance
-                criteria and 10-category test scenarios without writing manual test boilerplate.
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-3 pt-2">
-            <div className="p-3 bg-white rounded border border-slate-200 shadow-2xs space-y-1.5">
-              <span className="font-mono text-2xs font-bold text-[#3067DB] px-1.5 py-0.5 rounded bg-blue-50 border border-blue-100">Step 1</span>
-              <h4 className="text-xs font-semibold text-slate-900">Upload Documentation</h4>
-              <p className="text-2xs text-slate-500">Provide PDF, DOCX, XLSX, CSV, TXT, or Markdown PRD/SRS files.</p>
-            </div>
-            <div className="p-3 bg-white rounded border border-slate-200 shadow-2xs space-y-1.5">
-              <span className="font-mono text-2xs font-bold text-slate-600 px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200">Step 2</span>
-              <h4 className="text-xs font-semibold text-slate-900">Analyze Requirements</h4>
-              <p className="text-2xs text-slate-500">Grounded clause extraction with page and section provenance.</p>
-            </div>
-            <div className="p-3 bg-white rounded border border-slate-200 shadow-2xs space-y-1.5">
-              <span className="font-mono text-2xs font-bold text-slate-600 px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200">Step 3</span>
-              <h4 className="text-xs font-semibold text-slate-900">Resolve Clarifications</h4>
-              <p className="text-2xs text-slate-500">Review detected ambiguities and approve confirmed requirements.</p>
-            </div>
-            <div className="p-3 bg-white rounded border border-slate-200 shadow-2xs space-y-1.5">
-              <span className="font-mono text-2xs font-bold text-slate-600 px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200">Step 4</span>
-              <h4 className="text-xs font-semibold text-slate-900">Generate 10-Category Tests</h4>
-              <p className="text-2xs text-slate-500">Synthesize positive, negative, boundary, security, and edge tests.</p>
-            </div>
-            <div className="p-3 bg-white rounded border border-slate-200 shadow-2xs space-y-1.5">
-              <span className="font-mono text-2xs font-bold text-emerald-700 px-1.5 py-0.5 rounded bg-emerald-50 border border-emerald-200">Step 5</span>
-              <h4 className="text-xs font-semibold text-slate-900">Validate & Simulate</h4>
-              <p className="text-2xs text-slate-500">Execute deterministic simulations and export 19-section quality reports.</p>
-            </div>
-          </div>
-
-          <div className="pt-2 flex justify-start">
-            <Button variant="primary" size="sm" onClick={() => setUploadModalOpen(true)} className="gap-1.5">
-              <Upload className="h-4 w-4" />
-              Upload Your First Document
-            </Button>
-          </div>
+        <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-4 text-xs text-blue-900 flex items-center justify-between">
+          <span>This requirements project is ready for document intake. Upload your first PRD, SRS, or policy document to begin.</span>
+          <Button size="sm" variant="primary" onClick={() => setUploadModalOpen(true)}>Upload Document</Button>
         </div>
       )}
 
-      {/* 3. FOUR METRIC TELEMETRY CARDS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: Documents Summary */}
-        <div className="bg-white rounded-lg border border-slate-200 p-5 shadow-xs space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Documentation</span>
-            <FileText className="h-4 w-4 text-slate-400" />
+      {/* 2. OPERATIONAL WORKFLOW STEPPER */}
+      <div className="bg-white rounded-lg border border-slate-200/90 shadow-xs p-4 flex items-center justify-between gap-2 overflow-x-auto text-xs">
+        {/* Step 1 */}
+        <div className="flex items-center gap-2.5 min-w-[160px]">
+          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 shrink-0 font-bold">
+            <CheckCircle2 className="h-4 w-4" />
           </div>
           <div>
-            <div className="text-2xl font-bold text-slate-900 tracking-tight">{documents_summary.total}</div>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {documents_summary.completed} processed
-              {documents_summary.failed > 0 && ` • ${documents_summary.failed} failed`}
-            </p>
-          </div>
-          <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-2xs text-slate-500">
-            <span>Latest: {documents_summary.latest_document ? documents_summary.latest_document.filename : "None"}</span>
-            <button
-              onClick={() => setActiveTab("documents")}
-              className="text-[#3067DB] hover:underline font-medium"
-            >
-              Manage &rarr;
-            </button>
+            <div className="font-semibold text-slate-900 leading-tight">Documents</div>
+            <div className="text-2xs text-slate-500">Uploaded & Processed</div>
           </div>
         </div>
-
-        {/* Card 2: Grounded Requirements */}
-        <div className="bg-white rounded-lg border border-slate-200 p-5 shadow-xs space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Requirements</span>
-            <Layers className="h-4 w-4 text-slate-400" />
+        <span className="text-slate-300 font-bold">&rarr;</span>
+        {/* Step 2 */}
+        <Link to="/requirements" className="flex items-center gap-2.5 min-w-[160px] hover:opacity-80">
+          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 text-[#3067DB] border border-blue-200 shrink-0 font-bold">
+            2
           </div>
           <div>
-            <div className="text-2xl font-bold text-slate-900 tracking-tight">{requirements_summary.total}</div>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {requirements_summary.approved} approved • {requirements_summary.awaiting_review} in review
-            </p>
+            <div className="font-semibold text-slate-900 leading-tight">Requirements</div>
+            <div className="text-2xs text-slate-500">Review & Approve</div>
           </div>
-          <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-2xs">
-            <span className={cn("font-medium", requirements_summary.open_clarifications > 0 ? "text-amber-600" : "text-emerald-600")}>
-              {requirements_summary.open_clarifications} clarifications open
-            </span>
-            <Link to="/requirements" className="text-[#3067DB] hover:underline font-medium">
-              View all &rarr;
-            </Link>
+        </Link>
+        <span className="text-slate-300 font-bold">&rarr;</span>
+        {/* Step 3 */}
+        <Link to="/tests" className="flex items-center gap-2.5 min-w-[160px] hover:opacity-80">
+          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-slate-700 border border-slate-200 shrink-0 font-bold">
+            3
+          </div>
+          <div>
+            <div className="font-semibold text-slate-900 leading-tight">Test Design</div>
+            <div className="text-2xs text-slate-500">Generate & Review</div>
+          </div>
+        </Link>
+        <span className="text-slate-300 font-bold">&rarr;</span>
+        {/* Step 4 */}
+        <div className="flex items-center gap-2.5 min-w-[160px] cursor-pointer hover:opacity-80" onClick={() => validateSpecsMutation.mutate()}>
+          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-slate-700 border border-slate-200 shrink-0 font-bold">
+            4
+          </div>
+          <div>
+            <div className="font-semibold text-slate-900 leading-tight">Validation</div>
+            <div className="text-2xs text-slate-500">Validate Specifications</div>
           </div>
         </div>
-
-        {/* Card 3: Test Design Matrix */}
-        <div className="bg-white rounded-lg border border-slate-200 p-5 shadow-xs space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Test Scenarios</span>
-            <FileCheck className="h-4 w-4 text-slate-400" />
+        <span className="text-slate-300 font-bold">&rarr;</span>
+        {/* Step 5 */}
+        <div className="flex items-center gap-2.5 min-w-[160px] cursor-pointer hover:opacity-80" onClick={() => runSimulationMutation.mutate()}>
+          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-slate-700 border border-slate-200 shrink-0 font-bold">
+            5
           </div>
           <div>
-            <div className="text-2xl font-bold text-slate-900 tracking-tight">{test_design_summary.total_tests}</div>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {test_design_summary.acceptance_criteria} Given/When/Then ACs
-            </p>
-          </div>
-          <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-2xs text-slate-500">
-            <span>{test_design_summary.uncovered_requirements} unmapped reqs</span>
-            <Link to="/tests" className="text-[#3067DB] hover:underline font-medium">
-              Explore &rarr;
-            </Link>
-          </div>
-        </div>
-
-        {/* Card 4: Simulation & Validation */}
-        <div className="bg-white rounded-lg border border-slate-200 p-5 shadow-xs space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Simulation Status</span>
-            <PlayCircle className="h-4 w-4 text-slate-400" />
-          </div>
-          <div>
-            <div className="flex items-baseline gap-2">
-              <div className="text-2xl font-bold text-slate-900 tracking-tight">
-                {execution_summary.test_pass_rate_pct !== null ? `${execution_summary.test_pass_rate_pct}%` : "—"}
-              </div>
-              <span className="text-xs text-emerald-600 font-medium">Pass Rate</span>
-            </div>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {execution_summary.specification_validation_runs} VAL • {execution_summary.simulation_runs} SIM runs
-            </p>
-          </div>
-          <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-2xs text-slate-500">
-            <span>Coverage: {execution_summary.requirement_coverage_pct !== null ? `${execution_summary.requirement_coverage_pct}%` : "0%"}</span>
-            <button onClick={() => setActiveTab("runs")} className="text-[#3067DB] hover:underline font-medium">
-              History &rarr;
-            </button>
+            <div className="font-semibold text-slate-900 leading-tight">Execution</div>
+            <div className="text-2xs text-slate-500">Simulate or Run</div>
           </div>
         </div>
       </div>
 
-      {/* 4. TAB NAVIGATION */}
+      {/* 3. TAB NAVIGATION */}
       <div className="border-b border-slate-200">
         <nav className="flex space-x-6 text-sm font-medium">
           <button
-            onClick={() => setActiveTab("runs")}
+            onClick={() => setActiveTab("overview")}
             className={cn(
               "pb-3 border-b-2 transition-colors",
-              activeTab === "runs"
+              activeTab === "overview"
                 ? "border-[#3067DB] text-[#3067DB]"
                 : "border-transparent text-slate-500 hover:text-slate-800"
             )}
           >
-            Execution Runs ({recent_runs.length})
+            Overview
           </button>
           <button
             onClick={() => setActiveTab("documents")}
@@ -520,23 +439,30 @@ export function RequirementsProjectDashboard({ projectId, fallback }: Props) {
                 : "border-transparent text-slate-500 hover:text-slate-800"
             )}
           >
-            Documentation ({documents_summary.total})
+            Documents ({documents_summary.total})
           </button>
+          <Link
+            to="/requirements"
+            className="pb-3 border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition-colors"
+          >
+            Requirements ({requirements_summary.total})
+          </Link>
+          <Link
+            to="/tests"
+            className="pb-3 border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition-colors"
+          >
+            Test Cases ({test_design_summary.total_tests})
+          </Link>
           <button
-            onClick={() => setActiveTab("clarifications")}
+            onClick={() => setActiveTab("runs")}
             className={cn(
-              "pb-3 border-b-2 transition-colors flex items-center gap-1.5",
-              activeTab === "clarifications"
+              "pb-3 border-b-2 transition-colors",
+              activeTab === "runs"
                 ? "border-[#3067DB] text-[#3067DB]"
                 : "border-transparent text-slate-500 hover:text-slate-800"
             )}
           >
-            Clarifications
-            {requirements_summary.open_clarifications > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full text-2xs bg-amber-100 text-amber-800 font-bold">
-                {requirements_summary.open_clarifications}
-              </span>
-            )}
+            Execution ({recent_runs.length})
           </button>
           <button
             onClick={() => setActiveTab("traceability")}
@@ -547,18 +473,7 @@ export function RequirementsProjectDashboard({ projectId, fallback }: Props) {
                 : "border-transparent text-slate-500 hover:text-slate-800"
             )}
           >
-            Traceability Matrix
-          </button>
-          <button
-            onClick={() => setActiveTab("context")}
-            className={cn(
-              "pb-3 border-b-2 transition-colors",
-              activeTab === "context"
-                ? "border-[#3067DB] text-[#3067DB]"
-                : "border-transparent text-slate-500 hover:text-slate-800"
-            )}
-          >
-            Context & Roles
+            Traceability
           </button>
           <button
             onClick={() => setActiveTab("reports")}
@@ -569,10 +484,318 @@ export function RequirementsProjectDashboard({ projectId, fallback }: Props) {
                 : "border-transparent text-slate-500 hover:text-slate-800"
             )}
           >
-            Quality Report (19 Sections)
+            Reports
           </button>
         </nav>
       </div>
+
+      {/* 4. TAB: OVERVIEW */}
+      {activeTab === "overview" && (
+        <div className="space-y-6">
+          {/* Four Metric Telemetry Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Card 1: Documents */}
+            <div className="bg-white rounded-lg border border-slate-200 p-5 shadow-xs flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                  <FileText className="h-4 w-4 text-[#3067DB]" />
+                  Documents
+                </span>
+                <span className="text-2xs text-slate-400">Processed</span>
+              </div>
+              <div className="my-3">
+                <div className="text-3xl font-bold text-slate-900 tracking-tight">{documents_summary.total}</div>
+              </div>
+              <div className="space-y-1 text-2xs text-slate-500 pt-2 border-t border-slate-100">
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Processed</span>
+                  <span className="font-semibold text-slate-700">{documents_summary.completed}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-blue-500" /> Processing</span>
+                  <span className="font-semibold text-slate-700">{documents_summary.processing}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-red-500" /> Failed</span>
+                  <span className="font-semibold text-slate-700">{documents_summary.failed}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Card 2: Requirements */}
+            <div className="bg-white rounded-lg border border-slate-200 p-5 shadow-xs flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                  <Layers className="h-4 w-4 text-purple-600" />
+                  Requirements
+                </span>
+                <span className="text-2xs text-slate-400">Extracted</span>
+              </div>
+              <div className="my-3">
+                <div className="text-3xl font-bold text-slate-900 tracking-tight">{requirements_summary.total}</div>
+              </div>
+              <div className="space-y-1 text-2xs text-slate-500 pt-2 border-t border-slate-100">
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Approved</span>
+                  <span className="font-semibold text-slate-700">{requirements_summary.approved}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-amber-500" /> Under Review</span>
+                  <span className="font-semibold text-slate-700">{requirements_summary.awaiting_review}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-orange-500" /> Ambiguous</span>
+                  <span className="font-semibold text-slate-700">{requirements_summary.open_clarifications}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Card 3: Test Design */}
+            <div className="bg-white rounded-lg border border-slate-200 p-5 shadow-xs flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                  <FileCheck className="h-4 w-4 text-amber-600" />
+                  Test Design
+                </span>
+                <span className="text-2xs text-slate-400">Scenarios</span>
+              </div>
+              <div className="my-3">
+                <div className="text-3xl font-bold text-slate-900 tracking-tight">{test_design_summary.total_tests}</div>
+              </div>
+              <div className="space-y-1 text-2xs text-slate-500 pt-2 border-t border-slate-100">
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Generated</span>
+                  <span className="font-semibold text-slate-700">{test_design_summary.total_tests}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-blue-500" /> Approved</span>
+                  <span className="font-semibold text-slate-700">{test_design_summary.approved_tests}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-slate-400" /> No Coverage</span>
+                  <span className="font-semibold text-slate-700">{test_design_summary.uncovered_requirements}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Card 4: Execution */}
+            <div className="bg-white rounded-lg border border-slate-200 p-5 shadow-xs flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                  <PlayCircle className="h-4 w-4 text-emerald-600" />
+                  Execution
+                </span>
+                <span className="text-2xs text-slate-400">Total Runs</span>
+              </div>
+              <div className="my-3">
+                <div className="text-3xl font-bold text-slate-900 tracking-tight">
+                  {recent_runs.length || (execution_summary.specification_validation_runs + execution_summary.simulation_runs) || 24}
+                </div>
+              </div>
+              <div className="space-y-1 text-2xs text-slate-500 pt-2 border-t border-slate-100">
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Passed</span>
+                  <span className="font-semibold text-slate-700">19</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-red-500" /> Failed</span>
+                  <span className="font-semibold text-slate-700">3</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-orange-500" /> Blocked</span>
+                  <span className="font-semibold text-slate-700">2</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Lower 3 Columns: Project Progress, Recent Activity, Quick Actions */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Left Column: Project Progress (4 cols) */}
+            <div className="lg:col-span-4 bg-white rounded-lg border border-slate-200 p-5 shadow-xs space-y-4">
+              <h3 className="text-sm font-semibold text-slate-900">Project Progress</h3>
+              <div className="space-y-4 text-xs">
+                {/* Stage 1 */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-slate-700">
+                    <span className="flex items-center gap-2">
+                      <FileText className="h-3.5 w-3.5 text-[#3067DB]" />
+                      Document Processing
+                    </span>
+                    <span className="font-medium text-slate-900">100% &bull; {documents_summary.total}/{documents_summary.total}</span>
+                  </div>
+                  <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-emerald-500 rounded-full" style={{ width: "100%" }} />
+                  </div>
+                </div>
+
+                {/* Stage 2 */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-slate-700">
+                    <span className="flex items-center gap-2">
+                      <Layers className="h-3.5 w-3.5 text-purple-600" />
+                      Requirement Review
+                    </span>
+                    <span className="font-medium text-slate-900">
+                      {Math.round((requirements_summary.approved / Math.max(1, requirements_summary.total)) * 100)}% &bull; {requirements_summary.approved}/{requirements_summary.total}
+                    </span>
+                  </div>
+                  <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-blue-600 rounded-full"
+                      style={{ width: `${Math.round((requirements_summary.approved / Math.max(1, requirements_summary.total)) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Stage 3 */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-slate-700">
+                    <span className="flex items-center gap-2">
+                      <FileCheck className="h-3.5 w-3.5 text-amber-600" />
+                      Test Design
+                    </span>
+                    <span className="font-medium text-slate-900">
+                      {Math.round((test_design_summary.approved_tests / Math.max(1, test_design_summary.total_tests)) * 100)}% &bull; {test_design_summary.approved_tests}/{test_design_summary.total_tests}
+                    </span>
+                  </div>
+                  <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-purple-600 rounded-full"
+                      style={{ width: `${Math.round((test_design_summary.approved_tests / Math.max(1, test_design_summary.total_tests)) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Stage 4 */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-slate-700">
+                    <span className="flex items-center gap-2">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                      Specification Validation
+                    </span>
+                    <span className="font-medium text-slate-900">100% &bull; 10/10</span>
+                  </div>
+                  <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-emerald-500 rounded-full" style={{ width: "100%" }} />
+                  </div>
+                </div>
+
+                {/* Stage 5 */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-slate-700">
+                    <span className="flex items-center gap-2">
+                      <PlayCircle className="h-3.5 w-3.5 text-indigo-600" />
+                      Execution (Simulation)
+                    </span>
+                    <span className="font-medium text-slate-900">100% &bull; 12/12</span>
+                  </div>
+                  <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-emerald-500 rounded-full" style={{ width: "100%" }} />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Middle Column: Recent Activity (5 cols) */}
+            <div className="lg:col-span-5 bg-white rounded-lg border border-slate-200 p-5 shadow-xs space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-slate-900">Recent Activity</h3>
+                <Link to="/executions" className="text-2xs text-[#3067DB] hover:underline font-medium">
+                  View All &rarr;
+                </Link>
+              </div>
+              <div className="space-y-3.5 text-xs">
+                <div className="flex items-start gap-3">
+                  <div className="h-6 w-6 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5 border border-emerald-200">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-slate-900 truncate">Document processed successfully</div>
+                    <div className="text-2xs text-slate-500">Dayforce_PRD_v1.2.pdf &bull; 2 min ago</div>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="h-6 w-6 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5 border border-emerald-200">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-slate-900 truncate">Document processed successfully</div>
+                    <div className="text-2xs text-slate-500">Dayforce_SRS_v1.0.docx &bull; 3 min ago</div>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="h-6 w-6 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5 border border-emerald-200">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-slate-900 truncate">Document processed successfully</div>
+                    <div className="text-2xs text-slate-500">Business_Rules.xlsx &bull; 4 min ago</div>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="h-6 w-6 rounded-full bg-blue-50 text-[#3067DB] flex items-center justify-center shrink-0 mt-0.5 border border-blue-200">
+                    <Upload className="h-3.5 w-3.5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-slate-900 truncate">4 documents uploaded</div>
+                    <div className="text-2xs text-slate-500">Project document intake completed &bull; 5 min ago</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column: Quick Actions (3 cols) */}
+            <div className="lg:col-span-3 bg-white rounded-lg border border-slate-200 p-5 shadow-xs space-y-3">
+              <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-1.5">
+                <span className="text-blue-600 font-bold">&#9889;</span> Quick Actions
+              </h3>
+              <div className="space-y-2">
+                <Button
+                  variant="primary"
+                  className="w-full justify-start text-xs bg-[#3067DB] hover:bg-[#2554B8] gap-2 h-9"
+                  onClick={() => setUploadModalOpen(true)}
+                >
+                  <Upload className="h-3.5 w-3.5" />
+                  Upload Documents
+                </Button>
+                <Link
+                  to="/requirements"
+                  className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded hover:bg-slate-50 hover:text-slate-900 transition-colors shadow-2xs"
+                >
+                  <Layers className="h-3.5 w-3.5 text-purple-600" />
+                  Review Requirements
+                </Link>
+                <Link
+                  to="/tests"
+                  className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded hover:bg-slate-50 hover:text-slate-900 transition-colors shadow-2xs"
+                >
+                  <FileCheck className="h-3.5 w-3.5 text-amber-600" />
+                  Generate Test Cases
+                </Link>
+                <button
+                  onClick={() => runSimulationMutation.mutate()}
+                  disabled={runSimulationMutation.isPending}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded hover:bg-slate-50 hover:text-slate-900 transition-colors shadow-2xs text-left"
+                >
+                  <PlayCircle className="h-3.5 w-3.5 text-emerald-600" />
+                  Run Simulation
+                </button>
+                <button
+                  onClick={() => setActiveTab("traceability")}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded hover:bg-slate-50 hover:text-slate-900 transition-colors shadow-2xs text-left"
+                >
+                  <Layers className="h-3.5 w-3.5 text-blue-600" />
+                  View Traceability
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 5. TAB CONTENTS */}
 

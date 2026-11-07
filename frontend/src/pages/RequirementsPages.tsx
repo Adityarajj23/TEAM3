@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { z } from "zod";
 import { DataTable, FilterChips } from "@/components/DataTable";
+import { RequirementsManagementView } from "@/components/requirements/RequirementsManagementView";
 import { RunProgress } from "@/components/RunProgress";
 import { useToast } from "@/components/Toast";
 import { Badge, Button, Dialog, EmptyState, ErrorState, Field, Input, Key, KV, LoadingBlock, Notice, PageHeader, Panel,
@@ -24,7 +25,10 @@ const reqSchema = z.object({
 });
 
 export function RequirementsPage() {
-  const { projectId } = useProjects();
+  const { projectId, current } = useProjects();
+  if (projectId && current?.project_type === "requirements_based") {
+    return <RequirementsManagementView projectId={projectId} current={current} />;
+  }
   const st = useListState(["project_id", "status", "priority", "category"], { sort: "updated_at" });
   const pid = st.filters.project_id || (projectId ? String(projectId) : "");
   const params = { ...st.params, ...(pid ? { project_id: pid } : {}) };

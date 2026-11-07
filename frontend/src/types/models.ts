@@ -33,7 +33,9 @@ export interface RequirementVersion { id: number; version: number; title: string
 export interface Requirement { id: number; key: string; project_id: number; project_key: string; module: Module | null;
   title: string; category: string; priority: string; status: string; version: number; source_type: string;
   author: UserRef | null; analysed_at: string | null; created_at: string; updated_at: string;
-  current?: RequirementVersion; clauses?: Clause[]; test_count?: number }
+  current?: RequirementVersion; clauses?: Clause[]; test_count?: number;
+  document_id?: number | null; evidence_excerpt?: string | null; description?: string | null;
+  review_status?: string | null; confidence?: number | null; }
 export interface Criterion { id: number; key: string; clause_keys: string[]; description: string; preconditions: string;
   expected_behaviour: string; validation_conditions: string[]; source_quote: string; quote_verified: boolean;
   confidence: number; rationale: string; assumptions: string[]; review_status: string; provider: string; model: string | null }
@@ -45,7 +47,7 @@ export interface TestCase { id: number; key: string; project_id: number; require
   expected_result?: string; source_quote?: string; rationale?: string; script?: string | null; script_hash?: string | null;
   validation_errors?: string[]; steps?: { position: number; action: string; expected: string }[];
   created_by?: UserRef | null; reviewer?: UserRef | null; reviews?: any[]; versions?: any[]; recent_results?: ExecResult[];
-  executable?: boolean; blocked_reason?: string }
+  executable?: boolean; blocked_reason?: string; test_category?: string; steps_json?: { action: string; expected: string }[] }
 export interface Suite { id: number; key: string; project_id: number; module: Module | null; name: string; description: string;
   priority: string; test_count: number | null; tests?: TestCase[]; executions?: Execution[];
   coverage?: { requirements: number; clauses: number; covered: number } }
